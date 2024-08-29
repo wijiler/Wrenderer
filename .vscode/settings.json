@@ -1,0 +1,14 @@
+{
+    "files.associations": {
+        "*.js": "javascript",
+        "stdio.h": "c",
+        "glfw3.h": "c",
+        "stdlib.h": "c",
+        "vulkan.h": "c",
+        "renderer.h": "c",
+        "ios": "c",
+        "xutility": "c",
+        "rendergraph.h": "c"
+    },
+    "C_Cpp.default.configurationProvider": "ms-vscode.makefile-tools"
+}
