@@ -1,9 +1,12 @@
+#include "vulkan/vulkan_core.h"
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #include <renderer.h>
+#include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
+#include <string.h>
 
 #define instEXTENSIONCOUNT 4
 #ifdef DEBUG
@@ -21,15 +24,13 @@ char *instanceExtensions[instEXTENSIONCOUNT] = {
     VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
 };
 #ifdef DEBUG
-char *instanceLayerNames[instLAYERCOUNT] = {
-    "VK_LAYER_KHRONOS_validation"};
+char *instanceLayerNames[instLAYERCOUNT] = {"VK_LAYER_KHRONOS_validation"};
 #endif
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
     VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
     VkDebugUtilsMessageTypeFlagsEXT messageType,
-    const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
-    void *pUserData)
+    const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData, void *pUserData)
 {
     if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
     {
@@ -40,13 +41,12 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
 
 void create_instance(renderer_t *renderer)
 {
-
     VkApplicationInfo appInfo;
     appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     appInfo.pNext = NULL;
 
     appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-    appInfo.apiVersion = VK_MAKE_API_VERSION(0, 1, 3, 0);
+    appInfo.apiVersion = VK_MAKE_API_VERSION(0, 1, 3, 294);
     appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
     appInfo.pApplicationName = "Jr2";
     appInfo.pEngineName = "Jr2";
@@ -54,6 +54,7 @@ void create_instance(renderer_t *renderer)
     VkInstanceCreateInfo instance_ci;
     instance_ci.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     instance_ci.pNext = NULL;
+    instance_ci.flags = 0x0;
 
     instance_ci.enabledExtensionCount = instEXTENSIONCOUNT;
     instance_ci.ppEnabledExtensionNames = instanceExtensions;
@@ -65,8 +66,13 @@ void create_instance(renderer_t *renderer)
 
     VkDebugUtilsMessengerCreateInfoEXT debug_CInf = {0};
     debug_CInf.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-    debug_CInf.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-    debug_CInf.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+    debug_CInf.messageSeverity =
+        VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+        VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+        VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+    debug_CInf.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                             VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                             VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
     debug_CInf.pfnUserCallback = debugCallback;
     debug_CInf.pUserData = NULL;
     instance_ci.pNext = (VkDebugUtilsMessengerCreateInfoEXT *)&debug_CInf;
@@ -87,9 +93,13 @@ VkPhysicalDevice find_valid_device(int deviceCount, VkPhysicalDevice devices[], 
 {
     VkPhysicalDeviceProperties devProps = {0};
 
+    VkPhysicalDeviceVulkan12Features devFeat12 = {0};
+    devFeat12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+    devFeat12.pNext = NULL;
+
     VkPhysicalDeviceVulkan13Features devFeat13 = {0};
     devFeat13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-    devFeat13.pNext = NULL;
+    devFeat13.pNext = &devFeat12;
 
     VkPhysicalDeviceFeatures2 devFeat2 = {0};
     devFeat2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
@@ -112,15 +122,17 @@ VkPhysicalDevice find_valid_device(int deviceCount, VkPhysicalDevice devices[], 
         {
             VkBool32 supports_present = VK_FALSE;
             vkGetPhysicalDeviceSurfaceSupportKHR(devices[i], j, surface, &supports_present);
-            // we want the graphics queue on the present queue, its faster, AKA Exclusive Mode
-            if (qfamProps[j].queueFlags & VK_QUEUE_GRAPHICS_BIT && supports_present == VK_TRUE)
+            // we want the graphics queue on the present queue, its faster, AKA
+            // Exclusive Mode
+            if (qfamProps[j].queueFlags & VK_QUEUE_GRAPHICS_BIT &&
+                supports_present == VK_TRUE)
             {
                 gfami = j;
                 break;
             }
         }
 
-        if (devProps.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && devFeat13.dynamicRendering == VK_TRUE)
+        if (devProps.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && devFeat13.dynamicRendering == VK_TRUE && devFeat12.bufferDeviceAddress == VK_TRUE)
         {
             devFeatures = &devFeat2;
             graphicsFamilyIndex = &gfami;
@@ -162,22 +174,28 @@ void create_device(VulkanCore_t *core)
         }
     }
 
+    VkPhysicalDeviceVulkan12Features devFeatures12 = {0};
+    devFeatures12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+    devFeatures12.pNext = NULL;
+
     VkPhysicalDeviceVulkan13Features devFeatures13 = {0};
     devFeatures13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-    devFeatures13.pNext = NULL;
+    devFeatures13.pNext = &devFeatures12;
 
     VkPhysicalDeviceFeatures2 devFeatures2 = {0};
     devFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
     unsigned int gfi = 0;
 
     core->pDev = find_valid_device(deviceCount, devices, &devFeatures2, &gfi, core->surface);
-
+    core->qfi = gfi;
     devFeatures2.pNext = &devFeatures13;
 
     devFeatures2.features.geometryShader = VK_FALSE;
     devFeatures2.features.tessellationShader = VK_FALSE;
 
     devFeatures13.dynamicRendering = VK_TRUE;
+
+    devFeatures12.bufferDeviceAddress = VK_TRUE;
 
     VkDeviceQueueCreateInfo queueCreateInfo = {0};
     queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
@@ -207,8 +225,40 @@ void create_device(VulkanCore_t *core)
     core->lDev = dev;
     // Exclusive mode
     vkGetDeviceQueue(core->lDev, gfi, 0, &core->gQueue);
-    vkGetDeviceQueue(core->lDev, gfi, 0, &core->pQueue);
+    vkGetDeviceQueue(core->lDev, gfi, 0, &core->pQueue); // why do we store the same queue in two different things? Orginization + ordering + Synchronization
     // We already know that we can present on our window surface because we check for that while finding a valid queue
+}
+
+VkImageView get_image_view(VkImage image, VulkanCore_t core)
+{
+    VkImageViewCreateInfo imgViewCI;
+    imgViewCI.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    imgViewCI.pNext = NULL;
+    imgViewCI.flags = 0x0;
+
+    imgViewCI.image = image;
+
+    imgViewCI.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    imgViewCI.format = core.sFormat.format;
+
+    imgViewCI.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+    imgViewCI.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+    imgViewCI.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+    imgViewCI.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+
+    imgViewCI.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    imgViewCI.subresourceRange.baseMipLevel = 0;
+    imgViewCI.subresourceRange.levelCount = 1;
+    imgViewCI.subresourceRange.baseArrayLayer = 0;
+    imgViewCI.subresourceRange.layerCount = 1;
+
+    VkImageView view;
+    if (vkCreateImageView(core.lDev, &imgViewCI, NULL, &view) != VK_SUCCESS)
+    {
+        printf("Could not create image view for image %p\n", image);
+        exit(1);
+    }
+    return view;
 }
 
 void create_swapchain(VulkanCore_t *core)
@@ -222,7 +272,7 @@ void create_swapchain(VulkanCore_t *core)
 
     uint32_t formatCount = 0;
     vkGetPhysicalDeviceSurfacePresentModesKHR(core->pDev, core->surface, &formatCount, NULL);
-    VkResult result = vkGetPhysicalDeviceSurfaceFormatsKHR(core->pDev, core->surface, &formatCount, aFormats);
+    vkGetPhysicalDeviceSurfaceFormatsKHR(core->pDev, core->surface, &formatCount, aFormats);
 
     uint32_t pModeCount = 0;
     vkGetPhysicalDeviceSurfacePresentModesKHR(core->pDev, core->surface, &pModeCount, NULL);
@@ -231,7 +281,7 @@ void create_swapchain(VulkanCore_t *core)
     core->sFormat = aFormats[0];
     for (unsigned int i = 0; i < formatCount; i++)
     {
-        if (aFormats[i].format == VK_FORMAT_B8G8R8A8_SRGB && aFormats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) // these are just the best ones :kekew:
+        if (aFormats[i].format == VK_FORMAT_B8G8R8A8_SRGB && aFormats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
         {
             core->sFormat = aFormats[i];
             break;
@@ -284,10 +334,254 @@ void create_swapchain(VulkanCore_t *core)
         printf("Swapchain could not be created");
         exit(1);
     }
+
+    uint32_t imagecount = 0;
+    VkImage *images;
+    vkGetSwapchainImagesKHR(core->lDev, core->swapChain, &imagecount, NULL);
+    images = malloc(sizeof(VkImage) * imagecount);
+    vkGetSwapchainImagesKHR(core->lDev, core->swapChain, &imagecount, images);
+
+    core->swapChainImageViews = malloc(sizeof(VkImageView) * imagecount);
+    for (uint32_t i = 0; i < imagecount; i++)
+    {
+        core->swapChainImageViews[i] = get_image_view(images[i], *core);
+    }
+    core->imgCount = imagecount;
+}
+
+void create_CommandBuffers(VulkanCore_t *core)
+{
+    VkCommandPoolCreateInfo comPoolCI = {0};
+    comPoolCI.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    comPoolCI.pNext = NULL;
+
+    comPoolCI.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    comPoolCI.queueFamilyIndex = core->qfi;
+    if (vkCreateCommandPool(core->lDev, &comPoolCI, NULL, (VkCommandPool *)&core->commandPool) != VK_SUCCESS)
+    {
+        printf("Could not issue commandPool\n");
+        exit(1);
+    }
+
+    VkCommandBufferAllocateInfo cbAI = {0};
+    cbAI.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    cbAI.pNext = NULL;
+
+    cbAI.commandPool = (VkCommandPool)core->commandPool;
+    cbAI.commandBufferCount = FRAMECOUNT;
+    cbAI.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+
+    if (vkAllocateCommandBuffers(core->lDev, &cbAI, core->commandBuffers) != VK_SUCCESS)
+    {
+        printf("Could not create command buffers\n");
+        exit(1);
+    }
+
+    for (int i = 0; i < FRAMECOUNT; i++)
+    {
+        VkSemaphoreCreateInfo semaphoreCI = {0};
+        semaphoreCI.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+        semaphoreCI.pNext = NULL;
+
+        if (vkCreateSemaphore(core->lDev, &semaphoreCI, NULL, &core->imageAvailiable[i]) != VK_SUCCESS)
+        {
+            printf("Could not create semaphore\n");
+            exit(1);
+        }
+        if (vkCreateSemaphore(core->lDev, &semaphoreCI, NULL, &core->renderFinished[i]) != VK_SUCCESS)
+        {
+            printf("Could not create semaphore\n");
+            exit(1);
+        }
+
+        VkFenceCreateInfo fenceCI = {0};
+        fenceCI.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        fenceCI.pNext = NULL;
+        fenceCI.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+        if (vkCreateFence(core->lDev, &fenceCI, NULL, &core->fences[i]) != VK_SUCCESS)
+        {
+            printf("Could not create fence\n");
+            exit(1);
+        }
+    }
+}
+
+typedef struct
+{
+    Buffer buf;
+    bool active;
+} bufferInfo_t;
+
+bufferInfo_t bufferInfo[256];
+uint32_t bufferCount = 0;
+
+void MarkDestroyableBuffer(Buffer *buf)
+{
+    buf->index = bufferCount;
+    bufferInfo_t info = {0};
+    info.buf = *buf;
+    info.active = true;
+
+    for (uint32_t i = 0; i < bufferCount; i++)
+    {
+        if (bufferInfo[i].active == false)
+        {
+            buf->index = i;
+            bufferInfo[i] = info;
+            return;
+        }
+    }
+    bufferInfo[bufferCount] = info;
+    bufferCount += 1;
+}
+
+void createBuffer(VulkanCore_t core, BufferCreateInfo *createInfo, Buffer *buf)
+{
+    buf->size = createInfo->dataSize;
+    if ((createInfo->usage & VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) != 0)
+        buf->type = VertexBuf;
+    else if ((createInfo->usage & VK_BUFFER_USAGE_INDEX_BUFFER_BIT) != 0)
+        buf->type = IndexBuf;
+
+    VkBufferCreateInfo bufferCI = {0};
+    bufferCI.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bufferCI.pNext = NULL;
+
+    bufferCI.size = createInfo->dataSize;
+    bufferCI.usage = createInfo->usage;
+    bufferCI.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+    if (vkCreateBuffer(core.lDev, &bufferCI, NULL, &buf->buffer) != VK_SUCCESS)
+    {
+        printf("Could not create buffer\n");
+        exit(-1);
+    }
+
+    //
+    //      Memory
+    // -----------------
+
+    VkPhysicalDeviceMemoryProperties memProps = {0};
+
+    vkGetPhysicalDeviceMemoryProperties(core.pDev, &memProps);
+    int index = -1;
+    for (int i = 0; i <= 31; i++)
+    {
+        if (createInfo->access == HOST_ACCESS)
+        {
+            if ((memProps.memoryTypes[i].propertyFlags &
+                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0)
+            {
+                index = i;
+                break;
+            }
+        }
+
+        if (createInfo->access == DEVICE_ACCESS)
+        {
+            if ((memProps.memoryTypes[i].propertyFlags &
+                 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) != 0)
+            {
+                index = i;
+                break;
+            }
+        }
+    }
+    if (index == -1)
+    {
+        printf("Could not find suitable memory for vertex buffer");
+        exit(1);
+    }
+
+    VkMemoryAllocateInfo allocInfo = {0};
+    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+
+    VkMemoryAllocateFlagsInfo flags = {0};
+    flags.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO;
+    flags.pNext = NULL;
+
+    flags.flags = VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT;
+
+    allocInfo.pNext = &flags;
+
+    VkMemoryRequirements vkMemReq = {0};
+    vkGetBufferMemoryRequirements(core.lDev, buf->buffer, &vkMemReq);
+
+    allocInfo.allocationSize = createInfo->dataSize + vkMemReq.alignment;
+    allocInfo.memoryTypeIndex = index;
+
+    if (vkAllocateMemory(core.lDev, &allocInfo, NULL, (VkDeviceMemory *)&buf->associatedMemory) !=
+        VK_SUCCESS)
+    {
+        printf("Could not allocate memory\n");
+        exit(1);
+    }
+
+    if (vkBindBufferMemory(core.lDev, buf->buffer, (VkDeviceMemory)buf->associatedMemory, 0) != VK_SUCCESS)
+    {
+        printf("Could not bind memory\n");
+        exit(1);
+    }
+    MarkDestroyableBuffer(buf);
+}
+
+void destroyBuffer(Buffer buf, VulkanCore_t core)
+{
+    vkDestroyBuffer(core.lDev, buf.buffer, NULL);
+    vkFreeMemory(core.lDev, (VkDeviceMemory)buf.associatedMemory, NULL);
+
+    bufferInfo[buf.index].active = false;
+}
+
+void *BufferData = NULL;
+int BufferDataSize = 0;
+void pushDataToBuffer(VulkanCore_t core, void *data, uint32_t dataSize, Buffer buf)
+{
+    void *tempBufData = malloc(BufferDataSize);
+
+    BufferData = malloc(BufferDataSize + dataSize);
+    vkMapMemory(core.lDev, (VkDeviceMemory)buf.associatedMemory, 0, dataSize, 0, BufferData);
+    if (tempBufData == NULL)
+    {
+        memcpy(BufferData, data, dataSize);
+        return;
+    }
+    memcpy(BufferData + BufferDataSize, data, dataSize);
+    vkUnmapMemory(core.lDev, (VkDeviceMemory)buf.associatedMemory);
+    BufferDataSize += dataSize;
+}
+
+void copyBuf(VulkanCore_t core, Buffer src, Buffer dest)
+{
+    VkBufferCopy copyData = {0};
+    copyData.dstOffset = 0;
+    copyData.srcOffset = 0;
+    copyData.size = dest.size;
+
+    vkCmdCopyBuffer(core.commandBuffers[core.currentBuffer], src.buffer, dest.buffer, 1, &copyData);
 }
 
 void destroyRenderer(renderer_t *renderer)
 {
+    for (uint32_t i = 0; i < FRAMECOUNT; i++)
+    {
+        vkDestroySemaphore(renderer->vkCore.lDev, renderer->vkCore.imageAvailiable[i], NULL);
+        vkDestroySemaphore(renderer->vkCore.lDev, renderer->vkCore.renderFinished[i], NULL);
+        vkDestroyFence(renderer->vkCore.lDev, renderer->vkCore.fences[i], NULL);
+    }
+    vkDestroyCommandPool(renderer->vkCore.lDev, (VkCommandPool)renderer->vkCore.commandPool, NULL);
+    for (uint32_t i = 0; i <= bufferCount; i++)
+    {
+        if (!bufferInfo[i].active)
+            continue;
+        vkDestroyBuffer(renderer->vkCore.lDev, bufferInfo[i].buf.buffer, NULL);
+        vkFreeMemory(renderer->vkCore.lDev, (VkDeviceMemory)bufferInfo[i].buf.associatedMemory, NULL);
+    }
+    for (uint32_t i = 0; i < renderer->vkCore.imgCount; i++)
+    {
+        vkDestroyImageView(renderer->vkCore.lDev, renderer->vkCore.swapChainImageViews[i], NULL);
+    }
     vkDestroySwapchainKHR(renderer->vkCore.lDev, renderer->vkCore.swapChain, NULL);
     vkDestroyDevice(renderer->vkCore.lDev, NULL);
     vkDestroySurfaceKHR(renderer->vkCore.instance, renderer->vkCore.surface, NULL);
@@ -299,4 +593,28 @@ void initRenderer(renderer_t *renderer)
     create_instance(renderer);
     create_device(&renderer->vkCore);
     create_swapchain(&renderer->vkCore);
+    create_CommandBuffers(&renderer->vkCore);
+
+    // // Buffer testing kit
+    // BufferCreateInfo bufCi = {0};
+    // bufCi.access = HOST_ACCESS;
+    // bufCi.dataSize = 16;
+    // bufCi.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    // Buffer testBuf = {0};
+    // Buffer testBuf2 = {0};
+    // Buffer testBuf3 = {0};
+    // Buffer testBuf4 = {0};
+    // Buffer testBuf5 = {0};
+    // Buffer testBuf6 = {0};
+    // Buffer testBuf7 = {0};
+    // createBuffer(renderer->vkCore, &bufCi, &testBuf);
+    // createBuffer(renderer->vkCore, &bufCi, &testBuf2);
+    // destroyBuffer(testBuf2, renderer->vkCore);
+    // createBuffer(renderer->vkCore, &bufCi, &testBuf3);
+    // createBuffer(renderer->vkCore, &bufCi, &testBuf4);
+    // destroyBuffer(testBuf4, renderer->vkCore);
+    // createBuffer(renderer->vkCore, &bufCi, &testBuf5);
+    // createBuffer(renderer->vkCore, &bufCi, &testBuf6);
+    // destroyBuffer(testBuf6, renderer->vkCore);
+    // createBuffer(renderer->vkCore, &bufCi, &testBuf7);
 }
