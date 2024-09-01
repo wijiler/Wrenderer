@@ -565,13 +565,13 @@ void create_dsp(VulkanCore_t *core)
     VkDescriptorPoolSize poolSize = {0};
 
     poolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    poolSize.descriptorCount = 256;
+    poolSize.descriptorCount = MAXTEXTURES;
 
     VkDescriptorPoolCreateInfo dspCI = {0};
     dspCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     dspCI.pNext = 0;
 
-    dspCI.maxSets = 256;
+    dspCI.maxSets = MAXTEXTURES;
     dspCI.flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT;
     dspCI.poolSizeCount = 1;
     dspCI.pPoolSizes = &poolSize;
@@ -581,7 +581,7 @@ void create_dsp(VulkanCore_t *core)
     VkDescriptorSetLayoutBinding UBindingInf = {0};
     UBindingInf.binding = 0;
     UBindingInf.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    UBindingInf.descriptorCount = MAXTEXTURES - 1;
+    UBindingInf.descriptorCount = MAXTEXTURES;
 
     UBindingInf.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
@@ -622,7 +622,7 @@ void allocate_DescriptorSets(VulkanCore_t *core, uint64_t setCount, uint8_t Layo
     countAllocInfoEXT.pNext = NULL;
 
     countAllocInfoEXT.descriptorSetCount = 1;
-    uint32_t mDescCount = MAXTEXTURES - 1;
+    uint32_t mDescCount = MAXTEXTURES;
     countAllocInfoEXT.pDescriptorCounts = &mDescCount;
 
     VkDescriptorSetAllocateInfo allocInfo = {0};
@@ -635,7 +635,7 @@ void allocate_DescriptorSets(VulkanCore_t *core, uint64_t setCount, uint8_t Layo
 
     for (uint32_t i = 0; i < setCount; i++)
     {
-        if (vkAllocateDescriptorSets(core->lDev, &allocInfo, &core->descriptorSets[totalsetCount + i]))
+        if (vkAllocateDescriptorSets(core->lDev, &allocInfo, &core->descriptorSets[totalsetCount + i]) != VK_SUCCESS)
             printf("Couldnt allocate descriptor sets");
     }
     totalsetCount += setCount;
@@ -677,8 +677,6 @@ void initRenderer(renderer_t *renderer)
     create_swapchain(&renderer->vkCore);
     create_CommandBuffers(&renderer->vkCore);
     create_dsp(&renderer->vkCore);
-
-    allocate_DescriptorSets(&renderer->vkCore, 20, 0);
 }
 
 // ------------ Pipeline Info ------------

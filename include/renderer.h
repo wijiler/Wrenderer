@@ -123,8 +123,8 @@ extern "C"
         VkCommandBuffer commandBuffers[FRAMECOUNT];
 
         VkDescriptorPool descPool;
-        VkDescriptorSetLayout dSetLayouts[256];
-        VkDescriptorSet descriptorSets[256];
+        VkDescriptorSetLayout dSetLayouts[MAXTEXTURES - 1];
+        VkDescriptorSet descriptorSets[MAXTEXTURES - 1];
 
         GLFWwindow *window;
 
