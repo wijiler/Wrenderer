@@ -132,7 +132,9 @@ VkPhysicalDevice find_valid_device(int deviceCount, VkPhysicalDevice devices[], 
             }
         }
 
-        if (devProps.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && devFeat13.dynamicRendering == VK_TRUE && devFeat12.bufferDeviceAddress == VK_TRUE)
+        if (devProps.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && devFeat13.dynamicRendering == VK_TRUE &&
+            devFeat12.bufferDeviceAddress == VK_TRUE && devFeat12.descriptorBindingUniformBufferUpdateAfterBind == VK_TRUE &&
+            devFeat12.descriptorBindingPartiallyBound == VK_TRUE && devFeat12.descriptorBindingVariableDescriptorCount == VK_TRUE)
         {
             devFeatures = &devFeat2;
             graphicsFamilyIndex = &gfami;
@@ -144,11 +146,12 @@ VkPhysicalDevice find_valid_device(int deviceCount, VkPhysicalDevice devices[], 
     return NULL;
 }
 
-#define DEVICEEXTENSIONSCOUNT 3
+#define DEVICEEXTENSIONSCOUNT 4
 char *deviceExtensions[DEVICEEXTENSIONSCOUNT] = {
     VK_KHR_SWAPCHAIN_EXTENSION_NAME,
     VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,
     VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
+    VK_EXT_SHADER_OBJECT_EXTENSION_NAME,
 };
 
 void create_device(VulkanCore_t *core)
@@ -196,6 +199,10 @@ void create_device(VulkanCore_t *core)
     devFeatures13.dynamicRendering = VK_TRUE;
 
     devFeatures12.bufferDeviceAddress = VK_TRUE;
+
+    devFeatures12.descriptorBindingUniformBufferUpdateAfterBind = VK_TRUE;
+    devFeatures12.descriptorBindingPartiallyBound = VK_TRUE;
+    devFeatures12.descriptorBindingVariableDescriptorCount = VK_TRUE;
 
     VkDeviceQueueCreateInfo queueCreateInfo = {0};
     queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
@@ -533,23 +540,14 @@ void destroyBuffer(Buffer buf, VulkanCore_t core)
 
     bufferInfo[buf.index].active = false;
 }
-
-void *BufferData = NULL;
-int BufferDataSize = 0;
+// NOTE: will invalidate data pointer for you, dont fuck up
 void pushDataToBuffer(VulkanCore_t core, void *data, uint32_t dataSize, Buffer buf)
 {
-    void *tempBufData = malloc(BufferDataSize);
-
-    BufferData = malloc(BufferDataSize + dataSize);
-    vkMapMemory(core.lDev, (VkDeviceMemory)buf.associatedMemory, 0, dataSize, 0, BufferData);
-    if (tempBufData == NULL)
-    {
-        memcpy(BufferData, data, dataSize);
-        return;
-    }
-    memcpy(BufferData + BufferDataSize, data, dataSize);
+    void *tdata = malloc(dataSize);
+    vkMapMemory(core.lDev, (VkDeviceMemory)buf.associatedMemory, 0, dataSize, 0, tdata);
+    memcpy(tdata, data, dataSize);
     vkUnmapMemory(core.lDev, (VkDeviceMemory)buf.associatedMemory);
-    BufferDataSize += dataSize;
+    free(data);
 }
 
 void copyBuf(VulkanCore_t core, Buffer src, Buffer dest)
@@ -562,8 +560,68 @@ void copyBuf(VulkanCore_t core, Buffer src, Buffer dest)
     vkCmdCopyBuffer(core.commandBuffers[core.currentBuffer], src.buffer, dest.buffer, 1, &copyData);
 }
 
+void create_dsp(VulkanCore_t *core)
+{
+    VkDescriptorPoolSize poolSize = {0};
+
+    poolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    poolSize.descriptorCount = 256;
+
+    VkDescriptorPoolCreateInfo dspCI = {0};
+    dspCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    dspCI.pNext = 0;
+
+    dspCI.maxSets = 256;
+    dspCI.flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT;
+    dspCI.poolSizeCount = 1;
+    dspCI.pPoolSizes = &poolSize;
+
+    vkCreateDescriptorPool(core->lDev, &dspCI, NULL, &core->descPool);
+
+    VkDescriptorSetLayoutBinding UBindingInf = {0};
+    UBindingInf.binding = 0;
+    UBindingInf.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+
+    UBindingInf.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+    VkDescriptorBindingFlagsEXT slciFlags = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT_EXT | VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT_EXT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT_EXT;
+    VkDescriptorSetLayoutBindingFlagsCreateInfoEXT slciFlagsEXT = {0};
+    slciFlagsEXT.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT;
+    slciFlagsEXT.pNext = NULL;
+    slciFlagsEXT.pBindingFlags = &slciFlags;
+    slciFlagsEXT.bindingCount = 1;
+
+    VkDescriptorSetLayoutCreateInfo slci = {0};
+    slci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    slci.pNext = &slciFlagsEXT;
+
+    slci.bindingCount = 1;
+    slci.pBindings = &UBindingInf;
+    slci.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT_EXT;
+
+    if (vkCreateDescriptorSetLayout(core->lDev, &slci, NULL, &core->dSetLayouts[0]) != VK_SUCCESS)
+    {
+        printf("Couid not create descriptor set layout 1");
+        exit(1);
+    }
+    UBindingInf.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    if (vkCreateDescriptorSetLayout(core->lDev, &slci, NULL, &core->dSetLayouts[1]) != VK_SUCCESS)
+    {
+        printf("Couid not create descriptor set layout 1");
+        exit(1);
+    }
+}
+
+int setCount = 0;
+void create_DescriptorSet(VulkanCore_t *core)
+{
+}
+
 void destroyRenderer(renderer_t *renderer)
 {
+    vkDestroyDescriptorPool(renderer->vkCore.lDev, renderer->vkCore.descPool, NULL);
+    vkDestroyDescriptorSetLayout(renderer->vkCore.lDev, renderer->vkCore.dSetLayouts[0], NULL);
+    vkDestroyDescriptorSetLayout(renderer->vkCore.lDev, renderer->vkCore.dSetLayouts[1], NULL);
     for (uint32_t i = 0; i < FRAMECOUNT; i++)
     {
         vkDestroySemaphore(renderer->vkCore.lDev, renderer->vkCore.imageAvailiable[i], NULL);
@@ -594,27 +652,50 @@ void initRenderer(renderer_t *renderer)
     create_device(&renderer->vkCore);
     create_swapchain(&renderer->vkCore);
     create_CommandBuffers(&renderer->vkCore);
-
-    // // Buffer testing kit
-    // BufferCreateInfo bufCi = {0};
-    // bufCi.access = HOST_ACCESS;
-    // bufCi.dataSize = 16;
-    // bufCi.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-    // Buffer testBuf = {0};
-    // Buffer testBuf2 = {0};
-    // Buffer testBuf3 = {0};
-    // Buffer testBuf4 = {0};
-    // Buffer testBuf5 = {0};
-    // Buffer testBuf6 = {0};
-    // Buffer testBuf7 = {0};
-    // createBuffer(renderer->vkCore, &bufCi, &testBuf);
-    // createBuffer(renderer->vkCore, &bufCi, &testBuf2);
-    // destroyBuffer(testBuf2, renderer->vkCore);
-    // createBuffer(renderer->vkCore, &bufCi, &testBuf3);
-    // createBuffer(renderer->vkCore, &bufCi, &testBuf4);
-    // destroyBuffer(testBuf4, renderer->vkCore);
-    // createBuffer(renderer->vkCore, &bufCi, &testBuf5);
-    // createBuffer(renderer->vkCore, &bufCi, &testBuf6);
-    // destroyBuffer(testBuf6, renderer->vkCore);
-    // createBuffer(renderer->vkCore, &bufCi, &testBuf7);
+    create_dsp(&renderer->vkCore);
 }
+
+// ------------ Pipeline Info ------------
+typedef struct
+{
+    char *Name;
+    Pipeline *pLine;
+} pipelineInfo;
+pipelineInfo *ap_Pipelines = NULL;
+uint32_t pipelineCount = 0;
+
+void cache_PipeLine(Pipeline *pLine, char *Name)
+{
+    pipelineInfo plInf = {0};
+    plInf.Name = Name;
+    plInf.pLine = pLine;
+    if (pipelineCount == 0)
+    {
+        ap_Pipelines = malloc(sizeof(pipelineInfo));
+        pipelineCount += 1;
+
+        ap_Pipelines[0] = plInf;
+        return;
+    }
+    ap_Pipelines = realloc(ap_Pipelines, sizeof(pipelineInfo) * pipelineCount + 1);
+    ap_Pipelines[pipelineCount + 1] = plInf;
+
+    pipelineCount += 1;
+}
+
+Pipeline find_Pipeline(char *Name)
+{
+    // worst case O(n), we could technically get away without iteration but the gain is not much, and the complexity it would add would make this much less readable
+    for (uint32_t i = 0; i <= pipelineCount; i++)
+    {
+        if (ap_Pipelines[i].Name == Name)
+        {
+            return *ap_Pipelines[i].pLine;
+        }
+    }
+    printf("Could not find specified pipeline %s\n", Name);
+    Pipeline errpl = {0};
+    return errpl;
+}
+
+// ------------ RenderGraph ------------

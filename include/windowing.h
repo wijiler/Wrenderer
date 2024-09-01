@@ -1,9 +1,10 @@
 #ifndef WINDOWING
 #define WINDOWING
 #define GLFW_INCLUDE_VULKAN
-#include <renderer.h>
 #include <GLFW/glfw3.h>
+#include <renderer.h>
 #include <stdbool.h>
+
 #ifdef __cplusplus
 extern "C"
 {

@@ -1,2 +1,2 @@
-.clangd
-compile_flags.txt
+*.exe
+notes/
