@@ -72,9 +72,6 @@ extern "C"
         VkVertexInputBindingDescription bindingDesc;
     } Pipeline;
 
-    void cache_PipeLine(Pipeline *pLine, char *Name);
-    Pipeline find_Pipeline(char *Name);
-
     typedef struct Rendergraph_leaf_t
     {
         char *passName; // actually a string
@@ -122,9 +119,9 @@ extern "C"
         VkCommandPool *commandPool;
         VkCommandBuffer commandBuffers[FRAMECOUNT];
 
-        VkDescriptorPool descPool;
-        VkDescriptorSetLayout dSetLayouts[MAXTEXTURES - 1];
-        VkDescriptorSet descriptorSets[MAXTEXTURES - 1];
+        VkDescriptorPool tdescPool;
+        VkDescriptorSetLayout tdSetLayout;
+        VkDescriptorSet tdescriptorSets[MAXTEXTURES - 1];
 
         GLFWwindow *window;
 
@@ -136,11 +133,17 @@ extern "C"
         VulkanCore_t vkCore;
     } renderer_t;
 
-    void createBuffer(VulkanCore_t core, BufferCreateInfo *createInfo, Buffer *buf);
     void initRenderer(renderer_t *renderer);
-    void pushDataToBuffer(VulkanCore_t core, void *data, uint32_t dataSize,
-                          Buffer buf);
+
+    void createBuffer(VulkanCore_t core, BufferCreateInfo *createInfo, Buffer *buf);
+    void pushDataToBuffer(VulkanCore_t core, void *data, uint32_t dataSize, Buffer buf);
     void copyBuf(VulkanCore_t core, Buffer src, Buffer dest);
+
+    void allocate_textureDescriptorSets(VulkanCore_t *core, uint64_t setCount);
+
+    void cache_PipeLine(Pipeline *pLine, char *Name);
+    Pipeline find_Pipeline(char *Name);
+
     void destroyBuffer(Buffer buf, VulkanCore_t core);
     void destroyRenderer(renderer_t *renderer);
 #ifdef __cplusplus

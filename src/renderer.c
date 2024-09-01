@@ -576,7 +576,7 @@ void create_dsp(VulkanCore_t *core)
     dspCI.poolSizeCount = 1;
     dspCI.pPoolSizes = &poolSize;
 
-    vkCreateDescriptorPool(core->lDev, &dspCI, NULL, &core->descPool);
+    vkCreateDescriptorPool(core->lDev, &dspCI, NULL, &core->tdescPool);
 
     VkDescriptorSetLayoutBinding UBindingInf = {0};
     UBindingInf.binding = 0;
@@ -600,22 +600,15 @@ void create_dsp(VulkanCore_t *core)
     slci.pBindings = &UBindingInf;
     slci.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT_EXT;
 
-    if (vkCreateDescriptorSetLayout(core->lDev, &slci, NULL, &core->dSetLayouts[0]) != VK_SUCCESS)
+    if (vkCreateDescriptorSetLayout(core->lDev, &slci, NULL, &core->tdSetLayout) != VK_SUCCESS)
     {
         printf("Could not create descriptor set layout 1");
-        exit(1);
-    }
-    UBindingInf.binding = 1;
-    UBindingInf.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-    if (vkCreateDescriptorSetLayout(core->lDev, &slci, NULL, &core->dSetLayouts[1]) != VK_SUCCESS)
-    {
-        printf("Could not create descriptor set layout 2");
         exit(1);
     }
 }
 
 uint32_t totalsetCount = 0;
-void allocate_DescriptorSets(VulkanCore_t *core, uint64_t setCount, uint8_t Layout)
+void allocate_textureDescriptorSets(VulkanCore_t *core, uint64_t setCount)
 {
     VkDescriptorSetVariableDescriptorCountAllocateInfoEXT countAllocInfoEXT = {0};
     countAllocInfoEXT.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO_EXT;
@@ -629,23 +622,44 @@ void allocate_DescriptorSets(VulkanCore_t *core, uint64_t setCount, uint8_t Layo
     allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     allocInfo.pNext = &countAllocInfoEXT;
 
-    allocInfo.descriptorPool = core->descPool;
+    allocInfo.descriptorPool = core->tdescPool;
     allocInfo.descriptorSetCount = 1;
-    allocInfo.pSetLayouts = &core->dSetLayouts[Layout];
+    allocInfo.pSetLayouts = &core->tdSetLayout;
 
     for (uint32_t i = 0; i < setCount; i++)
     {
-        if (vkAllocateDescriptorSets(core->lDev, &allocInfo, &core->descriptorSets[totalsetCount + i]) != VK_SUCCESS)
+        if (vkAllocateDescriptorSets(core->lDev, &allocInfo, &core->tdescriptorSets[totalsetCount + i]) != VK_SUCCESS)
             printf("Couldnt allocate descriptor sets");
     }
     totalsetCount += setCount;
 }
 
+void write_textureDescriptorSets(VulkanCore_t core, uint64_t set, VkImageView texture, VkSampler sampler, uint64_t textureIndex)
+{
+    VkWriteDescriptorSet dsWrite = {0};
+    dsWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    dsWrite.pNext = NULL;
+
+    dsWrite.descriptorCount = 1;
+    dsWrite.dstArrayElement = textureIndex;
+    dsWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    dsWrite.dstSet = core.tdescriptorSets[set];
+    dsWrite.dstBinding = 0;
+
+    VkDescriptorImageInfo descImgInfo = {0};
+    descImgInfo.imageView = texture;
+    descImgInfo.sampler = sampler;
+    descImgInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+    dsWrite.pImageInfo = &descImgInfo;
+
+    vkUpdateDescriptorSets(core.lDev, 1, &dsWrite, 0, NULL);
+}
+
 void destroyRenderer(renderer_t *renderer)
 {
-    vkDestroyDescriptorPool(renderer->vkCore.lDev, renderer->vkCore.descPool, NULL);
-    vkDestroyDescriptorSetLayout(renderer->vkCore.lDev, renderer->vkCore.dSetLayouts[0], NULL);
-    vkDestroyDescriptorSetLayout(renderer->vkCore.lDev, renderer->vkCore.dSetLayouts[1], NULL);
+    vkDestroyDescriptorPool(renderer->vkCore.lDev, renderer->vkCore.tdescPool, NULL);
+    vkDestroyDescriptorSetLayout(renderer->vkCore.lDev, renderer->vkCore.tdSetLayout, NULL);
     for (uint32_t i = 0; i < FRAMECOUNT; i++)
     {
         vkDestroySemaphore(renderer->vkCore.lDev, renderer->vkCore.imageAvailiable[i], NULL);
@@ -677,6 +691,8 @@ void initRenderer(renderer_t *renderer)
     create_swapchain(&renderer->vkCore);
     create_CommandBuffers(&renderer->vkCore);
     create_dsp(&renderer->vkCore);
+
+    allocate_textureDescriptorSets(&renderer->vkCore, 20);
 }
 
 // ------------ Pipeline Info ------------
