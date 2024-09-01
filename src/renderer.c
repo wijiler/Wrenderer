@@ -581,6 +581,7 @@ void create_dsp(VulkanCore_t *core)
     VkDescriptorSetLayoutBinding UBindingInf = {0};
     UBindingInf.binding = 0;
     UBindingInf.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    UBindingInf.descriptorCount = MAXTEXTURES - 1;
 
     UBindingInf.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
@@ -601,20 +602,43 @@ void create_dsp(VulkanCore_t *core)
 
     if (vkCreateDescriptorSetLayout(core->lDev, &slci, NULL, &core->dSetLayouts[0]) != VK_SUCCESS)
     {
-        printf("Couid not create descriptor set layout 1");
+        printf("Could not create descriptor set layout 1");
         exit(1);
     }
+    UBindingInf.binding = 1;
     UBindingInf.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
     if (vkCreateDescriptorSetLayout(core->lDev, &slci, NULL, &core->dSetLayouts[1]) != VK_SUCCESS)
     {
-        printf("Couid not create descriptor set layout 1");
+        printf("Could not create descriptor set layout 2");
         exit(1);
     }
 }
 
-int setCount = 0;
-void create_DescriptorSet(VulkanCore_t *core)
+uint32_t totalsetCount = 0;
+void allocate_DescriptorSets(VulkanCore_t *core, uint64_t setCount, uint8_t Layout)
 {
+    VkDescriptorSetVariableDescriptorCountAllocateInfoEXT countAllocInfoEXT = {0};
+    countAllocInfoEXT.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO_EXT;
+    countAllocInfoEXT.pNext = NULL;
+
+    countAllocInfoEXT.descriptorSetCount = 1;
+    uint32_t mDescCount = MAXTEXTURES - 1;
+    countAllocInfoEXT.pDescriptorCounts = &mDescCount;
+
+    VkDescriptorSetAllocateInfo allocInfo = {0};
+    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocInfo.pNext = &countAllocInfoEXT;
+
+    allocInfo.descriptorPool = core->descPool;
+    allocInfo.descriptorSetCount = 1;
+    allocInfo.pSetLayouts = &core->dSetLayouts[Layout];
+
+    for (uint32_t i = 0; i < setCount; i++)
+    {
+        if (vkAllocateDescriptorSets(core->lDev, &allocInfo, &core->descriptorSets[totalsetCount + i]))
+            printf("Couldnt allocate descriptor sets");
+    }
+    totalsetCount += setCount;
 }
 
 void destroyRenderer(renderer_t *renderer)
@@ -653,6 +677,8 @@ void initRenderer(renderer_t *renderer)
     create_swapchain(&renderer->vkCore);
     create_CommandBuffers(&renderer->vkCore);
     create_dsp(&renderer->vkCore);
+
+    allocate_DescriptorSets(&renderer->vkCore, 20, 0);
 }
 
 // ------------ Pipeline Info ------------

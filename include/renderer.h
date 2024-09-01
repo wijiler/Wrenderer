@@ -20,6 +20,12 @@ extern "C"
 
     typedef enum
     {
+        STAGE_VERTEX = VK_SHADER_STAGE_VERTEX_BIT,
+        STAGE_FRAGMENT = VK_SHADER_STAGE_FRAGMENT_BIT,
+    } shaderStage;
+
+    typedef enum
+    {
         HOST_ACCESS,   // CPU_ONLY
         DEVICE_ACCESS, // GPU_ONLY
     } BufferAccess;
@@ -117,7 +123,7 @@ extern "C"
         VkCommandBuffer commandBuffers[FRAMECOUNT];
 
         VkDescriptorPool descPool;
-        VkDescriptorSetLayout dSetLayouts[2];
+        VkDescriptorSetLayout dSetLayouts[256];
         VkDescriptorSet descriptorSets[256];
 
         GLFWwindow *window;
