@@ -48,8 +48,8 @@ void create_instance(renderer_t *renderer)
     appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
     appInfo.apiVersion = VK_MAKE_API_VERSION(0, 1, 3, 294);
     appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-    appInfo.pApplicationName = "Jr2";
-    appInfo.pEngineName = "Jr2";
+    appInfo.pApplicationName = "Jrv2";
+    appInfo.pEngineName = "Jrv2";
 
     VkInstanceCreateInfo instance_ci;
     instance_ci.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -737,5 +737,3 @@ Pipeline find_Pipeline(char *Name)
     Pipeline errpl = {0};
     return errpl;
 }
-
-// ------------ RenderGraph ------------

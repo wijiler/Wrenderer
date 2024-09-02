@@ -26,6 +26,12 @@ extern "C"
 
     typedef enum
     {
+        VERTEX,
+        FRAGMENT,
+    } shaderType;
+
+    typedef enum
+    {
         HOST_ACCESS,   // CPU_ONLY
         DEVICE_ACCESS, // GPU_ONLY
     } BufferAccess;
@@ -72,25 +78,10 @@ extern "C"
         VkVertexInputBindingDescription bindingDesc;
     } Pipeline;
 
-    typedef struct Rendergraph_leaf_t
-    {
-        char *passName; // actually a string
-        // char *resources; // slew of bytes // Better way is likely available, is this needed? // Test and see
-        int bufferCount, childCount;
-        Buffer buffers[256];
-        Pipeline pipeLine;
-        VkShaderEXT vert, frag;
-        pushConstants pc;
-        struct Rendergraph_leaf_t *children;
-    } Rendergraph_leaf_t;
-
     typedef struct
     {
-        int rootPassCount;
-        char *resources;
-        Rendergraph_leaf_t *rootPasses;
-        Rendergraph_leaf_t endpass;
-    } Rendergraph_t;
+        void *commandCallBack;
+    } RenderPass;
 
     // -------------------------------------------
 
@@ -129,7 +120,6 @@ extern "C"
 
     typedef struct
     {
-        Rendergraph_t *rendergraph;
         VulkanCore_t vkCore;
     } renderer_t;
 

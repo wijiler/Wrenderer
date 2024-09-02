@@ -1,2 +1,4 @@
 *.exe
 notes/
+Build/
+Lib/
