@@ -17,4 +17,4 @@ clean:
 	rm -rf Lib/*.o
 
 debug:
-	clang $(CFLAGS) ./src/*.c/ -o main.exe $(LDFLAGS) -DDEBUG -DVK_USE_PLATFORM_WIN32_KHR
+	clang $(CFLAGS) ./src/*.c -o main.exe $(LDFLAGS) -DDEBUG -DVK_USE_PLATFORM_WIN32_KHR

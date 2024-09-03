@@ -50,13 +50,10 @@ extern "C"
         VkBuffer buffer;
         VkDeviceMemory *associatedMemory;
     } Buffer;
-    typedef struct
-    {
-    } UniformBuffer;
+    // typedef struct
+    // {
+    // } UniformBuffer;
 
-    // -------------------------------------------
-    // rendergraph could be seperated out into a seperate headerfile
-    // but its also a core part of the rendering system
     typedef struct
     {
         float worldMatrix[16];
@@ -65,23 +62,30 @@ extern "C"
     typedef struct
     {
         VkColorComponentFlags colorWriteMask;
-        VkBool32 colorBlending, logicOpEnable, depthTestEnable, depthBiasEnable, depthClampEnable,
-            depthClipEnable, stencilTestEnable, depthWriteEnable, depthBoundsEnable, alphaToCoverageEnable;
-        VkLogicOp logicOp;
+        VkColorBlendEquationEXT colorBlendEq;
         VkPolygonMode polyMode;
         VkPrimitiveTopology topology;
-        uint32_t *sampleMask;
         VkSampleCountFlagBits rastSampleCount;
         VkFrontFace frontFace;
         VkCullModeFlags cullMode;
-        VkVertexInputAttributeDescription attrDesc;
-        VkVertexInputBindingDescription bindingDesc;
+
+        VkBool32 colorBlending, logicOpEnable, depthTestEnable, depthBiasEnable, depthClampEnable,
+            depthClipEnable, stencilTestEnable, depthWriteEnable, depthBoundsEnable, alphaToCoverageEnable, alphaToOneEnable;
+
+        VkLogicOp logicOp;    // if logicOp is changed logicOpEnable must be true
+        uint32_t *sampleMask; // can be [0]
+
+        VkCompareOp depthCompareOp;
+        int minDepth, maxDepth; // must be set if depthTestEnable is VK_TRUE
     } Pipeline;
 
     typedef struct
     {
-        void *commandCallBack;
-    } RenderPass;
+        VkVertexInputAttributeDescription2EXT attrDesc;
+        VkVertexInputBindingDescription2EXT bindingDesc;
+        shaderType type;
+        VkShaderEXT shader;
+    } Shader;
 
     // -------------------------------------------
 
@@ -125,6 +129,7 @@ extern "C"
 
     void initRenderer(renderer_t *renderer);
 
+    Buffer findBuffer(int index);
     void createBuffer(VulkanCore_t core, BufferCreateInfo *createInfo, Buffer *buf);
     void pushDataToBuffer(VulkanCore_t core, void *data, uint32_t dataSize, Buffer buf);
     void copyBuf(VulkanCore_t core, Buffer src, Buffer dest);
