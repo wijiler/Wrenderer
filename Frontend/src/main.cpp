@@ -1,5 +1,4 @@
-#include <renderer.h>
-#include <stdio.h>
+#include <rendergraph.h>
 #include <windowing.h>
 
 renderer_t renderer;
@@ -14,12 +13,6 @@ void init()
     initRenderer(&renderer);
 
     Pipeline pl{};
-    Pipeline pl2{};
-    pl2.depthBiasEnable = VK_TRUE;
-    cache_PipeLine(&pl, (char *)"dummy");
-    cache_PipeLine(&pl2, (char *)"dummy2");
-    Pipeline pl3 = find_Pipeline((char *)"dummy2");
-    printf("%i\n", pl3.depthBiasEnable);
 }
 int main(void)
 {

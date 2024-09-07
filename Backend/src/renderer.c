@@ -8,23 +8,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-PFN_vkCmdSetVertexInputEXT vkCmdSetVertexInputEXT_ = NULL;
-PFN_vkCreateShadersEXT vkCreateShadersEXT_ = NULL;
-PFN_vkCmdBindShadersEXT vkCmdBindShadersEXT_ = NULL;
-PFN_vkCmdSetColorBlendEnableEXT vkCmdSetColorBlendEnableEXT_ = NULL;
-PFN_vkCmdSetColorWriteMaskEXT vkCmdSetColorWriteMaskEXT_ = NULL;
-PFN_vkCmdSetDepthClampEnableEXT vkCmdSetDepthClampEnableEXT_ = NULL;
-PFN_vkCmdSetPolygonModeEXT vkCmdSetPolygonModeEXT_ = NULL;
-PFN_vkCmdSetLogicOpEnableEXT vkCmdSetLogicOpEnableEXT_ = NULL;
-PFN_vkCmdSetRasterizationSamplesEXT vkCmdSetRasterizationSamplesEXT_ = NULL;
-PFN_vkCmdSetColorBlendEquationEXT vkCmdSetColorBlendEquationEXT_ = NULL;
-PFN_vkCmdSetSampleMaskEXT vkCmdSetSampleMaskEXT_ = NULL;
-PFN_vkCmdSetAlphaToCoverageEnableEXT vkCmdSetAlphaToCoverageEnableEXT_ = NULL;
-PFN_vkCmdSetAlphaToOneEnableEXT vkCmdSetAlphaToOneEnableEXT_ = NULL;
-PFN_vkCmdSetDepthClipEnableEXT vkCmdSetDepthClipEnableEXT_ = NULL;
-PFN_vkCmdSetLogicOpEXT vkCmdSetLogicOpEXT_ = NULL;
-PFN_vkDestroyShaderEXT vkDestroyShaderEXT_ = NULL;
-
 #define instEXTENSIONCOUNT 4
 #ifdef DEBUG
 #define instLAYERCOUNT 1
@@ -104,23 +87,6 @@ void create_instance(renderer_t *renderer)
         printf("Could not create a Vulkan instance\n");
     }
     renderer->vkCore.instance = instance;
-
-    vkCmdSetVertexInputEXT_ = (PFN_vkCmdSetVertexInputEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkCmdSetVertexInputEXT");
-    vkCreateShadersEXT_ = (PFN_vkCreateShadersEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkCreateShadersEXT");
-    vkCmdBindShadersEXT_ = (PFN_vkCmdBindShadersEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkCmdBindShadersEXT");
-    vkCmdSetColorBlendEnableEXT_ = (PFN_vkCmdSetColorBlendEnableEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkCmdSetColorBlendEnableEXT");
-    vkCmdSetColorWriteMaskEXT_ = (PFN_vkCmdSetColorWriteMaskEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkCmdSetColorWriteMaskEXT");
-    vkCmdSetDepthClampEnableEXT_ = (PFN_vkCmdSetDepthClampEnableEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkCmdSetDepthClampEnableEXT");
-    vkCmdSetPolygonModeEXT_ = (PFN_vkCmdSetPolygonModeEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkCmdSetPolygonModeEXT");
-    vkCmdSetLogicOpEnableEXT_ = (PFN_vkCmdSetLogicOpEnableEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkCmdSetLogicOpEnableEXT");
-    vkCmdSetRasterizationSamplesEXT_ = (PFN_vkCmdSetRasterizationSamplesEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkCmdSetRasterizationSamplesEXT");
-    vkCmdSetColorBlendEquationEXT_ = (PFN_vkCmdSetColorBlendEquationEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkCmdSetColorBlendEquationEXT");
-    vkCmdSetSampleMaskEXT_ = (PFN_vkCmdSetSampleMaskEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkCmdSetSampleMaskEXT");
-    vkCmdSetAlphaToCoverageEnableEXT_ = (PFN_vkCmdSetAlphaToCoverageEnableEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkCmdSetAlphaToCoverageEnableEXT");
-    vkCmdSetAlphaToOneEnableEXT_ = (PFN_vkCmdSetAlphaToOneEnableEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkCmdSetAlphaToOneEnableEXT");
-    vkCmdSetDepthClipEnableEXT_ = (PFN_vkCmdSetDepthClipEnableEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkCmdSetDepthClipEnableEXT");
-    vkCmdSetLogicOpEXT_ = (PFN_vkCmdSetLogicOpEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkCmdSetLogicOpEXT");
-    vkDestroyShaderEXT_ = (PFN_vkDestroyShaderEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkDestroyShader");
 }
 
 VkPhysicalDevice find_valid_device(int deviceCount, VkPhysicalDevice devices[], VkPhysicalDeviceFeatures2 *devFeatures, unsigned int *graphicsFamilyIndex, VkSurfaceKHR surface)
@@ -382,6 +348,7 @@ void create_swapchain(VulkanCore_t *core)
     images = malloc(sizeof(VkImage) * imagecount);
     vkGetSwapchainImagesKHR(core->lDev, core->swapChain, &imagecount, images);
 
+    core->swapChainImages = images;
     core->swapChainImageViews = malloc(sizeof(VkImageView) * imagecount);
     for (uint32_t i = 0; i < imagecount; i++)
     {
@@ -733,80 +700,3 @@ void initRenderer(renderer_t *renderer)
 
     allocate_textureDescriptorSets(&renderer->vkCore, 20);
 }
-
-// ------------ Pipeline Info ------------
-typedef struct
-{
-    char *Name;
-    Pipeline *pLine;
-} pipelineInfo;
-pipelineInfo *ap_Pipelines = NULL; // ! NOT THREAD SAFE
-uint32_t pipelineCount = 0;
-
-void cache_PipeLine(Pipeline *pLine, char *Name)
-{
-    pipelineInfo plInf = {0};
-    plInf.Name = Name;
-    plInf.pLine = pLine;
-    if (pipelineCount == 0)
-    {
-        ap_Pipelines = malloc(sizeof(pipelineInfo));
-        pipelineCount += 1;
-
-        ap_Pipelines[0] = plInf;
-        return;
-    }
-    ap_Pipelines = realloc(ap_Pipelines, sizeof(pipelineInfo) * pipelineCount + 1);
-    ap_Pipelines[pipelineCount + 1] = plInf;
-
-    pipelineCount += 1;
-}
-
-Pipeline find_Pipeline(char *Name)
-{
-    // worst case O(n), we could technically get away without iteration but the gain is not much, and the complexity it would add would make this much less readable
-    for (uint32_t i = 0; i <= pipelineCount; i++)
-    {
-        if (ap_Pipelines[i].Name == Name)
-        {
-            return *ap_Pipelines[i].pLine;
-        }
-    }
-    printf("Could not find specified pipeline %s\n", Name);
-    Pipeline errpl = {0};
-    return errpl;
-}
-
-// ------------ RenderPass Api ------------
-// int frameIndex = 0;
-// const VkCommandBufferBeginInfo beginInf = {
-//     .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-//     .pNext = NULL,
-//     .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-//     .pInheritanceInfo = NULL,
-// };
-// void recordPasses(renderer_t *renderer, RenderPass *passes[], int depth, int cols[])
-// {
-//     int index = frameIndex % FRAMECOUNT;
-
-//     vkWaitForFences(renderer->vkCore.lDev, 1, &renderer->vkCore.fences[index], VK_TRUE, UINT64_MAX);
-//     vkResetFences(renderer->vkCore.lDev, 1, &renderer->vkCore.fences[index]);
-
-//     vkResetCommandBuffer(renderer->vkCore.commandBuffers[index], 0);
-
-//     vkBeginCommandBuffer(renderer->vkCore.commandBuffers[index], &beginInf);
-
-//     for (int i = 0; i < depth; i++)
-//     {
-//         for (int j = 0; j < cols[i]; j++)
-//         {
-//             RenderPass pass = passes[i][j];
-
-//             void (*recordingCB)(VkCommandBuffer) = pass.commandCallBack;
-
-//             recordingCB(renderer->vkCore.commandBuffers[index]);
-//         }
-//     }
-
-//     vkEndCommandBuffer(renderer->vkCore.commandBuffers[index]);
-// }

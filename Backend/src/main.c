@@ -1,32 +1,49 @@
-#include <renderer.h>
-// #include <stdio.h>
+#include <rendergraph.h>
+#include <stdio.h>
+#include <time.h>
 #include <windowing.h>
 
 renderer_t renderer;
+GraphBuilder builder = {0};
 winf_t wininfo = {0};
+Pipeline pl = {0};
+RenderPass pass = {0};
+RenderPass pass2 = {0};
 
 void loop()
 {
+    Image scImg = {renderer.vkCore.swapChainImages[0], renderer.vkCore.swapChainImageViews[0], VK_IMAGE_LAYOUT_UNDEFINED};
+
+    pass = newPass((char *)"pass1", pl);
+    pass2 = newPass((char *)"pass2", pl);
+
+    addImageResource(&pass, scImg, USAGE_COLORATTACHMENT);
+    addImageResource(&pass2, scImg, USAGE_SAMPLED);
+
+    addPass(&builder, &pass, PASS_TYPE_GRAPHICS);
+    addPass(&builder, &pass2, PASS_TYPE_GRAPHICS);
+    RenderGraph graph = buildGraph(&builder, scImg);
+
+    free(pass.colorAttachments);
+    free(pass2.colorAttachments);
+    free(pass.resources);
+    free(pass2.resources);
+    free(graph.passes);
+    graph.passCount = 0;
 }
 
 void init()
 {
     initRenderer(&renderer);
 
-    // Pipeline pl = {0};
-    // Pipeline pl2 = {0};
-    // pl2.depthBiasEnable = VK_TRUE;
-    // cache_PipeLine(&pl, "dummy");
-    // cache_PipeLine(&pl2, "dummy2");
-    // Pipeline pl3 = find_Pipeline("dummy2");
-    // printf("%i\n", pl3.depthBiasEnable);
+    builder.renderer = renderer;
 }
 int main(void)
 {
-    wininfo.name = "DUMBSHIT";
+    wininfo.name = (char *)"DUMBSHIT";
     wininfo.w = 1920;
     wininfo.h = 1080;
-    launch_window(wininfo, &renderer, loop, init);
+    launch_window(wininfo, &renderer, (void *)loop, (void *)init);
 
     destroyRenderer(&renderer);
 

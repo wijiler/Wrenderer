@@ -6,7 +6,7 @@ CFLAGS := -x c -std=c99 -Wextra -Wall
 all: Lib clean
 
 Lib:
-	clang -c $(CFLAGS) ./src/renderer.c ./src/windowing.c $(LDFLAGS) -DVK_USE_PLATFORM_WIN32_KHR
+	clang -c $(CFLAGS) ./src/*.c $(LDFLAGS) -DVK_USE_PLATFORM_WIN32_KHR
 	mkdir -p Lib
 	mv *.o Lib/
 	llvm-ar \

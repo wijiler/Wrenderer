@@ -1,5 +1,24 @@
 #include <rendergraph.h>
 #include <stdbool.h>
+#include <stdio.h>
+#include <string.h>
+
+PFN_vkCmdSetVertexInputEXT vkCmdSetVertexInputEXT_ = NULL;
+PFN_vkCreateShadersEXT vkCreateShadersEXT_ = NULL;
+PFN_vkCmdBindShadersEXT vkCmdBindShadersEXT_ = NULL;
+PFN_vkCmdSetColorBlendEnableEXT vkCmdSetColorBlendEnableEXT_ = NULL;
+PFN_vkCmdSetColorWriteMaskEXT vkCmdSetColorWriteMaskEXT_ = NULL;
+PFN_vkCmdSetDepthClampEnableEXT vkCmdSetDepthClampEnableEXT_ = NULL;
+PFN_vkCmdSetPolygonModeEXT vkCmdSetPolygonModeEXT_ = NULL;
+PFN_vkCmdSetLogicOpEnableEXT vkCmdSetLogicOpEnableEXT_ = NULL;
+PFN_vkCmdSetRasterizationSamplesEXT vkCmdSetRasterizationSamplesEXT_ = NULL;
+PFN_vkCmdSetColorBlendEquationEXT vkCmdSetColorBlendEquationEXT_ = NULL;
+PFN_vkCmdSetSampleMaskEXT vkCmdSetSampleMaskEXT_ = NULL;
+PFN_vkCmdSetAlphaToCoverageEnableEXT vkCmdSetAlphaToCoverageEnableEXT_ = NULL;
+PFN_vkCmdSetAlphaToOneEnableEXT vkCmdSetAlphaToOneEnableEXT_ = NULL;
+PFN_vkCmdSetDepthClipEnableEXT vkCmdSetDepthClipEnableEXT_ = NULL;
+PFN_vkCmdSetLogicOpEXT vkCmdSetLogicOpEXT_ = NULL;
+PFN_vkDestroyShaderEXT vkDestroyShaderEXT_ = NULL;
 
 // courtesy of https://github.com/haipome/fnv/blob/master/fnv.c <- even if its public domain it deserves credit :)
 uint64_t fnv_64a_str(char *str, uint64_t hval)
@@ -26,7 +45,86 @@ uint64_t fnv_64a_str(char *str, uint64_t hval)
     /* return our new hash value */
     return hval;
 }
-const VkRenderPassBeginInfo bInfo = {0};
+
+// ------------ Pipeline Info ------------
+typedef struct
+{
+    char *Name;
+    Pipeline *pLine;
+} pipelineInfo;
+pipelineInfo *ap_Pipelines = NULL; // ! NOT THREAD SAFE
+uint32_t pipelineCount = 0;
+
+void cache_PipeLine(Pipeline *pLine, char *Name)
+{
+    pipelineInfo plInf = {0};
+    plInf.Name = Name;
+    plInf.pLine = pLine;
+    if (pipelineCount == 0)
+    {
+        ap_Pipelines = malloc(sizeof(pipelineInfo));
+        pipelineCount += 1;
+
+        ap_Pipelines[0] = plInf;
+        return;
+    }
+    ap_Pipelines = realloc(ap_Pipelines, sizeof(pipelineInfo) * pipelineCount + 1);
+    ap_Pipelines[pipelineCount + 1] = plInf;
+
+    pipelineCount += 1;
+}
+
+Pipeline find_Pipeline(char *Name)
+{
+    // worst case O(n), we could technically get away without iteration but the gain is not much, and the complexity it would add would make this much less readable
+    for (uint32_t i = 0; i <= pipelineCount; i++)
+    {
+        if (ap_Pipelines[i].Name == Name)
+        {
+            return *ap_Pipelines[i].pLine;
+        }
+    }
+    printf("Could not find specified pipeline %s\n", Name);
+    Pipeline errpl = {0};
+    return errpl;
+}
+
+void bindPipeline(Pipeline pline, VkCommandBuffer cBuf)
+{
+    VkBool32 cbEnable = pline.colorBlending;
+    vkCmdSetColorWriteMaskEXT_(cBuf, 0, 1, &pline.colorWriteMask);
+
+    vkCmdSetColorBlendEnableEXT_(cBuf, 0, 1, &cbEnable);
+    vkCmdSetLogicOpEnableEXT_(cBuf, pline.logicOpEnable);
+
+    vkCmdSetDepthTestEnable(cBuf, pline.depthTestEnable);
+    vkCmdSetDepthBiasEnable(cBuf, pline.depthBiasEnable);
+    vkCmdSetDepthClampEnableEXT_(cBuf, pline.depthClampEnable);
+    vkCmdSetDepthClipEnableEXT_(cBuf, pline.depthClipEnable);
+    vkCmdSetStencilTestEnable(cBuf, pline.stencilTestEnable);
+    vkCmdSetDepthWriteEnable(cBuf, pline.depthWriteEnable);
+    vkCmdSetDepthBoundsTestEnable(cBuf, pline.depthBoundsEnable);
+    vkCmdSetAlphaToCoverageEnableEXT_(cBuf, pline.alphaToCoverageEnable);
+    vkCmdSetAlphaToOneEnableEXT_(cBuf, pline.alphaToOneEnable);
+
+    vkCmdSetColorWriteMaskEXT_(cBuf, 0, 1, &pline.colorWriteMask);
+    vkCmdSetPolygonModeEXT_(cBuf, pline.polyMode);
+    vkCmdSetPrimitiveTopology(cBuf, pline.topology);
+    vkCmdSetRasterizationSamplesEXT_(cBuf, pline.rastSampleCount);
+    vkCmdSetFrontFace(cBuf, pline.frontFace);
+    vkCmdSetCullMode(cBuf, pline.cullMode);
+
+    if (pline.colorBlending == VK_TRUE)
+        vkCmdSetColorBlendEquationEXT_(cBuf, 0, 1, &pline.colorBlendEq);
+
+    if (pline.logicOpEnable == VK_TRUE)
+        vkCmdSetLogicOpEXT_(cBuf, pline.logicOp);
+    if (pline.depthTestEnable == VK_TRUE)
+    {
+        vkCmdSetDepthBounds(cBuf, pline.minDepth, pline.maxDepth);
+        vkCmdSetDepthCompareOp(cBuf, pline.depthCompareOp);
+    }
+}
 
 void recordPass(RenderPass *pass, VkCommandBuffer cBuf)
 {
@@ -34,121 +132,187 @@ void recordPass(RenderPass *pass, VkCommandBuffer cBuf)
     renInf.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
     renInf.pNext = NULL;
 
-    renInf.colorAttachmentCount = pass->colorAttCount;
-    renInf.pColorAttachments = pass->ColorAttachments;
+    renInf.colorAttachmentCount = pass->cAttCount;
+    renInf.pColorAttachments = pass->colorAttachments;
     renInf.pDepthAttachment = &pass->depthAttachment;
     renInf.pStencilAttachment = &pass->stencilAttachment;
 
     vkCmdBeginRendering(cBuf, &renInf);
 
-    pass->callBack(cBuf, *pass);
+    pass->callBack(*pass, cBuf);
 
     vkCmdEndRendering(cBuf);
 }
 
 bool resEq(Resource rhs, Resource lhs)
 {
-    return rhs.BufferIndex == lhs.BufferIndex &&
-           rhs.flags == lhs.flags &&
-           rhs.image == lhs.image &&
+    return rhs.value.buffer.buffer == lhs.value.buffer.buffer &&
+           rhs.value.img.imgview == lhs.value.img.imgview &&
            rhs.type == lhs.type &&
            rhs.usage == lhs.usage;
 }
 
-Resource *getNodeDependencies(int *depCount, RenderPass pass)
+bool resEqWoUsage(Resource rhs, Resource lhs)
 {
-    Resource *deps = malloc(sizeof(Resource) * pass.resourceCount);
-    int count = 0;
-
-    for (int i = 0; i < pass.resourceCount; i++)
-    {
-        if ((pass.resources[i].usage & READ) != 0)
-        {
-            deps[i] = pass.resources[i];
-            count += 1;
-        }
-    }
-    deps = realloc(deps, sizeof(Resource) * count); // shrink ideally
-    *depCount = count;
-    return deps;
+    return rhs.value.buffer.buffer == lhs.value.buffer.buffer &&
+           rhs.value.img.imgview == lhs.value.img.imgview &&
+           rhs.type == lhs.type;
 }
 
-Resource *getNodeWrites(int *writeCount, RenderPass pass)
-{
-    Resource *writes = malloc(sizeof(Resource) * pass.resourceCount);
-    int count = 0;
+const VkImageSubresourceRange imgSRR = {
+    VK_IMAGE_ASPECT_COLOR_BIT,
+    0,
+    VK_REMAINING_MIP_LEVELS,
+    0,
+    VK_REMAINING_ARRAY_LAYERS,
+};
 
-    for (int i = 0; i < pass.resourceCount; i++)
-    {
-        if ((pass.resources[i].usage & WRITE) != 0)
-        {
-            writes[i] = pass.resources[i];
-            count += 1;
-        }
-    }
-    writes = realloc(writes, sizeof(Resource) * count); // shrink ideally
-    *writeCount = count;
-    return writes;
+const VkCommandBufferBeginInfo bInf = {
+    VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+    NULL,
+    VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+    NULL,
+};
+
+uint64_t hash = 0;
+RenderPass newPass(char *name, Pipeline pipeline)
+{
+    RenderPass p = {0};
+
+    p.name = name;
+    p.pl = pipeline;
+    p.resourceCount = 0;
+    p.resources = malloc(sizeof(Resource));
+    p.cAttCount = 0;
+    p.colorAttachments = malloc(sizeof(VkRenderingAttachmentInfo));
+
+    return p;
+}
+// attachments are always read | write
+void addColorAttachment(Image img, RenderPass *pass, VkClearValue *clear)
+{
+    VkRenderingAttachmentInfo rAttInfo = {0};
+    rAttInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+    rAttInfo.pNext = NULL;
+
+    rAttInfo.imageView = img.imgview;
+    rAttInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    rAttInfo.loadOp = clear != NULL ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
+    rAttInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+
+    if (clear)
+        rAttInfo.clearValue = *clear;
+    pass->colorAttachments = realloc(pass->colorAttachments, sizeof(VkRenderingAttachmentInfo) * pass->cAttCount + 1);
+    pass->colorAttachments[pass->cAttCount] = rAttInfo;
+    pass->cAttCount += 1;
+
+    Resource res;
+
+    res.type = RES_TYPE_Image;
+
+    res.access = ACCESS_COLORATTACHMENT;
+    res.usage = USAGE_COLORATTACHMENT;
+
+    res.value.img = img;
+    res.value.img.CurrentLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    pass->resources = realloc(pass->resources, sizeof(Resource) * pass->resourceCount + 1);
+    pass->resources[pass->resourceCount] = res;
+    pass->resourceCount += 1;
 }
 
-// Optimizes passes to trim unused ones & places memory barriers
-void optimizePasses(RenderGraph *graph, VkImageView *swapChainImageViews, int Index)
+void setDepthStencilAttachment(Image img, RenderPass *pass)
 {
-    int passCount = 0;
-    int rootpassCount = 0;
-    RenderPass *passes = malloc(sizeof(RenderPass) * graph->passCount);
-    int *rootIndices = malloc(sizeof(int) * graph->passCount); // any pass that has a WRITE handle to a swaphchain image
-    for (int i = 0; i < graph->passCount; i++)
-    {
-        RenderPass pass = graph->passes[i];
+    VkRenderingAttachmentInfo dAttInfo = {0};
+    dAttInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+    dAttInfo.pNext = NULL;
 
-        for (int j = 0; j < pass.resourceCount; j++)
-        {
-            if (pass.resources[j].image == swapChainImageViews[Index] && (pass.resources[j].usage & WRITE) != 0)
-            {
-                rootIndices[rootpassCount] = i;
-                rootpassCount += 1;
-            }
-        }
-    }
-    // we go back up from the last root pass, find every single pass it reads from, and every single pass that writes to one of those passes those are the ones added
-    int rootDepCount = 0;
-    Resource *rootDeps = getNodeDependencies(&rootDepCount, graph->passes[rootIndices[rootpassCount]]);
-    int currentRoot = rootpassCount;
-    for (int i = rootIndices[rootpassCount]; i >= 0; i--)
-    {
-        if (i == rootIndices[currentRoot - 1])
-        {
-            currentRoot = rootIndices[currentRoot - 1];
+    dAttInfo.imageView = img.imgview;
+    dAttInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    dAttInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    dAttInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    dAttInfo.clearValue.depthStencil.depth = 0;
 
-            rootDeps = getNodeDependencies(&rootDepCount, graph->passes[i]);
-            passes[i] = graph->passes[i];
-            passCount += 1;
-        }
-        int writeCount = 0;
-        Resource *writes = getNodeWrites(&writeCount, graph->passes[i]);
-        for (int j = 0; j < writeCount; j++)
-        {
-            for (int r = 0; r < rootDepCount; r++)
-            {
-                if (resEq(writes[j], rootDeps[r]))
-                {
-                    passes[i] = graph->passes[i];
-                    passCount += 1;
-                }
-            }
-        }
-    }
-    free(graph->passes);
-    passes = realloc(passes, sizeof(RenderPass) * passCount);
-    graph->passCount = passCount;
-    graph->passes = passes;
+    pass->depthAttachment = dAttInfo;
+
+    Resource res;
+
+    res.type = RES_TYPE_Image;
+
+    res.access = ACCESS_DEPTHATTACHMENT;
+    res.usage = USAGE_DEPTHSTENCILATTACHMENT;
+
+    res.value.img = img;
+    res.value.img.CurrentLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+    pass->resources = realloc(pass->resources, sizeof(Resource) * pass->resourceCount + 1);
+    pass->resources[pass->resourceCount] = res;
+    pass->resourceCount += 1;
 }
-
-void recordGraph(RenderGraph *graph, VkCommandBuffer cBuf)
+void addImageResource(RenderPass *pass, Image image, ResourceUsageFlags_t usage)
 {
-    for (int i = 0; i < graph->passCount; i++)
+    Resource res = {0};
+    res.type = RES_TYPE_Image;
+    res.value.img = image;
+    res.usage = usage;
+
+    switch (res.usage)
     {
-        recordPass(&graph->passes[i], cBuf);
+    case USAGE_COLORATTACHMENT:
+        addColorAttachment(image, pass, &(VkClearValue){{{0.0f, 0.0f, 0.0f, 0.0f}}});
+        return;
+        break;
+    case USAGE_DEPTHSTENCILATTACHMENT:
+        setDepthStencilAttachment(image, pass);
+        return;
+        break;
+    case USAGE_TRANSFER_SRC:
+        res.access = ACCESS_TRANSFER_READ;
+        res.value.img.CurrentLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        break;
+    case USAGE_TRANSFER_DST:
+        res.access = ACCESS_TRANSFER_WRITE;
+        res.value.img.CurrentLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        break;
+    case USAGE_SAMPLED:
+        res.access = ACCESS_READ;
+        res.value.img.CurrentLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        break;
+    case USAGE_UNDEFINED:
+        res.access = 0;
+        res.value.img.CurrentLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        break;
     }
+
+    pass->resources = realloc(pass->resources, sizeof(Resource) * pass->resourceCount + 1);
+    pass->resources[pass->resourceCount] = res;
+    pass->resourceCount += 1;
+}
+// only transfers, and undefined are valid for buffers
+void addBufferResource(RenderPass *pass, int BufferIndex, ResourceUsageFlags_t usage)
+{
+    Resource res = {0};
+    res.type = RES_TYPE_Image;
+    res.value.buffer = findBuffer(BufferIndex);
+    res.usage = usage;
+
+    switch (res.usage)
+    {
+    case USAGE_TRANSFER_SRC:
+        res.access = ACCESS_TRANSFER_READ;
+        break;
+    case USAGE_TRANSFER_DST:
+        res.access = ACCESS_TRANSFER_WRITE;
+        break;
+    case USAGE_UNDEFINED:
+        res.access = 0;
+        break;
+    default:
+        res.access = 0;
+        break;
+    }
+
+    pass->resources = realloc(pass->resources, sizeof(Resource) * pass->resourceCount + 1);
+    pass->resources[pass->resourceCount] = res;
+    pass->resourceCount += 1;
 }

@@ -26,12 +26,6 @@ extern "C"
 
     typedef enum
     {
-        VERTEX,
-        FRAGMENT,
-    } shaderType;
-
-    typedef enum
-    {
         HOST_ACCESS,   // CPU_ONLY
         DEVICE_ACCESS, // GPU_ONLY
     } BufferAccess;
@@ -58,34 +52,6 @@ extern "C"
     {
         float worldMatrix[16];
     } pushConstants;
-
-    typedef struct
-    {
-        VkColorComponentFlags colorWriteMask;
-        VkColorBlendEquationEXT colorBlendEq;
-        VkPolygonMode polyMode;
-        VkPrimitiveTopology topology;
-        VkSampleCountFlagBits rastSampleCount;
-        VkFrontFace frontFace;
-        VkCullModeFlags cullMode;
-
-        VkBool32 colorBlending, logicOpEnable, depthTestEnable, depthBiasEnable, depthClampEnable,
-            depthClipEnable, stencilTestEnable, depthWriteEnable, depthBoundsEnable, alphaToCoverageEnable, alphaToOneEnable;
-
-        VkLogicOp logicOp;    // if logicOp is changed logicOpEnable must be true
-        uint32_t *sampleMask; // can be [0]
-
-        VkCompareOp depthCompareOp;
-        int minDepth, maxDepth; // must be set if depthTestEnable is VK_TRUE
-    } Pipeline;
-
-    typedef struct
-    {
-        VkVertexInputAttributeDescription2EXT attrDesc;
-        VkVertexInputBindingDescription2EXT bindingDesc;
-        shaderType type;
-        VkShaderEXT shader;
-    } Shader;
 
     // -------------------------------------------
 
@@ -135,9 +101,6 @@ extern "C"
     void copyBuf(VulkanCore_t core, Buffer src, Buffer dest);
 
     void allocate_textureDescriptorSets(VulkanCore_t *core, uint64_t setCount);
-
-    void cache_PipeLine(Pipeline *pLine, char *Name);
-    Pipeline find_Pipeline(char *Name);
 
     void destroyBuffer(Buffer buf, VulkanCore_t core);
     void destroyRenderer(renderer_t *renderer);
