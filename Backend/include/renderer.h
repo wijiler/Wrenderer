@@ -14,8 +14,8 @@ extern "C"
 
     typedef enum
     {
-        VertexBuf,
-        IndexBuf,
+        BUFFER_USAGE_VERTEX = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+        BUFFER_USAGE_INDEX = VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
     } BUFFERTYPE;
 
     typedef enum

@@ -152,11 +152,15 @@ extern "C"
     void bindPipeline(Pipeline pline, VkCommandBuffer cBuf);
 
     RenderPass newPass(char *name, Pipeline pipeline);
+
     void addImageResource(RenderPass *pass, Image image, ResourceUsageFlags_t usage);
+    void addBufferResource(RenderPass *pass, int BufferIndex, ResourceUsageFlags_t usage);
     void addColorAttachment(Image img, RenderPass *pass, VkClearValue *clear);
     void setDepthStencilAttachment(Image img, RenderPass *pass);
+
     void addPass(GraphBuilder *builder, RenderPass *pass, passType type);
     RenderGraph buildGraph(GraphBuilder *builder, Image scImage);
+    void destroyRenderGraph(RenderGraph *graph);
     void executeGraph(RenderGraph *graph, VkCommandBuffer cBuf);
 
     uint64_t fnv_64a_str(char *str, uint64_t hval);

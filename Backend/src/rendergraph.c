@@ -180,6 +180,8 @@ RenderPass newPass(char *name, Pipeline pipeline)
     RenderPass p = {0};
 
     p.name = name;
+    p.hash = fnv_64a_str(name, hash);
+    hash = p.hash;
     p.pl = pipeline;
     p.resourceCount = 0;
     p.resources = malloc(sizeof(Resource));
@@ -188,6 +190,7 @@ RenderPass newPass(char *name, Pipeline pipeline)
 
     return p;
 }
+
 // attachments are always read | write
 void addColorAttachment(Image img, RenderPass *pass, VkClearValue *clear)
 {
@@ -259,11 +262,13 @@ void addImageResource(RenderPass *pass, Image image, ResourceUsageFlags_t usage)
     switch (res.usage)
     {
     case USAGE_COLORATTACHMENT:
-        addColorAttachment(image, pass, &(VkClearValue){{{0.0f, 0.0f, 0.0f, 0.0f}}});
+        res.access = ACCESS_COLORATTACHMENT;
+        res.value.img.CurrentLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         return;
         break;
     case USAGE_DEPTHSTENCILATTACHMENT:
-        setDepthStencilAttachment(image, pass);
+        res.access = ACCESS_DEPTHATTACHMENT;
+        res.value.img.CurrentLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
         return;
         break;
     case USAGE_TRANSFER_SRC:
@@ -315,4 +320,88 @@ void addBufferResource(RenderPass *pass, int BufferIndex, ResourceUsageFlags_t u
     pass->resources = realloc(pass->resources, sizeof(Resource) * pass->resourceCount + 1);
     pass->resources[pass->resourceCount] = res;
     pass->resourceCount += 1;
+}
+
+void addPass(GraphBuilder *builder, RenderPass *pass, passType type)
+{
+    pass->type = type;
+
+    if (builder->passCount == 0)
+    {
+        builder->passes = malloc(sizeof(RenderPass) * (builder->passCount + 1));
+        builder->passes[builder->passCount] = *pass;
+        builder->passCount += 1;
+        return;
+    }
+    builder->passes = realloc(builder->passes, sizeof(RenderPass) * (builder->passCount + 1));
+    builder->passes[builder->passCount] = *pass;
+    builder->passCount += 1;
+}
+
+void optimizePasses(RenderGraph *graph, Image swapChainImg)
+{
+    int rootResourceCount = 0;
+    Resource *rootResources = malloc(sizeof(Resource));
+
+    int newPassCount = 0;
+    RenderPass *newPasses = malloc(sizeof(RenderPass) * graph->passCount);
+
+    for (int i = graph->passCount - 1; i >= 0; i--)
+    {
+        for (int r = 0; r <= graph->passes[i].resourceCount - 1; r++)
+        {
+            Resource cr = graph->passes[i].resources[r];
+            if ((cr.access & ACCESS_TRANSFER_WRITE) != 0 && cr.value.img.imgview == swapChainImg.imgview)
+            {
+                rootResources = realloc(rootResources, sizeof(Resource) * (rootResourceCount + 1));
+                rootResources[rootResourceCount] = cr;
+                rootResourceCount += graph->passes[i].resourceCount;
+
+                newPasses[graph->passCount - newPassCount - 1] = graph->passes[i];
+                newPassCount += 1;
+            }
+            else if ((cr.usage & USAGE_COLORATTACHMENT) != 0 || (cr.usage & USAGE_TRANSFER_DST) != 0 || (cr.usage & USAGE_DEPTHSTENCILATTACHMENT) != 0)
+            {
+                for (int e = 0; e < rootResourceCount; e++)
+                {
+                    if (resEqWoUsage(cr, rootResources[e]))
+                    {
+                        rootResources = realloc(rootResources, sizeof(Resource) * (rootResourceCount + 1));
+                        rootResources[rootResourceCount] = cr;
+                        rootResourceCount += graph->passes[i].resourceCount;
+
+                        newPasses[graph->passCount - newPassCount - 1] = graph->passes[i];
+                        newPassCount += 1;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    free(graph->passes);
+    graph->passes = &newPasses[graph->passCount] - newPassCount;
+    graph->passCount = newPassCount;
+
+    free(rootResources);
+}
+
+RenderGraph buildGraph(GraphBuilder *builder, Image scImage)
+{
+    RenderGraph rg = {0};
+    rg.passes = malloc(sizeof(RenderPass) * builder->passCount);
+    memcpy(rg.passes, builder->passes, sizeof(RenderPass) * builder->passCount);
+    rg.passCount = builder->passCount;
+    optimizePasses(&rg, scImage);
+
+    return rg;
+}
+
+void destroyRenderGraph(RenderGraph *graph)
+{
+    for (int i = 0; i < graph->passCount - 1; i++)
+    {
+        free(graph->passes[i].colorAttachments);
+        free(graph->passes[i].resources);
+    }
+    free(graph->passes);
 }

@@ -453,9 +453,9 @@ void createBuffer(VulkanCore_t core, BufferCreateInfo *createInfo, Buffer *buf)
 {
     buf->size = createInfo->dataSize;
     if ((createInfo->usage & VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) != 0)
-        buf->type = VertexBuf;
+        buf->type = BUFFER_USAGE_VERTEX;
     else if ((createInfo->usage & VK_BUFFER_USAGE_INDEX_BUFFER_BIT) != 0)
-        buf->type = IndexBuf;
+        buf->type = BUFFER_USAGE_INDEX;
 
     VkBufferCreateInfo bufferCI = {0};
     bufferCI.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
