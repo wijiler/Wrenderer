@@ -3,9 +3,13 @@ All:
 	cp ./Backend/Lib/JRV2BE.lib ./Frontend/libs/JRV2BE.lib
 	make -C ./Frontend/
 
+Debug:
+	make -C ./Backend/ Debug
+	make -C ./Frontend/ Debug
+
 DebugLib:
-	make -C ./Backend/ debug
-	./Backend/main.exe
+	make -C ./Backend/ Debug
 
 clean:
-	rm -rf ./Backend/Lib/
+	make -C ./Backend/ Clean
+	make -C ./Frontend/ Clean

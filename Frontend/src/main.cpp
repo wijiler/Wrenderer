@@ -29,22 +29,23 @@ void init()
     };
     Buffer buf;
     createBuffer(renderer.vkCore, &cInf, &buf);
+    Buffer buf2;
+    cInf.usage = BUFFER_USAGE_INDEX;
+    createBuffer(renderer.vkCore, &cInf, &buf2);
 
     RenderPass pass1 = newPass("name", pl);
     RenderPass pass2 = newPass("name2", pl);
 
-    addBufferResource(&pass1, buf, USAGE_TRANSFER_DST);
+    addBufferResource(&pass1, buf2, USAGE_TRANSFER_DST);
     addBufferResource(&pass2, buf, USAGE_TRANSFER_SRC);
     addImageResource(&pass2, scImg, USAGE_TRANSFER_DST);
-
-    // printf("%i\n", pass1.resources[1].access & ACCESS_TRANSFER_WRITE);
 
     addPass(&builder, &pass1, PASS_TYPE_GRAPHICS);
     addPass(&builder, &pass2, PASS_TYPE_GRAPHICS);
 
     RenderGraph graph = buildGraph(&builder, scImg);
 
-    printf("pCount %i\n", graph.passCount);
+    printf("%i\n", graph.passCount);
 }
 int main(void)
 {
