@@ -1,4 +1,8 @@
 *.exe
+*.ilk
+*.pdb
+.vs/
+.vscode/
 notes/
 Build/
 Lib/

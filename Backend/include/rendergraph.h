@@ -154,7 +154,7 @@ extern "C"
     RenderPass newPass(char *name, Pipeline pipeline);
 
     void addImageResource(RenderPass *pass, Image image, ResourceUsageFlags_t usage);
-    void addBufferResource(RenderPass *pass, int BufferIndex, ResourceUsageFlags_t usage);
+    void addBufferResource(RenderPass *pass, Buffer buf, ResourceUsageFlags_t usage);
     void addColorAttachment(Image img, RenderPass *pass, VkClearValue *clear);
     void setDepthStencilAttachment(Image img, RenderPass *pass);
 

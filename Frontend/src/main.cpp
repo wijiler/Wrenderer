@@ -8,13 +8,6 @@ GraphBuilder builder{0, NULL, renderer};
 
 void loop()
 {
-    Image scImg{
-        renderer.vkCore.swapChainImages[0],
-        renderer.vkCore.swapChainImageViews[0],
-        VK_IMAGE_LAYOUT_UNDEFINED,
-    };
-    RenderGraph graph = buildGraph(&builder, scImg);
-    destroyRenderGraph(&graph);
 }
 
 void init()
@@ -38,13 +31,20 @@ void init()
     createBuffer(renderer.vkCore, &cInf, &buf);
 
     RenderPass pass1 = newPass("name", pl);
+    RenderPass pass2 = newPass("name2", pl);
 
-    addBufferResource(&pass1, buf.index, USAGE_TRANSFER_DST);
-    addImageResource(&pass1, scImg, USAGE_TRANSFER_DST);
+    addBufferResource(&pass1, buf, USAGE_TRANSFER_DST);
+    addBufferResource(&pass2, buf, USAGE_TRANSFER_SRC);
+    addImageResource(&pass2, scImg, USAGE_TRANSFER_DST);
 
     // printf("%i\n", pass1.resources[1].access & ACCESS_TRANSFER_WRITE);
 
     addPass(&builder, &pass1, PASS_TYPE_GRAPHICS);
+    addPass(&builder, &pass2, PASS_TYPE_GRAPHICS);
+
+    RenderGraph graph = buildGraph(&builder, scImg);
+
+    printf("pCount %i\n", graph.passCount);
 }
 int main(void)
 {

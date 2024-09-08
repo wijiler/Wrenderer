@@ -154,9 +154,9 @@ bool resEq(Resource rhs, Resource lhs)
 
 bool resEqWoUsage(Resource rhs, Resource lhs)
 {
-    return rhs.value.buffer.buffer == lhs.value.buffer.buffer &&
-           rhs.value.img.imgview == lhs.value.img.imgview &&
-           rhs.type == lhs.type;
+    return rhs.type == lhs.type &&
+           rhs.value.buffer.index == lhs.value.buffer.index &&
+           rhs.value.img.image == lhs.value.img.image;
 }
 
 const VkImageSubresourceRange imgSRR = {
@@ -174,6 +174,34 @@ const VkCommandBufferBeginInfo bInf = {
     NULL,
 };
 
+void addResource(RenderPass *pass, Resource res)
+{
+    if (pass->resourceCount == 0)
+    {
+        pass->resources = malloc(sizeof(Resource));
+        pass->resources[0] = res;
+        pass->resourceCount += 1;
+        return;
+    }
+    pass->resources = realloc(pass->resources, sizeof(Resource) * (pass->resourceCount + 1));
+    pass->resources[pass->resourceCount] = res;
+    pass->resourceCount += 1;
+}
+
+void addCatt(RenderPass *pass, VkRenderingAttachmentInfo att)
+{
+    if (pass->cAttCount == 0)
+    {
+        pass->colorAttachments = malloc(sizeof(Resource));
+        pass->colorAttachments[0] = att;
+        pass->cAttCount += 1;
+        return;
+    }
+    pass->colorAttachments = realloc(pass->colorAttachments, sizeof(Resource) * (pass->cAttCount + 1));
+    pass->colorAttachments[pass->cAttCount] = att;
+    pass->cAttCount += 1;
+}
+
 uint64_t hash = 0;
 RenderPass newPass(char *name, Pipeline pipeline)
 {
@@ -184,9 +212,9 @@ RenderPass newPass(char *name, Pipeline pipeline)
     hash = p.hash;
     p.pl = pipeline;
     p.resourceCount = 0;
-    p.resources = malloc(sizeof(Resource));
+    // p.resources = malloc(sizeof(Resource));
     p.cAttCount = 0;
-    p.colorAttachments = malloc(sizeof(VkRenderingAttachmentInfo));
+    // p.colorAttachments = malloc(sizeof(VkRenderingAttachmentInfo));
 
     return p;
 }
@@ -205,9 +233,7 @@ void addColorAttachment(Image img, RenderPass *pass, VkClearValue *clear)
 
     if (clear)
         rAttInfo.clearValue = *clear;
-    pass->colorAttachments = realloc(pass->colorAttachments, sizeof(VkRenderingAttachmentInfo) * pass->cAttCount + 1);
-    pass->colorAttachments[pass->cAttCount] = rAttInfo;
-    pass->cAttCount += 1;
+    addCatt(pass, rAttInfo);
 
     Resource res;
 
@@ -219,9 +245,7 @@ void addColorAttachment(Image img, RenderPass *pass, VkClearValue *clear)
     res.value.img = img;
     res.value.img.CurrentLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-    pass->resources = realloc(pass->resources, sizeof(Resource) * pass->resourceCount + 1);
-    pass->resources[pass->resourceCount] = res;
-    pass->resourceCount += 1;
+    addResource(pass, res);
 }
 
 void setDepthStencilAttachment(Image img, RenderPass *pass)
@@ -248,9 +272,7 @@ void setDepthStencilAttachment(Image img, RenderPass *pass)
     res.value.img = img;
     res.value.img.CurrentLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-    pass->resources = realloc(pass->resources, sizeof(Resource) * pass->resourceCount + 1);
-    pass->resources[pass->resourceCount] = res;
-    pass->resourceCount += 1;
+    addResource(pass, res);
 }
 void addImageResource(RenderPass *pass, Image image, ResourceUsageFlags_t usage)
 {
@@ -289,16 +311,14 @@ void addImageResource(RenderPass *pass, Image image, ResourceUsageFlags_t usage)
         break;
     }
 
-    pass->resources = realloc(pass->resources, sizeof(Resource) * pass->resourceCount + 1);
-    pass->resources[pass->resourceCount] = res;
-    pass->resourceCount += 1;
+    addResource(pass, res);
 }
 // only transfers, and undefined are valid for buffers
-void addBufferResource(RenderPass *pass, int BufferIndex, ResourceUsageFlags_t usage)
+void addBufferResource(RenderPass *pass, Buffer buf, ResourceUsageFlags_t usage)
 {
     Resource res = {0};
-    res.type = RES_TYPE_Image;
-    res.value.buffer = findBuffer(BufferIndex);
+    res.type = RES_TYPE_Buffer;
+    res.value.buffer = buf;
     res.usage = usage;
 
     switch (res.usage)
@@ -317,9 +337,7 @@ void addBufferResource(RenderPass *pass, int BufferIndex, ResourceUsageFlags_t u
         break;
     }
 
-    pass->resources = realloc(pass->resources, sizeof(Resource) * pass->resourceCount + 1);
-    pass->resources[pass->resourceCount] = res;
-    pass->resourceCount += 1;
+    addResource(pass, res);
 }
 
 void addPass(GraphBuilder *builder, RenderPass *pass, passType type)
@@ -348,17 +366,19 @@ void optimizePasses(RenderGraph *graph, Image swapChainImg)
 
     for (int i = graph->passCount - 1; i >= 0; i--)
     {
-        for (int r = 0; r <= graph->passes[i].resourceCount - 1; r++)
+        RenderPass curPass = graph->passes[i];
+        for (int r = 0; r <= curPass.resourceCount - 1; r++)
         {
-            Resource cr = graph->passes[i].resources[r];
+            Resource cr = curPass.resources[r];
             if ((cr.access & ACCESS_TRANSFER_WRITE) != 0 && cr.value.img.imgview == swapChainImg.imgview)
             {
-                rootResources = realloc(rootResources, sizeof(Resource) * (rootResourceCount + 1));
-                rootResources[rootResourceCount] = cr;
-                rootResourceCount += graph->passes[i].resourceCount;
+                rootResources = realloc(rootResources, sizeof(Resource) * (rootResourceCount + curPass.resourceCount));
+                memcpy(rootResources + rootResourceCount, curPass.resources, sizeof(Resource) * (curPass.resourceCount));
+                rootResourceCount += curPass.resourceCount;
 
-                newPasses[graph->passCount - newPassCount - 1] = graph->passes[i];
+                newPasses[graph->passCount - newPassCount - 1] = curPass;
                 newPassCount += 1;
+                break;
             }
             else if ((cr.usage & USAGE_COLORATTACHMENT) != 0 || (cr.usage & USAGE_TRANSFER_DST) != 0 || (cr.usage & USAGE_DEPTHSTENCILATTACHMENT) != 0)
             {
@@ -366,12 +386,14 @@ void optimizePasses(RenderGraph *graph, Image swapChainImg)
                 {
                     if (resEqWoUsage(cr, rootResources[e]))
                     {
-                        rootResources = realloc(rootResources, sizeof(Resource) * (rootResourceCount + 1));
-                        rootResources[rootResourceCount] = cr;
-                        rootResourceCount += graph->passes[i].resourceCount;
+                        rootResources = realloc(rootResources, sizeof(Resource) * (rootResourceCount + curPass.resourceCount));
+                        memcpy(rootResources + rootResourceCount, curPass.resources, sizeof(Resource) * (curPass.resourceCount));
+                        rootResourceCount += curPass.resourceCount;
 
-                        newPasses[graph->passCount - newPassCount - 1] = graph->passes[i];
+                        newPasses[graph->passCount - newPassCount - 1] = curPass;
                         newPassCount += 1;
+
+                        r = curPass.resourceCount + 1;
                         break;
                     }
                 }
@@ -391,8 +413,8 @@ RenderGraph buildGraph(GraphBuilder *builder, Image scImage)
     rg.passes = malloc(sizeof(RenderPass) * builder->passCount);
     memcpy(rg.passes, builder->passes, sizeof(RenderPass) * builder->passCount);
     rg.passCount = builder->passCount;
+    free(builder->passes);
     optimizePasses(&rg, scImage);
-
     return rg;
 }
 
