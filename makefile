@@ -1,10 +1,11 @@
-All:
+Release:
 	make -C ./Backend/
 	cp ./Backend/Lib/JRV2BE.lib ./Frontend/libs/JRV2BE.lib
 	make -C ./Frontend/
 
 Debug:
 	make -C ./Backend/ Debug
+	cp ./Backend/Lib/JRV2BE.lib ./Frontend/libs/JRV2BE.lib
 	make -C ./Frontend/ Debug
 
 DebugLib:

@@ -13,7 +13,7 @@ Release:
 	rm -rf Lib/*.o
 
 Clean: 
-	rm -rf Lib/*.lib
+	rm -rf Lib/*.lib *.exe
 
 Debug:
 	clang -c $(CFLAGS) ./src/*.c $(LDFLAGS) -DDEBUG -DVK_USE_PLATFORM_WIN32_KHR
