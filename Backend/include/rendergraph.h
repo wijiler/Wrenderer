@@ -98,7 +98,12 @@ extern "C"
      *      pass 2 executes to stop it from reading
      *      Old memory
      */
-
+    typedef struct
+    {
+        int change;
+        Resource Pre;
+        Resource Post;
+    } resourceChangeInfo;
     typedef struct RenderPass
     {
         char *name;
@@ -115,8 +120,9 @@ extern "C"
 
         int resourceCount;
         Resource *resources;
+        resourceChangeInfo resourceChanges;
 
-        void (*callBack)(struct RenderPass, VkCommandBuffer cBuf); // allows us to use lambdas in the C++ wrapper
+        void (*callBack)(struct RenderPass pass, VkCommandBuffer cBuf); // allows us to use lambdas in the C++ wrapper
     } RenderPass;
     typedef struct
     {
@@ -151,14 +157,16 @@ extern "C"
     Pipeline find_Pipeline(char *Name);
     void bindPipeline(Pipeline pline, VkCommandBuffer cBuf);
 
-    RenderPass newPass(char *name, Pipeline pipeline);
+    RenderPass newPass(char *name, passType type);
 
+    void setPipeline(Pipeline pl, RenderPass *pass);
     void addImageResource(RenderPass *pass, Image image, ResourceUsageFlags_t usage);
     void addBufferResource(RenderPass *pass, Buffer buf, ResourceUsageFlags_t usage);
     void addColorAttachment(Image img, RenderPass *pass, VkClearValue *clear);
     void setDepthStencilAttachment(Image img, RenderPass *pass);
+    void setExecutionCallBack(RenderPass *pass, void (*callBack)(RenderPass pass, VkCommandBuffer cBuf));
 
-    void addPass(GraphBuilder *builder, RenderPass *pass, passType type);
+    void addPass(GraphBuilder *builder, RenderPass *pass);
     RenderGraph buildGraph(GraphBuilder *builder, Image scImage);
     void destroyRenderGraph(RenderGraph *graph);
     void executeGraph(RenderGraph *graph, VkCommandBuffer cBuf);

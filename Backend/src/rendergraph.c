@@ -203,14 +203,14 @@ void addCatt(RenderPass *pass, VkRenderingAttachmentInfo att)
 }
 
 uint64_t hash = 0;
-RenderPass newPass(char *name, Pipeline pipeline)
+RenderPass newPass(char *name, passType type)
 {
     RenderPass p = {0};
 
     p.name = name;
     p.hash = fnv_64a_str(name, hash);
     hash = p.hash;
-    p.pl = pipeline;
+    p.type = type;
     p.resourceCount = 0;
     // p.resources = malloc(sizeof(Resource));
     p.cAttCount = 0;
@@ -340,10 +340,18 @@ void addBufferResource(RenderPass *pass, Buffer buf, ResourceUsageFlags_t usage)
     addResource(pass, res);
 }
 
-void addPass(GraphBuilder *builder, RenderPass *pass, passType type)
+void setPipeline(Pipeline pl, RenderPass *pass)
 {
-    pass->type = type;
+    pass->pl = pl;
+}
 
+void setExecutionCallBack(RenderPass *pass, void (*callBack)(struct RenderPass, VkCommandBuffer cBuf))
+{
+    pass->callBack = callBack;
+}
+
+void addPass(GraphBuilder *builder, RenderPass *pass)
+{
     if (builder->passCount == 0)
     {
         builder->passes = malloc(sizeof(RenderPass) * (builder->passCount + 1));
@@ -363,6 +371,15 @@ void optimizePasses(RenderGraph *graph, Image swapChainImg)
 
     int newPassCount = 0;
     RenderPass *newPasses = malloc(sizeof(RenderPass) * graph->passCount);
+
+    int EdgeResourceCount = 0;
+    Resource *edgeResources = malloc(sizeof(Resource));
+
+    int imgBrrCount = 0;
+    VkImageMemoryBarrier *imgMemBarriers = malloc(sizeof(VkImageMemoryBarrier));
+
+    int bufBrrCount = 0;
+    VkBufferMemoryBarrier *bufMemBarriers = malloc(sizeof(VkBufferMemoryBarrier));
 
     for (int i = graph->passCount - 1; i >= 0; i--)
     {
@@ -400,6 +417,25 @@ void optimizePasses(RenderGraph *graph, Image swapChainImg)
             }
         }
     }
+
+    for (int i = 0; i < graph->passCount; i++)
+    {
+        for (int r = 0; r < graph->passes[i].resourceCount; r++)
+        {
+            Resource cr = graph->passes[i].resources[r];
+            for (int e = 0; e < EdgeResourceCount; e++)
+            {
+                if (resEqWoUsage(cr, edgeResources[e]))
+                {
+                    // flush out edge resources and re-malloc it
+                    r = graph->passes[i].resourceCount + 1; // get out of outer loop
+                    break;
+                }
+            }
+            // create barriers & add to edgeResources
+        }
+    }
+
     free(graph->passes);
     graph->passes = &newPasses[graph->passCount] - newPassCount;
     graph->passCount = newPassCount;
@@ -418,6 +454,14 @@ RenderGraph buildGraph(GraphBuilder *builder, Image scImage)
     return rg;
 }
 
+void executeGraph(RenderGraph *graph, VkCommandBuffer cBuf)
+{
+    for (int i = 0; i < graph->passCount; i++)
+    {
+        recordPass(&graph->passes[i], cBuf);
+    }
+}
+
 void destroyRenderGraph(RenderGraph *graph)
 {
     for (int i = 0; i < graph->passCount - 1; i++)
@@ -425,5 +469,5 @@ void destroyRenderGraph(RenderGraph *graph)
         free(graph->passes[i].colorAttachments);
         free(graph->passes[i].resources);
     }
-    free(graph->passes);
+    // free(graph->passes);
 }

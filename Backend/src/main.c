@@ -14,14 +14,14 @@ void loop()
 {
     Image scImg = {renderer.vkCore.swapChainImages[0], renderer.vkCore.swapChainImageViews[0], VK_IMAGE_LAYOUT_UNDEFINED};
 
-    pass = newPass((char *)"pass1", pl);
-    pass2 = newPass((char *)"pass2", pl);
+    pass = newPass((char *)"pass1", PASS_TYPE_GRAPHICS);
+    pass2 = newPass((char *)"pass2", PASS_TYPE_GRAPHICS);
 
     addImageResource(&pass, scImg, USAGE_COLORATTACHMENT);
     addImageResource(&pass2, scImg, USAGE_SAMPLED);
 
-    addPass(&builder, &pass, PASS_TYPE_GRAPHICS);
-    addPass(&builder, &pass2, PASS_TYPE_GRAPHICS);
+    addPass(&builder, &pass);
+    addPass(&builder, &pass2);
     RenderGraph graph = buildGraph(&builder, scImg);
 
     free(pass.colorAttachments);
