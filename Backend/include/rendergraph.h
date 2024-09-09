@@ -98,12 +98,6 @@ extern "C"
      *      pass 2 executes to stop it from reading
      *      Old memory
      */
-    typedef struct
-    {
-        int change;
-        Resource Pre;
-        Resource Post;
-    } resourceChangeInfo;
     typedef struct RenderPass
     {
         char *name;
@@ -120,7 +114,6 @@ extern "C"
 
         int resourceCount;
         Resource *resources;
-        resourceChangeInfo resourceChanges;
 
         void (*callBack)(struct RenderPass pass, VkCommandBuffer cBuf); // allows us to use lambdas in the C++ wrapper
     } RenderPass;

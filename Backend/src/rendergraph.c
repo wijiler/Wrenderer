@@ -1,3 +1,4 @@
+#include <hashmap.h>
 #include <rendergraph.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -375,14 +376,13 @@ void optimizePasses(RenderGraph *graph, Image swapChainImg)
     int EdgeResourceCount = 0;
     Resource *edgeResources = malloc(sizeof(Resource));
 
-    int imgBrrCount = 0;
-    VkImageMemoryBarrier *imgMemBarriers = malloc(sizeof(VkImageMemoryBarrier));
-
-    int bufBrrCount = 0;
-    VkBufferMemoryBarrier *bufMemBarriers = malloc(sizeof(VkBufferMemoryBarrier));
-
     for (int i = graph->passCount - 1; i >= 0; i--)
     {
+        int imgBrrCount = 0;
+        VkImageMemoryBarrier *imgMemBarriers = NULL;
+
+        int bufBrrCount = 0;
+        VkBufferMemoryBarrier *bufMemBarriers = NULL;
         RenderPass curPass = graph->passes[i];
         for (int r = 0; r <= curPass.resourceCount - 1; r++)
         {
@@ -397,43 +397,95 @@ void optimizePasses(RenderGraph *graph, Image swapChainImg)
                 newPassCount += 1;
                 break;
             }
-            else if ((cr.usage & USAGE_COLORATTACHMENT) != 0 || (cr.usage & USAGE_TRANSFER_DST) != 0 || (cr.usage & USAGE_DEPTHSTENCILATTACHMENT) != 0)
+            else
             {
                 for (int e = 0; e < rootResourceCount; e++)
                 {
                     if (resEqWoUsage(cr, rootResources[e]))
                     {
-                        rootResources = realloc(rootResources, sizeof(Resource) * (rootResourceCount + curPass.resourceCount));
-                        memcpy(rootResources + rootResourceCount, curPass.resources, sizeof(Resource) * (curPass.resourceCount));
-                        rootResourceCount += curPass.resourceCount;
+                        switch (cr.type)
+                        {
+                        case RES_TYPE_Image:
+                            Resource oldImg = rootResources[e];
 
-                        newPasses[graph->passCount - newPassCount - 1] = curPass;
-                        newPassCount += 1;
+                            VkImageMemoryBarrier icBar;
+                            icBar.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+                            icBar.pNext = NULL;
+                            icBar.image = cr.value.img.image;
 
-                        r = curPass.resourceCount + 1;
+                            icBar.oldLayout = oldImg.value.img.CurrentLayout;
+                            icBar.newLayout = cr.value.img.CurrentLayout;
+
+                            icBar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                            icBar.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+
+                            icBar.srcAccessMask = oldImg.access;
+                            icBar.dstAccessMask = cr.access;
+
+                            icBar.subresourceRange = imgSRR;
+
+                            if (imgBrrCount == 0)
+                            {
+                                imgMemBarriers = malloc(sizeof(VkImageMemoryBarrier));
+                                imgMemBarriers[0] = icBar;
+                                imgBrrCount += 1;
+                            }
+                            else
+                            {
+                                imgMemBarriers = realloc(imgMemBarriers, sizeof(VkImageMemoryBarrier) * (imgBrrCount + 1));
+                                imgMemBarriers[imgBrrCount] = icBar;
+                                imgBrrCount += 1;
+                            }
+                            break;
+                        case RES_TYPE_Buffer:
+                            Resource oldBuf = rootResources[e];
+                            VkBufferMemoryBarrier bcBar;
+                            bcBar.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+                            bcBar.pNext = NULL;
+
+                            bcBar.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                            bcBar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+
+                            bcBar.buffer = cr.value.buffer.buffer;
+                            bcBar.offset = 0;
+                            bcBar.size = VK_WHOLE_SIZE;
+                            bcBar.srcAccessMask = oldBuf.access;
+                            bcBar.dstAccessMask = cr.access;
+                            if (bufBrrCount == 0)
+                            {
+                                bufMemBarriers = malloc(sizeof(VkImageMemoryBarrier));
+                                bufMemBarriers[0] = bcBar;
+                                bufBrrCount += 1;
+                            }
+                            else
+                            {
+                                bufMemBarriers = realloc(bufMemBarriers, sizeof(VkImageMemoryBarrier) * (bufBrrCount + 1));
+                                bufMemBarriers[bufBrrCount] = bcBar;
+                                bufBrrCount += 1;
+                            }
+                            break;
+                        }
+                        if ((cr.usage & USAGE_COLORATTACHMENT) != 0 || (cr.usage & USAGE_TRANSFER_DST) != 0 || (cr.usage & USAGE_DEPTHSTENCILATTACHMENT) != 0)
+                        {
+                            rootResources = realloc(rootResources, sizeof(Resource) * (rootResourceCount + curPass.resourceCount));
+                            memcpy(rootResources + rootResourceCount, curPass.resources, sizeof(Resource) * (curPass.resourceCount));
+                            rootResourceCount += curPass.resourceCount;
+
+                            newPasses[graph->passCount - newPassCount - 1] = curPass;
+                            newPassCount += 1;
+
+                            r = curPass.resourceCount + 1;
+                        }
                         break;
                     }
                 }
             }
         }
-    }
-
-    for (int i = 0; i < graph->passCount; i++)
-    {
-        for (int r = 0; r < graph->passes[i].resourceCount; r++)
-        {
-            Resource cr = graph->passes[i].resources[r];
-            for (int e = 0; e < EdgeResourceCount; e++)
-            {
-                if (resEqWoUsage(cr, edgeResources[e]))
-                {
-                    // flush out edge resources and re-malloc it
-                    r = graph->passes[i].resourceCount + 1; // get out of outer loop
-                    break;
-                }
-            }
-            // create barriers & add to edgeResources
-        }
+        graph->barriers[i] = (passBarrierInfo){
+            imgBrrCount,
+            bufBrrCount,
+            imgMemBarriers,
+            bufMemBarriers};
     }
 
     free(graph->passes);
@@ -447,6 +499,7 @@ RenderGraph buildGraph(GraphBuilder *builder, Image scImage)
 {
     RenderGraph rg = {0};
     rg.passes = malloc(sizeof(RenderPass) * builder->passCount);
+    rg.barriers = malloc(sizeof(passBarrierInfo) * builder->passCount);
     memcpy(rg.passes, builder->passes, sizeof(RenderPass) * builder->passCount);
     rg.passCount = builder->passCount;
     free(builder->passes);
@@ -469,5 +522,7 @@ void destroyRenderGraph(RenderGraph *graph)
         free(graph->passes[i].colorAttachments);
         free(graph->passes[i].resources);
     }
+    free(graph->barriers);
+
     // free(graph->passes);
 }
