@@ -3,7 +3,6 @@
 
 #include <rendergraph.h>
 #include <string>
-// I really like the c api, but the asthetics of this are nice + this is meant to be a heavier frontend so :P
 namespace jrv2
 {
 

@@ -8,5 +8,6 @@ Release:
 	clang++ $(CFLAGS) src/*.cpp -o main.exe $(LDFLAGS) -O3
 Debug:
 	clang++ $(CFLAGS) src/*.cpp -o main.exe $(LDFLAGS) -g
+	
 Clean:
-	rm -rf *.exe *.pdb *.ilk libs/JRV2BE.lib
+	rm -rf *.exe *.pdb *.ilk libs/JRV2BE.lib main.lib *.exp

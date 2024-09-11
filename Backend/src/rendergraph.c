@@ -61,14 +61,7 @@ void cache_PipeLine(Pipeline *pLine, char *Name)
     pipelineInfo plInf = {0};
     plInf.Name = Name;
     plInf.pLine = pLine;
-    if (pipelineCount == 0)
-    {
-        ap_Pipelines = malloc(sizeof(pipelineInfo));
-        pipelineCount += 1;
 
-        ap_Pipelines[0] = plInf;
-        return;
-    }
     ap_Pipelines = realloc(ap_Pipelines, sizeof(pipelineInfo) * pipelineCount + 1);
     ap_Pipelines[pipelineCount + 1] = plInf;
 
@@ -177,13 +170,6 @@ const VkCommandBufferBeginInfo bInf = {
 
 void addResource(RenderPass *pass, Resource res)
 {
-    if (pass->resourceCount == 0)
-    {
-        pass->resources = malloc(sizeof(Resource));
-        pass->resources[0] = res;
-        pass->resourceCount += 1;
-        return;
-    }
     pass->resources = realloc(pass->resources, sizeof(Resource) * (pass->resourceCount + 1));
     pass->resources[pass->resourceCount] = res;
     pass->resourceCount += 1;
@@ -191,13 +177,6 @@ void addResource(RenderPass *pass, Resource res)
 
 void addCatt(RenderPass *pass, VkRenderingAttachmentInfo att)
 {
-    if (pass->cAttCount == 0)
-    {
-        pass->colorAttachments = malloc(sizeof(Resource));
-        pass->colorAttachments[0] = att;
-        pass->cAttCount += 1;
-        return;
-    }
     pass->colorAttachments = realloc(pass->colorAttachments, sizeof(Resource) * (pass->cAttCount + 1));
     pass->colorAttachments[pass->cAttCount] = att;
     pass->cAttCount += 1;
@@ -353,18 +332,10 @@ void setExecutionCallBack(RenderPass *pass, void (*callBack)(struct RenderPass, 
 
 void addPass(GraphBuilder *builder, RenderPass *pass)
 {
-    if (builder->passCount == 0)
-    {
-        builder->passes = malloc(sizeof(RenderPass) * (builder->passCount + 1));
-        builder->passes[builder->passCount] = *pass;
-        builder->passCount += 1;
-        return;
-    }
     builder->passes = realloc(builder->passes, sizeof(RenderPass) * (builder->passCount + 1));
     builder->passes[builder->passCount] = *pass;
     builder->passCount += 1;
 }
-
 void optimizePasses(RenderGraph *graph, Image swapChainImg)
 {
     int rootResourceCount = 0;
@@ -372,9 +343,6 @@ void optimizePasses(RenderGraph *graph, Image swapChainImg)
 
     int newPassCount = 0;
     RenderPass *newPasses = malloc(sizeof(RenderPass) * graph->passCount);
-
-    int EdgeResourceCount = 0;
-    Resource *edgeResources = malloc(sizeof(Resource));
 
     for (int i = graph->passCount - 1; i >= 0; i--)
     {
@@ -399,7 +367,7 @@ void optimizePasses(RenderGraph *graph, Image swapChainImg)
             }
             else
             {
-                for (int e = 0; e < rootResourceCount; e++)
+                for (int e = rootResourceCount; e >= 0; e--)
                 {
                     if (resEqWoUsage(cr, rootResources[e]))
                     {
@@ -423,19 +391,9 @@ void optimizePasses(RenderGraph *graph, Image swapChainImg)
                             icBar.dstAccessMask = cr.access;
 
                             icBar.subresourceRange = imgSRR;
-
-                            if (imgBrrCount == 0)
-                            {
-                                imgMemBarriers = malloc(sizeof(VkImageMemoryBarrier));
-                                imgMemBarriers[0] = icBar;
-                                imgBrrCount += 1;
-                            }
-                            else
-                            {
-                                imgMemBarriers = realloc(imgMemBarriers, sizeof(VkImageMemoryBarrier) * (imgBrrCount + 1));
-                                imgMemBarriers[imgBrrCount] = icBar;
-                                imgBrrCount += 1;
-                            }
+                            imgMemBarriers = realloc(imgMemBarriers, sizeof(VkImageMemoryBarrier) * (imgBrrCount + 1));
+                            imgMemBarriers[imgBrrCount] = icBar;
+                            imgBrrCount += 1;
                             break;
                         case RES_TYPE_Buffer:
                             Resource oldBuf = rootResources[e];
@@ -451,18 +409,10 @@ void optimizePasses(RenderGraph *graph, Image swapChainImg)
                             bcBar.size = VK_WHOLE_SIZE;
                             bcBar.srcAccessMask = oldBuf.access;
                             bcBar.dstAccessMask = cr.access;
-                            if (bufBrrCount == 0)
-                            {
-                                bufMemBarriers = malloc(sizeof(VkImageMemoryBarrier));
-                                bufMemBarriers[0] = bcBar;
-                                bufBrrCount += 1;
-                            }
-                            else
-                            {
-                                bufMemBarriers = realloc(bufMemBarriers, sizeof(VkImageMemoryBarrier) * (bufBrrCount + 1));
-                                bufMemBarriers[bufBrrCount] = bcBar;
-                                bufBrrCount += 1;
-                            }
+
+                            bufMemBarriers = realloc(bufMemBarriers, sizeof(VkImageMemoryBarrier) * (bufBrrCount + 1));
+                            bufMemBarriers[bufBrrCount] = bcBar;
+                            bufBrrCount += 1;
                             break;
                         }
                         if ((cr.usage & USAGE_COLORATTACHMENT) != 0 || (cr.usage & USAGE_TRANSFER_DST) != 0 || (cr.usage & USAGE_DEPTHSTENCILATTACHMENT) != 0)
@@ -487,23 +437,23 @@ void optimizePasses(RenderGraph *graph, Image swapChainImg)
             imgMemBarriers,
             bufMemBarriers};
     }
-
     free(graph->passes);
-    graph->passes = &newPasses[graph->passCount] - newPassCount;
+    graph->passes = malloc(sizeof(RenderPass) * newPassCount);
+    memcpy(graph->passes, &newPasses[graph->passCount - newPassCount], sizeof(RenderPass) * newPassCount);
     graph->passCount = newPassCount;
-
+    free(newPasses);
     free(rootResources);
 }
 
 RenderGraph buildGraph(GraphBuilder *builder, Image scImage)
 {
     RenderGraph rg = {0};
-    rg.passes = malloc(sizeof(RenderPass) * builder->passCount);
+    rg.passes = builder->passes;
     rg.barriers = malloc(sizeof(passBarrierInfo) * builder->passCount);
-    memcpy(rg.passes, builder->passes, sizeof(RenderPass) * builder->passCount);
     rg.passCount = builder->passCount;
-    free(builder->passes);
     optimizePasses(&rg, scImage);
+    builder->passes = NULL;
+    builder->passCount = 0;
     return rg;
 }
 
@@ -511,18 +461,14 @@ void executeGraph(RenderGraph *graph, VkCommandBuffer cBuf)
 {
     for (int i = 0; i < graph->passCount; i++)
     {
+        passBarrierInfo cb = graph->barriers[i];
+        vkCmdPipelineBarrier(cBuf, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, 0, NULL, cb.bufPBCount, cb.bufMemBarriers, cb.imgPBCount, cb.imgMemBarriers);
         recordPass(&graph->passes[i], cBuf);
     }
 }
 
 void destroyRenderGraph(RenderGraph *graph)
 {
-    for (int i = 0; i < graph->passCount - 1; i++)
-    {
-        free(graph->passes[i].colorAttachments);
-        free(graph->passes[i].resources);
-    }
     free(graph->barriers);
-
-    // free(graph->passes);
+    free(graph->passes);
 }
