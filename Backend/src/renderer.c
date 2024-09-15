@@ -8,6 +8,23 @@
 #include <stdlib.h>
 #include <string.h>
 
+PFN_vkCmdSetVertexInputEXT vkCmdSetVertexInputEXT_ = NULL;
+PFN_vkCreateShadersEXT vkCreateShadersEXT_ = NULL;
+PFN_vkCmdBindShadersEXT vkCmdBindShadersEXT_ = NULL;
+PFN_vkCmdSetColorBlendEnableEXT vkCmdSetColorBlendEnableEXT_ = NULL;
+PFN_vkCmdSetColorWriteMaskEXT vkCmdSetColorWriteMaskEXT_ = NULL;
+PFN_vkCmdSetDepthClampEnableEXT vkCmdSetDepthClampEnableEXT_ = NULL;
+PFN_vkCmdSetPolygonModeEXT vkCmdSetPolygonModeEXT_ = NULL;
+PFN_vkCmdSetLogicOpEnableEXT vkCmdSetLogicOpEnableEXT_ = NULL;
+PFN_vkCmdSetRasterizationSamplesEXT vkCmdSetRasterizationSamplesEXT_ = NULL;
+PFN_vkCmdSetColorBlendEquationEXT vkCmdSetColorBlendEquationEXT_ = NULL;
+PFN_vkCmdSetSampleMaskEXT vkCmdSetSampleMaskEXT_ = NULL;
+PFN_vkCmdSetAlphaToCoverageEnableEXT vkCmdSetAlphaToCoverageEnableEXT_ = NULL;
+PFN_vkCmdSetAlphaToOneEnableEXT vkCmdSetAlphaToOneEnableEXT_ = NULL;
+PFN_vkCmdSetDepthClipEnableEXT vkCmdSetDepthClipEnableEXT_ = NULL;
+PFN_vkCmdSetLogicOpEXT vkCmdSetLogicOpEXT_ = NULL;
+PFN_vkDestroyShaderEXT vkDestroyShaderEXT_ = NULL;
+
 #define instEXTENSIONCOUNT 4
 #ifdef DEBUG
 #define instLAYERCOUNT 1
@@ -87,6 +104,23 @@ void create_instance(renderer_t *renderer)
         printf("Could not create a Vulkan instance\n");
     }
     renderer->vkCore.instance = instance;
+
+    vkCmdSetVertexInputEXT_ = (PFN_vkCmdSetVertexInputEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkCmdSetVertexInputEXT");
+    vkCreateShadersEXT_ = (PFN_vkCreateShadersEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkCreateShadersEXT");
+    vkCmdBindShadersEXT_ = (PFN_vkCmdBindShadersEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkCmdBindShadersEXT");
+    vkCmdSetColorBlendEnableEXT_ = (PFN_vkCmdSetColorBlendEnableEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkCmdSetColorBlendEnableEXT");
+    vkCmdSetColorWriteMaskEXT_ = (PFN_vkCmdSetColorWriteMaskEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkCmdSetColorWriteMaskEXT");
+    vkCmdSetDepthClampEnableEXT_ = (PFN_vkCmdSetDepthClampEnableEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkCmdSetDepthClampEnableEXT");
+    vkCmdSetPolygonModeEXT_ = (PFN_vkCmdSetPolygonModeEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkCmdSetPolygonModeEXT");
+    vkCmdSetLogicOpEnableEXT_ = (PFN_vkCmdSetLogicOpEnableEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkCmdSetLogicOpEnableEXT");
+    vkCmdSetRasterizationSamplesEXT_ = (PFN_vkCmdSetRasterizationSamplesEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkCmdSetRasterizationSamplesEXT");
+    vkCmdSetColorBlendEquationEXT_ = (PFN_vkCmdSetColorBlendEquationEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkCmdSetColorBlendEquationEXT");
+    vkCmdSetSampleMaskEXT_ = (PFN_vkCmdSetSampleMaskEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkCmdSetSampleMaskEXT");
+    vkCmdSetAlphaToCoverageEnableEXT_ = (PFN_vkCmdSetAlphaToCoverageEnableEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkCmdSetAlphaToCoverageEnableEXT");
+    vkCmdSetAlphaToOneEnableEXT_ = (PFN_vkCmdSetAlphaToOneEnableEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkCmdSetAlphaToOneEnableEXT");
+    vkCmdSetDepthClipEnableEXT_ = (PFN_vkCmdSetDepthClipEnableEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkCmdSetDepthClipEnableEXT");
+    vkCmdSetLogicOpEXT_ = (PFN_vkCmdSetLogicOpEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkCmdSetLogicOpEXT");
+    vkDestroyShaderEXT_ = (PFN_vkDestroyShaderEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkDestroyShaderEXT");
 }
 
 VkPhysicalDevice find_valid_device(int deviceCount, VkPhysicalDevice devices[], VkPhysicalDeviceFeatures2 *devFeatures, unsigned int *graphicsFamilyIndex, VkSurfaceKHR surface)
@@ -322,7 +356,7 @@ void create_swapchain(VulkanCore_t *core)
     swapchainCI.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
     swapchainCI.imageArrayLayers = 1; // TODO: If I want to implement vr, change this
     swapchainCI.minImageCount = capabilities.minImageCount + 1 < capabilities.maxImageCount ? capabilities.minImageCount + 1 : capabilities.minImageCount;
-    swapchainCI.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    swapchainCI.imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
     swapchainCI.preTransform = capabilities.currentTransform;
 
@@ -384,12 +418,19 @@ void create_CommandBuffers(VulkanCore_t *core)
         printf("Could not create command buffers\n");
         exit(1);
     }
+    cbAI.commandBufferCount = 1;
+    if (vkAllocateCommandBuffers(core->lDev, &cbAI, &core->immediateSubmit) != VK_SUCCESS)
+    {
+        printf("Could not create command buffers\n");
+        exit(1);
+    }
 
     for (int i = 0; i < FRAMECOUNT; i++)
     {
         VkSemaphoreCreateInfo semaphoreCI = {0};
         semaphoreCI.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
         semaphoreCI.pNext = NULL;
+        semaphoreCI.flags = 0;
 
         if (vkCreateSemaphore(core->lDev, &semaphoreCI, NULL, &core->imageAvailiable[i]) != VK_SUCCESS)
         {
@@ -412,6 +453,17 @@ void create_CommandBuffers(VulkanCore_t *core)
             printf("Could not create fence\n");
             exit(1);
         }
+    }
+
+    VkFenceCreateInfo immFenceCI = {0};
+    immFenceCI.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    immFenceCI.pNext = NULL;
+    immFenceCI.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+    if (vkCreateFence(core->lDev, &immFenceCI, NULL, &core->immediateFence))
+    {
+        printf("Could not create fence\n");
+        exit(1);
     }
 }
 
@@ -547,23 +599,43 @@ void destroyBuffer(Buffer buf, VulkanCore_t core)
     bufferInfo[buf.index].active = false;
 }
 // NOTE: will invalidate data pointer for you, dont fuck up
-void pushDataToBuffer(VulkanCore_t core, void *data, uint32_t dataSize, Buffer buf)
+void pushDataToBuffer(VulkanCore_t core, void *data, size_t dataSize, Buffer buf)
 {
     void *tdata = malloc(dataSize);
     vkMapMemory(core.lDev, (VkDeviceMemory)buf.associatedMemory, 0, dataSize, 0, tdata);
     memcpy(tdata, data, dataSize);
     vkUnmapMemory(core.lDev, (VkDeviceMemory)buf.associatedMemory);
     free(data);
+    free(tdata);
 }
 
 void copyBuf(VulkanCore_t core, Buffer src, Buffer dest)
 {
+    vkWaitForFences(core.lDev, 1, &core.immediateFence, VK_TRUE, UINT64_MAX);
+    vkResetFences(core.lDev, 1, &core.immediateFence);
+    vkResetCommandBuffer(core.immediateSubmit, 0);
+    vkBeginCommandBuffer(core.immediateSubmit, &cBufBeginInf);
     VkBufferCopy copyData = {0};
     copyData.dstOffset = 0;
     copyData.srcOffset = 0;
     copyData.size = dest.size;
 
-    vkCmdCopyBuffer(core.commandBuffers[core.currentBuffer], src.buffer, dest.buffer, 1, &copyData);
+    vkCmdCopyBuffer(core.immediateSubmit, src.buffer, dest.buffer, 1, &copyData);
+    vkEndCommandBuffer(core.immediateSubmit);
+
+    VkSubmitInfo submitInfo = {0};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.pNext = NULL;
+
+    submitInfo.waitSemaphoreCount = 0;
+    submitInfo.pWaitSemaphores = NULL;
+    submitInfo.signalSemaphoreCount = 0;
+    submitInfo.pSignalSemaphores = 0;
+
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &core.immediateSubmit;
+
+    vkQueueSubmit(core.gQueue, 1, &submitInfo, core.immediateFence);
 }
 
 void create_dsp(VulkanCore_t *core)
@@ -664,6 +736,7 @@ void write_textureDescriptorSets(VulkanCore_t core, uint64_t set, VkImageView te
 
 void destroyRenderer(renderer_t *renderer)
 {
+    vkDeviceWaitIdle(renderer->vkCore.lDev);
     vkDestroyDescriptorPool(renderer->vkCore.lDev, renderer->vkCore.tdescPool, NULL);
     vkDestroyDescriptorSetLayout(renderer->vkCore.lDev, renderer->vkCore.tdSetLayout, NULL);
     for (uint32_t i = 0; i < FRAMECOUNT; i++)
@@ -672,6 +745,7 @@ void destroyRenderer(renderer_t *renderer)
         vkDestroySemaphore(renderer->vkCore.lDev, renderer->vkCore.renderFinished[i], NULL);
         vkDestroyFence(renderer->vkCore.lDev, renderer->vkCore.fences[i], NULL);
     }
+    vkDestroyFence(renderer->vkCore.lDev, renderer->vkCore.immediateFence, NULL);
     vkDestroyCommandPool(renderer->vkCore.lDev, (VkCommandPool)renderer->vkCore.commandPool, NULL);
     for (uint32_t i = 0; i <= bufferCount; i++)
     {
@@ -695,8 +769,112 @@ void initRenderer(renderer_t *renderer)
     create_instance(renderer);
     create_device(&renderer->vkCore);
     create_swapchain(&renderer->vkCore);
+    renderer->vkCore.currentScImg = malloc(sizeof(Image));
+    *renderer->vkCore.currentScImg = (Image){
+        renderer->vkCore.swapChainImages[0],
+        renderer->vkCore.swapChainImageViews[0],
+        VK_IMAGE_LAYOUT_UNDEFINED,
+    };
+    renderer->vkCore.currentImage = 0;
     create_CommandBuffers(&renderer->vkCore);
     create_dsp(&renderer->vkCore);
 
     allocate_textureDescriptorSets(&renderer->vkCore, 20);
+}
+// needs to be here ugh
+void bindPipeline(Pipeline pline, VkCommandBuffer cBuf)
+{
+    VkBool32 cbEnable = pline.colorBlending;
+    vkCmdSetColorWriteMaskEXT_(cBuf, 0, 1, &pline.colorWriteMask);
+
+    vkCmdSetColorBlendEnableEXT_(cBuf, 0, 1, &cbEnable);
+    vkCmdSetLogicOpEnableEXT_(cBuf, pline.logicOpEnable);
+
+    vkCmdSetDepthTestEnable(cBuf, pline.depthTestEnable);
+    vkCmdSetDepthBiasEnable(cBuf, pline.depthBiasEnable);
+    vkCmdSetDepthClampEnableEXT_(cBuf, pline.depthClampEnable);
+    vkCmdSetDepthClipEnableEXT_(cBuf, pline.depthClipEnable);
+    vkCmdSetStencilTestEnable(cBuf, pline.stencilTestEnable);
+    vkCmdSetDepthWriteEnable(cBuf, pline.depthWriteEnable);
+    vkCmdSetDepthBoundsTestEnable(cBuf, pline.depthBoundsEnable);
+    vkCmdSetAlphaToCoverageEnableEXT_(cBuf, pline.alphaToCoverageEnable);
+    vkCmdSetAlphaToOneEnableEXT_(cBuf, pline.alphaToOneEnable);
+
+    vkCmdSetColorWriteMaskEXT_(cBuf, 0, 1, &pline.colorWriteMask);
+    vkCmdSetPolygonModeEXT_(cBuf, pline.polyMode);
+    vkCmdSetPrimitiveTopology(cBuf, pline.topology);
+    vkCmdSetRasterizationSamplesEXT_(cBuf, pline.rastSampleCount);
+    vkCmdSetFrontFace(cBuf, pline.frontFace);
+    vkCmdSetCullMode(cBuf, pline.cullMode);
+
+    if (pline.colorBlending == VK_TRUE)
+        vkCmdSetColorBlendEquationEXT_(cBuf, 0, 1, &pline.colorBlendEq);
+
+    if (pline.logicOpEnable == VK_TRUE)
+        vkCmdSetLogicOpEXT_(cBuf, pline.logicOp);
+    if (pline.depthTestEnable == VK_TRUE)
+    {
+        vkCmdSetDepthBounds(cBuf, pline.minDepth, pline.maxDepth);
+        vkCmdSetDepthCompareOp(cBuf, pline.depthCompareOp);
+    }
+    vkCmdBindShadersEXT_(cBuf, 2, (VkShaderStageFlagBits[2]){VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT}, (VkShaderEXT[2]){pline.vert.shader, pline.frag.shader});
+    int vertexDescCount = pline.vert.VertexDescriptons;
+    vkCmdSetVertexInputEXT_(cBuf, vertexDescCount, pline.vert.bindingDesc, vertexDescCount, pline.vert.attrDesc);
+}
+
+void setShaderSPRV(VulkanCore_t core, Pipeline *pl, uint32_t *vFileContents, uint32_t *fFileContents)
+{
+    VkShaderCreateInfoEXT vCI = {0};
+
+    vCI.sType = VK_STRUCTURE_TYPE_SHADER_CREATE_INFO_EXT;
+    vCI.pNext = NULL;
+
+    vCI.flags = 0;
+
+    vCI.setLayoutCount = pl->setLayoutCount;
+    vCI.pSetLayouts = pl->setLayouts;
+    vCI.pushConstantRangeCount = 1;
+    vCI.pPushConstantRanges = &pl->pcRange;
+
+    vCI.codeType = VK_SHADER_CODE_TYPE_SPIRV_EXT;
+    vCI.codeSize = sizeof(vFileContents);
+    vCI.pCode = vFileContents;
+    vCI.pName = "main";
+    vCI.stage = VK_SHADER_STAGE_VERTEX_BIT;
+    vCI.nextStage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    vCI.pSpecializationInfo = NULL; // I think its so fucking funny this exists
+
+    VkShaderCreateInfoEXT fCI = {0};
+
+    fCI.sType = VK_STRUCTURE_TYPE_SHADER_CREATE_INFO_EXT;
+    fCI.pNext = NULL;
+
+    fCI.flags = 0;
+
+    fCI.setLayoutCount = pl->setLayoutCount;
+    fCI.pSetLayouts = pl->setLayouts;
+    fCI.pushConstantRangeCount = 1;
+    fCI.pPushConstantRanges = &pl->pcRange;
+
+    fCI.codeType = VK_SHADER_CODE_TYPE_SPIRV_EXT;
+    fCI.codeSize = sizeof(fFileContents);
+    fCI.pCode = fFileContents;
+    fCI.pName = "main";
+    fCI.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    fCI.nextStage = 0;
+    fCI.pSpecializationInfo = NULL;
+
+    VkShaderEXT shaders[2];
+    vkCreateShadersEXT_(core.lDev, 2, (VkShaderCreateInfoEXT[2]){vCI, fCI}, NULL, shaders);
+
+    pl->vert.shader = shaders[0];
+    pl->frag.shader = shaders[1];
+}
+
+void addVertexInput(Pipeline *pl, VkVertexInputAttributeDescription2EXT attrDesc, VkVertexInputBindingDescription2EXT bindDesc)
+{
+    int index = pl->vert.VertexDescriptons;
+    pl->vert.attrDesc[index] = attrDesc;
+    pl->vert.bindingDesc[index] = bindDesc;
+    pl->vert.VertexDescriptons += 1;
 }

@@ -1,25 +1,7 @@
-#include <hashmap.h>
-#include <rendergraph.h>
+#include <renderer.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-
-PFN_vkCmdSetVertexInputEXT vkCmdSetVertexInputEXT_ = NULL;
-PFN_vkCreateShadersEXT vkCreateShadersEXT_ = NULL;
-PFN_vkCmdBindShadersEXT vkCmdBindShadersEXT_ = NULL;
-PFN_vkCmdSetColorBlendEnableEXT vkCmdSetColorBlendEnableEXT_ = NULL;
-PFN_vkCmdSetColorWriteMaskEXT vkCmdSetColorWriteMaskEXT_ = NULL;
-PFN_vkCmdSetDepthClampEnableEXT vkCmdSetDepthClampEnableEXT_ = NULL;
-PFN_vkCmdSetPolygonModeEXT vkCmdSetPolygonModeEXT_ = NULL;
-PFN_vkCmdSetLogicOpEnableEXT vkCmdSetLogicOpEnableEXT_ = NULL;
-PFN_vkCmdSetRasterizationSamplesEXT vkCmdSetRasterizationSamplesEXT_ = NULL;
-PFN_vkCmdSetColorBlendEquationEXT vkCmdSetColorBlendEquationEXT_ = NULL;
-PFN_vkCmdSetSampleMaskEXT vkCmdSetSampleMaskEXT_ = NULL;
-PFN_vkCmdSetAlphaToCoverageEnableEXT vkCmdSetAlphaToCoverageEnableEXT_ = NULL;
-PFN_vkCmdSetAlphaToOneEnableEXT vkCmdSetAlphaToOneEnableEXT_ = NULL;
-PFN_vkCmdSetDepthClipEnableEXT vkCmdSetDepthClipEnableEXT_ = NULL;
-PFN_vkCmdSetLogicOpEXT vkCmdSetLogicOpEXT_ = NULL;
-PFN_vkDestroyShaderEXT vkDestroyShaderEXT_ = NULL;
 
 // courtesy of https://github.com/haipome/fnv/blob/master/fnv.c <- even if its public domain it deserves credit :)
 uint64_t fnv_64a_str(char *str, uint64_t hval)
@@ -83,43 +65,6 @@ Pipeline find_Pipeline(char *Name)
     return errpl;
 }
 
-void bindPipeline(Pipeline pline, VkCommandBuffer cBuf)
-{
-    VkBool32 cbEnable = pline.colorBlending;
-    vkCmdSetColorWriteMaskEXT_(cBuf, 0, 1, &pline.colorWriteMask);
-
-    vkCmdSetColorBlendEnableEXT_(cBuf, 0, 1, &cbEnable);
-    vkCmdSetLogicOpEnableEXT_(cBuf, pline.logicOpEnable);
-
-    vkCmdSetDepthTestEnable(cBuf, pline.depthTestEnable);
-    vkCmdSetDepthBiasEnable(cBuf, pline.depthBiasEnable);
-    vkCmdSetDepthClampEnableEXT_(cBuf, pline.depthClampEnable);
-    vkCmdSetDepthClipEnableEXT_(cBuf, pline.depthClipEnable);
-    vkCmdSetStencilTestEnable(cBuf, pline.stencilTestEnable);
-    vkCmdSetDepthWriteEnable(cBuf, pline.depthWriteEnable);
-    vkCmdSetDepthBoundsTestEnable(cBuf, pline.depthBoundsEnable);
-    vkCmdSetAlphaToCoverageEnableEXT_(cBuf, pline.alphaToCoverageEnable);
-    vkCmdSetAlphaToOneEnableEXT_(cBuf, pline.alphaToOneEnable);
-
-    vkCmdSetColorWriteMaskEXT_(cBuf, 0, 1, &pline.colorWriteMask);
-    vkCmdSetPolygonModeEXT_(cBuf, pline.polyMode);
-    vkCmdSetPrimitiveTopology(cBuf, pline.topology);
-    vkCmdSetRasterizationSamplesEXT_(cBuf, pline.rastSampleCount);
-    vkCmdSetFrontFace(cBuf, pline.frontFace);
-    vkCmdSetCullMode(cBuf, pline.cullMode);
-
-    if (pline.colorBlending == VK_TRUE)
-        vkCmdSetColorBlendEquationEXT_(cBuf, 0, 1, &pline.colorBlendEq);
-
-    if (pline.logicOpEnable == VK_TRUE)
-        vkCmdSetLogicOpEXT_(cBuf, pline.logicOp);
-    if (pline.depthTestEnable == VK_TRUE)
-    {
-        vkCmdSetDepthBounds(cBuf, pline.minDepth, pline.maxDepth);
-        vkCmdSetDepthCompareOp(cBuf, pline.depthCompareOp);
-    }
-}
-
 void recordPass(RenderPass *pass, VkCommandBuffer cBuf)
 {
     VkRenderingInfo renInf = {0};
@@ -141,7 +86,7 @@ void recordPass(RenderPass *pass, VkCommandBuffer cBuf)
 bool resEq(Resource rhs, Resource lhs)
 {
     return rhs.value.buffer.buffer == lhs.value.buffer.buffer &&
-           rhs.value.img.imgview == lhs.value.img.imgview &&
+           rhs.value.img->imgview == lhs.value.img->imgview &&
            rhs.type == lhs.type &&
            rhs.usage == lhs.usage;
 }
@@ -150,7 +95,7 @@ bool resEqWoUsage(Resource rhs, Resource lhs)
 {
     return rhs.type == lhs.type &&
            rhs.value.buffer.index == lhs.value.buffer.index &&
-           rhs.value.img.image == lhs.value.img.image;
+           rhs.value.img->image == lhs.value.img->image;
 }
 
 const VkImageSubresourceRange imgSRR = {
@@ -200,13 +145,13 @@ RenderPass newPass(char *name, passType type)
 }
 
 // attachments are always read | write
-void addColorAttachment(Image img, RenderPass *pass, VkClearValue *clear)
+void addColorAttachment(Image *img, RenderPass *pass, VkClearValue *clear)
 {
     VkRenderingAttachmentInfo rAttInfo = {0};
     rAttInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
     rAttInfo.pNext = NULL;
 
-    rAttInfo.imageView = img.imgview;
+    rAttInfo.imageView = img->imgview;
     rAttInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     rAttInfo.loadOp = clear != NULL ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
     rAttInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -223,7 +168,7 @@ void addColorAttachment(Image img, RenderPass *pass, VkClearValue *clear)
     res.usage = USAGE_COLORATTACHMENT;
 
     res.value.img = img;
-    res.value.img.CurrentLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    res.value.img->CurrentLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
     addResource(pass, res);
 }
@@ -249,12 +194,12 @@ void setDepthStencilAttachment(Image img, RenderPass *pass)
     res.access = ACCESS_DEPTHATTACHMENT;
     res.usage = USAGE_DEPTHSTENCILATTACHMENT;
 
-    res.value.img = img;
-    res.value.img.CurrentLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    res.value.img = &img;
+    res.value.img->CurrentLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
     addResource(pass, res);
 }
-void addImageResource(RenderPass *pass, Image image, ResourceUsageFlags_t usage)
+void addImageResource(RenderPass *pass, Image *image, ResourceUsageFlags_t usage)
 {
     Resource res = {0};
     res.type = RES_TYPE_Image;
@@ -265,29 +210,29 @@ void addImageResource(RenderPass *pass, Image image, ResourceUsageFlags_t usage)
     {
     case USAGE_COLORATTACHMENT:
         res.access = ACCESS_COLORATTACHMENT;
-        res.value.img.CurrentLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        res.value.img->CurrentLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         return;
         break;
     case USAGE_DEPTHSTENCILATTACHMENT:
         res.access = ACCESS_DEPTHATTACHMENT;
-        res.value.img.CurrentLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        res.value.img->CurrentLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
         return;
         break;
     case USAGE_TRANSFER_SRC:
         res.access = ACCESS_TRANSFER_READ;
-        res.value.img.CurrentLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        res.value.img->CurrentLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
         break;
     case USAGE_TRANSFER_DST:
         res.access = ACCESS_TRANSFER_WRITE;
-        res.value.img.CurrentLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        res.value.img->CurrentLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
         break;
     case USAGE_SAMPLED:
         res.access = ACCESS_READ;
-        res.value.img.CurrentLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        res.value.img->CurrentLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         break;
     case USAGE_UNDEFINED:
         res.access = 0;
-        res.value.img.CurrentLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        res.value.img->CurrentLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         break;
     }
 
@@ -355,7 +300,7 @@ void optimizePasses(RenderGraph *graph, Image swapChainImg)
         for (int r = 0; r <= curPass.resourceCount - 1; r++)
         {
             Resource cr = curPass.resources[r];
-            if ((cr.access & ACCESS_TRANSFER_WRITE) != 0 && cr.value.img.imgview == swapChainImg.imgview)
+            if ((cr.access & ACCESS_TRANSFER_WRITE) != 0 && cr.value.img->imgview == swapChainImg.imgview)
             {
                 rootResources = realloc(rootResources, sizeof(Resource) * (rootResourceCount + curPass.resourceCount));
                 memcpy(rootResources + rootResourceCount, curPass.resources, sizeof(Resource) * (curPass.resourceCount));
@@ -379,10 +324,10 @@ void optimizePasses(RenderGraph *graph, Image swapChainImg)
                             VkImageMemoryBarrier icBar;
                             icBar.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
                             icBar.pNext = NULL;
-                            icBar.image = cr.value.img.image;
+                            icBar.image = cr.value.img->image;
 
-                            icBar.oldLayout = oldImg.value.img.CurrentLayout;
-                            icBar.newLayout = cr.value.img.CurrentLayout;
+                            icBar.oldLayout = oldImg.value.img->CurrentLayout;
+                            icBar.newLayout = cr.value.img->CurrentLayout;
 
                             icBar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
                             icBar.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -471,4 +416,84 @@ void destroyRenderGraph(RenderGraph *graph)
 {
     free(graph->barriers);
     free(graph->passes);
+}
+const VkClearColorValue clearValue = {
+    {0.0f, 0.0f, 0.0f, 0.0f}};
+void drawRenderer(renderer_t *renderer, int cBufIndex)
+{
+    VkCommandBuffer cbuf = renderer->vkCore.commandBuffers[cBufIndex];
+
+    vkWaitForFences(renderer->vkCore.lDev, 1, &renderer->vkCore.fences[cBufIndex], VK_TRUE, UINT64_MAX);
+    vkResetFences(renderer->vkCore.lDev, 1, &renderer->vkCore.fences[cBufIndex]);
+
+    vkResetCommandBuffer(cbuf, 0);
+    vkBeginCommandBuffer(cbuf, &cBufBeginInf);
+
+    vkAcquireNextImageKHR(renderer->vkCore.lDev, renderer->vkCore.swapChain, UINT64_MAX, renderer->vkCore.imageAvailiable[cBufIndex], VK_NULL_HANDLE, &renderer->vkCore.currentImage);
+
+    *renderer->vkCore.currentScImg = (Image){
+        renderer->vkCore.swapChainImages[renderer->vkCore.currentImage],
+        renderer->vkCore.swapChainImageViews[renderer->vkCore.currentImage],
+        VK_IMAGE_LAYOUT_UNDEFINED,
+    };
+
+    RenderGraph graph = buildGraph(&renderer->rg, *renderer->vkCore.currentScImg);
+
+    // Change layout of image to be optimal for clearing
+    VkImageMemoryBarrier imgMemoryBarrier = {
+        VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        NULL,
+        0,
+        VK_ACCESS_TRANSFER_WRITE_BIT,
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        VK_QUEUE_FAMILY_IGNORED,
+        VK_QUEUE_FAMILY_IGNORED,
+        renderer->vkCore.swapChainImages[renderer->vkCore.currentImage],
+        imgSRR,
+    };
+    vkCmdPipelineBarrier(cbuf, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, NULL, 0, NULL, 1, &imgMemoryBarrier);
+
+    vkCmdClearColorImage(cbuf, renderer->vkCore.swapChainImages[renderer->vkCore.currentImage], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearValue, 1, &imgSRR);
+
+    executeGraph(&graph, cbuf);
+
+    imgMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    imgMemoryBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+    imgMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    imgMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+    vkCmdPipelineBarrier(cbuf, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 0, NULL, 0, NULL, 1, &imgMemoryBarrier);
+
+    vkEndCommandBuffer(cbuf);
+
+    VkSubmitInfo submitInfo = {0};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.pNext = NULL;
+
+    submitInfo.waitSemaphoreCount = 1;
+    submitInfo.pWaitSemaphores = &renderer->vkCore.imageAvailiable[cBufIndex];
+    submitInfo.pWaitDstStageMask = (VkPipelineStageFlags[1]){VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.pSignalSemaphores = &renderer->vkCore.renderFinished[cBufIndex];
+
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &cbuf;
+
+    vkQueueSubmit(renderer->vkCore.gQueue, 1, &submitInfo, renderer->vkCore.fences[cBufIndex]);
+
+    VkPresentInfoKHR presentInfo = {0};
+    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    presentInfo.pNext = NULL;
+
+    presentInfo.waitSemaphoreCount = 1;
+    presentInfo.pWaitSemaphores = &renderer->vkCore.renderFinished[cBufIndex];
+
+    presentInfo.swapchainCount = 1;
+    presentInfo.pSwapchains = &renderer->vkCore.swapChain;
+    presentInfo.pImageIndices = &renderer->vkCore.currentImage;
+
+    vkQueuePresentKHR(renderer->vkCore.pQueue, &presentInfo);
+
+    destroyRenderGraph(&graph);
 }

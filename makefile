@@ -11,6 +11,6 @@ Debug:
 DebugLib:
 	make -C ./Backend/ Debug
 
-clean:
+Clean:
 	make -C ./Backend/ Clean
 	make -C ./Frontend/ Clean

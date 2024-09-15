@@ -1,7 +1,7 @@
 #ifndef RENDERGRAPH_FANCY_H_
 #define RENDERGRAPH_FANCY_H_
 
-#include <rendergraph.h>
+#include <renderer.h>
 #include <string>
 namespace jrv2
 {

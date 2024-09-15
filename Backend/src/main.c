@@ -1,31 +1,25 @@
-#include <rendergraph.h>
-#include <stdio.h>
+#include <renderer.h>
 #include <windowing.h>
 
 RenderPass pass1;
-RenderPass pass2;
-RenderPass pass3;
-RenderPass pass4;
 renderer_t renderer;
 winf_t wininfo = {0};
 GraphBuilder builder = {0};
 
+int ImageIndex = 0;
+int FrameIndex = 0;
+int Index = 0;
 void loop()
 {
+    FrameIndex++;
+    Index = FrameIndex % FRAMECOUNT;
     addPass(&builder, &pass1);
-    addPass(&builder, &pass2);
-    addPass(&builder, &pass4);
-    addPass(&builder, &pass3);
-    Image scImg = {
-        renderer.vkCore.swapChainImages[0],
-        renderer.vkCore.swapChainImageViews[0],
-        VK_IMAGE_LAYOUT_UNDEFINED,
-    };
-    RenderGraph graph = buildGraph(&builder, scImg);
 
-    printf("%i\n", graph.passCount);
+    drawRenderer(&renderer, Index);
+}
 
-    destroyRenderGraph(&graph);
+void helloTriangleCallback(RenderPass pass, VkCommandBuffer cBuf)
+{
 }
 
 void init()
@@ -39,26 +33,11 @@ void init()
     cInf.dataSize = 160;
     cInf.usage = BUFFER_USAGE_VERTEX;
 
-    builder.renderer = renderer;
-    Image scImg = {
-        renderer.vkCore.swapChainImages[0],
-        renderer.vkCore.swapChainImageViews[0],
-        VK_IMAGE_LAYOUT_UNDEFINED,
-    };
-    Buffer buf;
-    createBuffer(renderer.vkCore, &cInf, &buf);
-    Buffer buf2;
-    cInf.usage = BUFFER_USAGE_INDEX;
-    createBuffer(renderer.vkCore, &cInf, &buf2);
-
     pass1 = newPass((char *)"name1", PASS_TYPE_GRAPHICS);
-    pass2 = newPass((char *)"name2", PASS_TYPE_GRAPHICS);
-    pass3 = newPass((char *)"name3", PASS_TYPE_GRAPHICS);
-    pass4 = newPass((char *)"name4", PASS_TYPE_GRAPHICS);
 
-    addBufferResource(&pass1, buf, USAGE_TRANSFER_DST);
-    addBufferResource(&pass2, buf, USAGE_TRANSFER_SRC);
-    addImageResource(&pass2, scImg, USAGE_TRANSFER_DST);
+    addImageResource(&pass1, renderer.vkCore.currentScImg, USAGE_TRANSFER_DST);
+
+    setExecutionCallBack(&pass1, helloTriangleCallback);
 }
 int main(void)
 {

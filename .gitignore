@@ -1,8 +1,12 @@
 *.exe
 *.ilk
 *.pdb
+*.exp
+Backend/main.lib
 .vs/
 .vscode/
 notes/
 Build/
 Lib/
+shaders/
+buildshaders.bat
