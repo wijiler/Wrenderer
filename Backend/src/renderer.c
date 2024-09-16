@@ -123,13 +123,21 @@ void create_instance(renderer_t *renderer)
     vkDestroyShaderEXT_ = (PFN_vkDestroyShaderEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkDestroyShaderEXT");
 }
 
-VkPhysicalDevice find_valid_device(int deviceCount, VkPhysicalDevice devices[], VkPhysicalDeviceFeatures2 *devFeatures, unsigned int *graphicsFamilyIndex, VkSurfaceKHR surface)
+VkPhysicalDevice find_valid_device(int deviceCount, VkPhysicalDevice devices[], unsigned int *graphicsFamilyIndex, VkSurfaceKHR surface)
 {
     VkPhysicalDeviceProperties devProps = {0};
 
+    VkPhysicalDeviceDepthClipEnableFeaturesEXT depthClipEnable = {0};
+    depthClipEnable.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_ENABLE_FEATURES_EXT;
+    depthClipEnable.pNext = NULL;
+
+    VkPhysicalDeviceShaderObjectFeaturesEXT shaderObjectFeatures = {0};
+    shaderObjectFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_OBJECT_FEATURES_EXT;
+    shaderObjectFeatures.pNext = &depthClipEnable;
+
     VkPhysicalDeviceVulkan12Features devFeat12 = {0};
     devFeat12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-    devFeat12.pNext = NULL;
+    devFeat12.pNext = &shaderObjectFeatures;
 
     VkPhysicalDeviceVulkan13Features devFeat13 = {0};
     devFeat13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
@@ -168,9 +176,9 @@ VkPhysicalDevice find_valid_device(int deviceCount, VkPhysicalDevice devices[], 
 
         if (devProps.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && devFeat13.dynamicRendering == VK_TRUE &&
             devFeat12.bufferDeviceAddress == VK_TRUE && devFeat12.descriptorBindingUniformBufferUpdateAfterBind == VK_TRUE &&
-            devFeat12.descriptorBindingPartiallyBound == VK_TRUE && devFeat12.descriptorBindingVariableDescriptorCount == VK_TRUE)
+            devFeat12.descriptorBindingPartiallyBound == VK_TRUE && devFeat12.descriptorBindingVariableDescriptorCount == VK_TRUE &&
+            shaderObjectFeatures.shaderObject == VK_TRUE && devFeat2.features.alphaToOne == VK_TRUE && depthClipEnable.depthClipEnable == VK_TRUE)
         {
-            devFeatures = &devFeat2;
             graphicsFamilyIndex = &gfami;
             return devices[i];
         }
@@ -180,12 +188,13 @@ VkPhysicalDevice find_valid_device(int deviceCount, VkPhysicalDevice devices[], 
     return NULL;
 }
 
-#define DEVICEEXTENSIONSCOUNT 4
+#define DEVICEEXTENSIONSCOUNT 5
 char *deviceExtensions[DEVICEEXTENSIONSCOUNT] = {
     VK_KHR_SWAPCHAIN_EXTENSION_NAME,
     VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,
     VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
     VK_EXT_SHADER_OBJECT_EXTENSION_NAME,
+    VK_EXT_DEPTH_CLIP_ENABLE_EXTENSION_NAME,
 };
 
 void create_device(VulkanCore_t *core)
@@ -211,9 +220,17 @@ void create_device(VulkanCore_t *core)
         }
     }
 
+    VkPhysicalDeviceDepthClipEnableFeaturesEXT depthClipEnable = {0};
+    depthClipEnable.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_ENABLE_FEATURES_EXT;
+    depthClipEnable.pNext = NULL;
+
+    VkPhysicalDeviceShaderObjectFeaturesEXT shaderObjectFeatures = {0};
+    shaderObjectFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_OBJECT_FEATURES_EXT;
+    shaderObjectFeatures.pNext = &depthClipEnable;
+
     VkPhysicalDeviceVulkan12Features devFeatures12 = {0};
     devFeatures12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-    devFeatures12.pNext = NULL;
+    devFeatures12.pNext = &shaderObjectFeatures;
 
     VkPhysicalDeviceVulkan13Features devFeatures13 = {0};
     devFeatures13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
@@ -223,12 +240,11 @@ void create_device(VulkanCore_t *core)
     devFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
     unsigned int gfi = 0;
 
-    core->pDev = find_valid_device(deviceCount, devices, &devFeatures2, &gfi, core->surface);
+    core->pDev = find_valid_device(deviceCount, devices, &gfi, core->surface);
     core->qfi = gfi;
     devFeatures2.pNext = &devFeatures13;
 
-    devFeatures2.features.geometryShader = VK_FALSE;
-    devFeatures2.features.tessellationShader = VK_FALSE;
+    devFeatures2.features.alphaToOne = VK_TRUE;
 
     devFeatures13.dynamicRendering = VK_TRUE;
 
@@ -237,6 +253,10 @@ void create_device(VulkanCore_t *core)
     devFeatures12.descriptorBindingUniformBufferUpdateAfterBind = VK_TRUE;
     devFeatures12.descriptorBindingPartiallyBound = VK_TRUE;
     devFeatures12.descriptorBindingVariableDescriptorCount = VK_TRUE;
+
+    shaderObjectFeatures.shaderObject = VK_TRUE;
+
+    depthClipEnable.depthClipEnable = VK_TRUE;
 
     VkDeviceQueueCreateInfo queueCreateInfo = {0};
     queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
@@ -346,6 +366,8 @@ void create_swapchain(VulkanCore_t *core)
     extent.height = h;
     extent.width = w;
 
+    core->extent = extent;
+
     VkSwapchainCreateInfoKHR swapchainCI;
     swapchainCI.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
     swapchainCI.pNext = NULL;
@@ -437,11 +459,6 @@ void create_CommandBuffers(VulkanCore_t *core)
             printf("Could not create semaphore\n");
             exit(1);
         }
-        if (vkCreateSemaphore(core->lDev, &semaphoreCI, NULL, &core->renderFinished[i]) != VK_SUCCESS)
-        {
-            printf("Could not create semaphore\n");
-            exit(1);
-        }
 
         VkFenceCreateInfo fenceCI = {0};
         fenceCI.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
@@ -451,6 +468,20 @@ void create_CommandBuffers(VulkanCore_t *core)
         if (vkCreateFence(core->lDev, &fenceCI, NULL, &core->fences[i]) != VK_SUCCESS)
         {
             printf("Could not create fence\n");
+            exit(1);
+        }
+    }
+
+    core->renderFinished = malloc(sizeof(VkSemaphore) * core->imgCount + 1);
+    for (uint32_t i = 0; i < core->imgCount; i++)
+    {
+        VkSemaphoreCreateInfo semaphoreCI = {0};
+        semaphoreCI.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+        semaphoreCI.pNext = NULL;
+        semaphoreCI.flags = 0;
+        if (vkCreateSemaphore(core->lDev, &semaphoreCI, NULL, &core->renderFinished[i]) != VK_SUCCESS)
+        {
+            printf("Could not create semaphore\n");
             exit(1);
         }
     }
@@ -775,7 +806,7 @@ void initRenderer(renderer_t *renderer)
         renderer->vkCore.swapChainImageViews[0],
         VK_IMAGE_LAYOUT_UNDEFINED,
     };
-    renderer->vkCore.currentImage = 0;
+    renderer->vkCore.currentImageIndex = 0;
     create_CommandBuffers(&renderer->vkCore);
     create_dsp(&renderer->vkCore);
 
@@ -803,6 +834,8 @@ void bindPipeline(Pipeline pline, VkCommandBuffer cBuf)
     vkCmdSetColorWriteMaskEXT_(cBuf, 0, 1, &pline.colorWriteMask);
     vkCmdSetPolygonModeEXT_(cBuf, pline.polyMode);
     vkCmdSetPrimitiveTopology(cBuf, pline.topology);
+    vkCmdSetRasterizerDiscardEnable(cBuf, pline.reasterizerDiscardEnable);
+    vkCmdSetPrimitiveRestartEnable(cBuf, pline.primitiveRestartEnable);
     vkCmdSetRasterizationSamplesEXT_(cBuf, pline.rastSampleCount);
     vkCmdSetFrontFace(cBuf, pline.frontFace);
     vkCmdSetCullMode(cBuf, pline.cullMode);
@@ -817,12 +850,50 @@ void bindPipeline(Pipeline pline, VkCommandBuffer cBuf)
         vkCmdSetDepthBounds(cBuf, pline.minDepth, pline.maxDepth);
         vkCmdSetDepthCompareOp(cBuf, pline.depthCompareOp);
     }
-    vkCmdBindShadersEXT_(cBuf, 2, (VkShaderStageFlagBits[2]){VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT}, (VkShaderEXT[2]){pline.vert.shader, pline.frag.shader});
+    vkCmdSetSampleMaskEXT_(cBuf, 1, &pline.sampleMask);
+    vkCmdBindShadersEXT_(cBuf, 1, (VkShaderStageFlagBits[1]){VK_SHADER_STAGE_VERTEX_BIT}, &pline.vert.shader);
+    vkCmdBindShadersEXT_(cBuf, 1, (VkShaderStageFlagBits[1]){VK_SHADER_STAGE_FRAGMENT_BIT}, &pline.frag.shader);
     int vertexDescCount = pline.vert.VertexDescriptons;
     vkCmdSetVertexInputEXT_(cBuf, vertexDescCount, pline.vert.bindingDesc, vertexDescCount, pline.vert.attrDesc);
 }
 
-void setShaderSPRV(VulkanCore_t core, Pipeline *pl, uint32_t *vFileContents, uint32_t *fFileContents)
+void unBindPipeline(VkCommandBuffer cBuf)
+{
+    vkCmdBindShadersEXT_(cBuf, 1, (VkShaderStageFlagBits[1]){VK_SHADER_STAGE_VERTEX_BIT}, VK_NULL_HANDLE);
+    vkCmdBindShadersEXT_(cBuf, 1, (VkShaderStageFlagBits[1]){VK_SHADER_STAGE_FRAGMENT_BIT}, VK_NULL_HANDLE);
+}
+
+void readShaderSPRV(const char *filePath, uint64_t *len, uint32_t *data)
+{
+    FILE *file;
+    errno_t err = fopen_s(&file, filePath, "rb");
+    if (err != 0)
+    {
+        printf("could not open file\n");
+        return;
+    }
+
+    fseek(file, 0, SEEK_END);
+    unsigned long file_size = ftell(file);
+    rewind(file);
+    *len = file_size;
+    uint32_t *spirv_data = malloc(file_size);
+    if (fread(spirv_data, 1, file_size, file) != file_size)
+    {
+        printf("Error reading file\n");
+        fclose(file);
+        free(spirv_data);
+        return;
+    }
+    if (data != NULL)
+    {
+        memcpy(data, spirv_data, file_size);
+        free(spirv_data);
+    }
+    fclose(file);
+}
+
+void setShaderSPRV(VulkanCore_t core, Pipeline *pl, uint32_t *vFileContents, int vFileLen, uint32_t *fFileContents, int fFileLen)
 {
     VkShaderCreateInfoEXT vCI = {0};
 
@@ -833,16 +904,16 @@ void setShaderSPRV(VulkanCore_t core, Pipeline *pl, uint32_t *vFileContents, uin
 
     vCI.setLayoutCount = pl->setLayoutCount;
     vCI.pSetLayouts = pl->setLayouts;
-    vCI.pushConstantRangeCount = 1;
+    vCI.pushConstantRangeCount = pl->pcRangeCount;
     vCI.pPushConstantRanges = &pl->pcRange;
 
     vCI.codeType = VK_SHADER_CODE_TYPE_SPIRV_EXT;
-    vCI.codeSize = sizeof(vFileContents);
+    vCI.codeSize = vFileLen;
     vCI.pCode = vFileContents;
     vCI.pName = "main";
     vCI.stage = VK_SHADER_STAGE_VERTEX_BIT;
     vCI.nextStage = VK_SHADER_STAGE_FRAGMENT_BIT;
-    vCI.pSpecializationInfo = NULL; // I think its so fucking funny this exists
+    vCI.pSpecializationInfo = NULL;
 
     VkShaderCreateInfoEXT fCI = {0};
 
@@ -853,22 +924,23 @@ void setShaderSPRV(VulkanCore_t core, Pipeline *pl, uint32_t *vFileContents, uin
 
     fCI.setLayoutCount = pl->setLayoutCount;
     fCI.pSetLayouts = pl->setLayouts;
-    fCI.pushConstantRangeCount = 1;
+    fCI.pushConstantRangeCount = pl->pcRangeCount;
     fCI.pPushConstantRanges = &pl->pcRange;
 
     fCI.codeType = VK_SHADER_CODE_TYPE_SPIRV_EXT;
-    fCI.codeSize = sizeof(fFileContents);
+    fCI.codeSize = fFileLen;
     fCI.pCode = fFileContents;
     fCI.pName = "main";
     fCI.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
     fCI.nextStage = 0;
     fCI.pSpecializationInfo = NULL;
 
-    VkShaderEXT shaders[2];
-    vkCreateShadersEXT_(core.lDev, 2, (VkShaderCreateInfoEXT[2]){vCI, fCI}, NULL, shaders);
-
-    pl->vert.shader = shaders[0];
-    pl->frag.shader = shaders[1];
+    VkShaderCreateInfoEXT sCi[2] = {
+        vCI,
+        fCI,
+    };
+    vkCreateShadersEXT_(core.lDev, 1, &sCi[0], NULL, &pl->vert.shader);
+    vkCreateShadersEXT_(core.lDev, 1, &sCi[1], NULL, &pl->frag.shader);
 }
 
 void addVertexInput(Pipeline *pl, VkVertexInputAttributeDescription2EXT attrDesc, VkVertexInputBindingDescription2EXT bindDesc)

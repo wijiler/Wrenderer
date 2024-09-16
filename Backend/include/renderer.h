@@ -79,11 +79,13 @@ extern "C"
         VkCullModeFlags cullMode;
 
         VkBool32 colorBlending, logicOpEnable, depthTestEnable, depthBiasEnable, depthClampEnable,
-            depthClipEnable, stencilTestEnable, depthWriteEnable, depthBoundsEnable, alphaToCoverageEnable, alphaToOneEnable;
+            depthClipEnable, stencilTestEnable, depthWriteEnable, depthBoundsEnable, alphaToCoverageEnable, alphaToOneEnable,
+            reasterizerDiscardEnable, primitiveRestartEnable;
 
-        VkLogicOp logicOp;    // if logicOp is changed logicOpEnable must be true
-        uint32_t *sampleMask; // can be [0]
+        VkLogicOp logicOp;   // if logicOp is changed logicOpEnable must be true
+        uint32_t sampleMask; // can be [0]
 
+        int pcRangeCount;
         VkPushConstantRange pcRange;
         void *PushConstants;
 
@@ -98,6 +100,7 @@ extern "C"
     } Pipeline;
 
     void bindPipeline(Pipeline pline, VkCommandBuffer cBuf);
+    void unBindPipeline(VkCommandBuffer cBuf);
 
     typedef enum
     {
@@ -128,6 +131,7 @@ extern "C"
         Resourcetype type;
         accessFlags access;
         ResourceUsageFlags_t usage;
+        int cAttIndex; // only used if the image is a color attachment but very useful
         union resourceVal
         {
             Buffer buffer; // used if RES_TYPE_Buffer
@@ -206,18 +210,19 @@ extern "C"
         VkQueue pQueue, gQueue;
 
         VkSwapchainKHR swapChain;
+        VkExtent2D extent;
         VkSurfaceFormatKHR sFormat;
         VkPresentModeKHR sPresentMode;
         VkImage *swapChainImages;
         unsigned int imgCount;
-        uint32_t currentImage;
+        uint32_t currentImageIndex;
         VkImageView *swapChainImageViews;
         Image *currentScImg;
 
         VkFence fences[FRAMECOUNT];
         VkFence immediateFence;
         VkSemaphore imageAvailiable[FRAMECOUNT];
-        VkSemaphore renderFinished[FRAMECOUNT];
+        VkSemaphore *renderFinished;
 
         VkCommandPool *commandPool;
         VkCommandBuffer commandBuffers[FRAMECOUNT];
@@ -233,7 +238,7 @@ extern "C"
     typedef struct
     {
         VulkanCore_t vkCore;
-        GraphBuilder rg;
+        GraphBuilder *rg;
     } renderer_t;
 
     void initRenderer(renderer_t *renderer);
@@ -255,7 +260,8 @@ extern "C"
     void cache_PipeLine(Pipeline *pLine, char *Name);
     Pipeline find_Pipeline(char *Name);
     void bindPipeline(Pipeline pline, VkCommandBuffer cBuf);
-    void setShaderSPRV(VulkanCore_t core, Pipeline *pl, uint32_t *vFileContents, uint32_t *fFileContents);
+    void readShaderSPRV(const char *filePath, uint64_t *len, uint32_t *data);
+    void setShaderSPRV(VulkanCore_t core, Pipeline *pl, uint32_t *vFileContents, int vFileLen, uint32_t *fFileContents, int fFileLen);
     void addVertexInput(Pipeline *pl, VkVertexInputAttributeDescription2EXT attrDesc, VkVertexInputBindingDescription2EXT bindDesc);
 
     RenderPass newPass(char *name, passType type);
@@ -270,7 +276,7 @@ extern "C"
     void addPass(GraphBuilder *builder, RenderPass *pass);
     RenderGraph buildGraph(GraphBuilder *builder, Image scImage);
     void destroyRenderGraph(RenderGraph *graph);
-    void executeGraph(RenderGraph *graph, VkCommandBuffer cBuf);
+    void executeGraph(VkExtent2D extent, RenderGraph *graph, VkCommandBuffer cBuf);
 
     uint64_t fnv_64a_str(char *str, uint64_t hval);
 

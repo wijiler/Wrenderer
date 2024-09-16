@@ -65,16 +65,22 @@ Pipeline find_Pipeline(char *Name)
     return errpl;
 }
 
-void recordPass(RenderPass *pass, VkCommandBuffer cBuf)
+void recordPass(VkExtent2D extent, RenderPass *pass, VkCommandBuffer cBuf)
 {
     VkRenderingInfo renInf = {0};
     renInf.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
     renInf.pNext = NULL;
 
+    renInf.layerCount = 1;
+    renInf.renderArea = (VkRect2D){
+        {0, 0},
+        extent,
+    };
+
     renInf.colorAttachmentCount = pass->cAttCount;
     renInf.pColorAttachments = pass->colorAttachments;
-    renInf.pDepthAttachment = &pass->depthAttachment;
-    renInf.pStencilAttachment = &pass->stencilAttachment;
+    renInf.pDepthAttachment = NULL;
+    renInf.pStencilAttachment = NULL;
 
     vkCmdBeginRendering(cBuf, &renInf);
 
@@ -159,18 +165,6 @@ void addColorAttachment(Image *img, RenderPass *pass, VkClearValue *clear)
     if (clear)
         rAttInfo.clearValue = *clear;
     addCatt(pass, rAttInfo);
-
-    Resource res;
-
-    res.type = RES_TYPE_Image;
-
-    res.access = ACCESS_COLORATTACHMENT;
-    res.usage = USAGE_COLORATTACHMENT;
-
-    res.value.img = img;
-    res.value.img->CurrentLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-    addResource(pass, res);
 }
 
 void setDepthStencilAttachment(Image img, RenderPass *pass)
@@ -186,18 +180,6 @@ void setDepthStencilAttachment(Image img, RenderPass *pass)
     dAttInfo.clearValue.depthStencil.depth = 0;
 
     pass->depthAttachment = dAttInfo;
-
-    Resource res;
-
-    res.type = RES_TYPE_Image;
-
-    res.access = ACCESS_DEPTHATTACHMENT;
-    res.usage = USAGE_DEPTHSTENCILATTACHMENT;
-
-    res.value.img = &img;
-    res.value.img->CurrentLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-    addResource(pass, res);
 }
 void addImageResource(RenderPass *pass, Image *image, ResourceUsageFlags_t usage)
 {
@@ -206,34 +188,38 @@ void addImageResource(RenderPass *pass, Image *image, ResourceUsageFlags_t usage
     res.value.img = image;
     res.usage = usage;
 
-    switch (res.usage)
+    if ((usage & USAGE_COLORATTACHMENT) != 0)
     {
-    case USAGE_COLORATTACHMENT:
         res.access = ACCESS_COLORATTACHMENT;
-        res.value.img->CurrentLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        return;
-        break;
-    case USAGE_DEPTHSTENCILATTACHMENT:
+        res.value.img->CurrentLayout |= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        res.cAttIndex = pass->cAttCount;
+        addColorAttachment(image, pass, NULL);
+    }
+    else if ((usage & USAGE_DEPTHSTENCILATTACHMENT) != 0)
+    {
         res.access = ACCESS_DEPTHATTACHMENT;
-        res.value.img->CurrentLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-        return;
-        break;
-    case USAGE_TRANSFER_SRC:
+        res.value.img->CurrentLayout |= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        setDepthStencilAttachment(*image, pass);
+    }
+    else if ((usage & USAGE_TRANSFER_SRC) != 0)
+    {
         res.access = ACCESS_TRANSFER_READ;
-        res.value.img->CurrentLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-        break;
-    case USAGE_TRANSFER_DST:
+        res.value.img->CurrentLayout |= VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    }
+    else if ((usage & USAGE_TRANSFER_DST) != 0)
+    {
         res.access = ACCESS_TRANSFER_WRITE;
-        res.value.img->CurrentLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        break;
-    case USAGE_SAMPLED:
+        res.value.img->CurrentLayout |= VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    }
+    else if ((usage & USAGE_SAMPLED) != 0)
+    {
         res.access = ACCESS_READ;
-        res.value.img->CurrentLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        break;
-    case USAGE_UNDEFINED:
+        res.value.img->CurrentLayout |= VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    }
+    else if ((usage & USAGE_UNDEFINED) != 0)
+    {
         res.access = 0;
-        res.value.img->CurrentLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        break;
+        res.value.img->CurrentLayout |= VK_IMAGE_LAYOUT_UNDEFINED;
     }
 
     addResource(pass, res);
@@ -300,7 +286,7 @@ void optimizePasses(RenderGraph *graph, Image swapChainImg)
         for (int r = 0; r <= curPass.resourceCount - 1; r++)
         {
             Resource cr = curPass.resources[r];
-            if ((cr.access & ACCESS_TRANSFER_WRITE) != 0 && cr.value.img->imgview == swapChainImg.imgview)
+            if ((cr.access & ACCESS_COLORATTACHMENT) != 0 && cr.value.img->imgview == swapChainImg.imgview)
             {
                 rootResources = realloc(rootResources, sizeof(Resource) * (rootResourceCount + curPass.resourceCount));
                 memcpy(rootResources + rootResourceCount, curPass.resources, sizeof(Resource) * (curPass.resourceCount));
@@ -308,6 +294,7 @@ void optimizePasses(RenderGraph *graph, Image swapChainImg)
 
                 newPasses[graph->passCount - newPassCount - 1] = curPass;
                 newPassCount += 1;
+                curPass.colorAttachments[cr.cAttIndex].imageView = cr.value.img->imgview;
                 break;
             }
             else
@@ -402,13 +389,13 @@ RenderGraph buildGraph(GraphBuilder *builder, Image scImage)
     return rg;
 }
 
-void executeGraph(RenderGraph *graph, VkCommandBuffer cBuf)
+void executeGraph(VkExtent2D extent, RenderGraph *graph, VkCommandBuffer cBuf)
 {
-    for (int i = 0; i < graph->passCount; i++)
+    for (int i = 0; i <= graph->passCount - 1; i++)
     {
         passBarrierInfo cb = graph->barriers[i];
         vkCmdPipelineBarrier(cBuf, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, 0, NULL, cb.bufPBCount, cb.bufMemBarriers, cb.imgPBCount, cb.imgMemBarriers);
-        recordPass(&graph->passes[i], cBuf);
+        recordPass(extent, &graph->passes[i], cBuf);
     }
 }
 
@@ -417,8 +404,8 @@ void destroyRenderGraph(RenderGraph *graph)
     free(graph->barriers);
     free(graph->passes);
 }
-const VkClearColorValue clearValue = {
-    {0.0f, 0.0f, 0.0f, 0.0f}};
+const VkClearColorValue clearValue = {{0.0f, 0.0f, 0.0f, 0.0f}};
+
 void drawRenderer(renderer_t *renderer, int cBufIndex)
 {
     VkCommandBuffer cbuf = renderer->vkCore.commandBuffers[cBufIndex];
@@ -426,18 +413,18 @@ void drawRenderer(renderer_t *renderer, int cBufIndex)
     vkWaitForFences(renderer->vkCore.lDev, 1, &renderer->vkCore.fences[cBufIndex], VK_TRUE, UINT64_MAX);
     vkResetFences(renderer->vkCore.lDev, 1, &renderer->vkCore.fences[cBufIndex]);
 
-    vkResetCommandBuffer(cbuf, 0);
-    vkBeginCommandBuffer(cbuf, &cBufBeginInf);
-
-    vkAcquireNextImageKHR(renderer->vkCore.lDev, renderer->vkCore.swapChain, UINT64_MAX, renderer->vkCore.imageAvailiable[cBufIndex], VK_NULL_HANDLE, &renderer->vkCore.currentImage);
+    vkAcquireNextImageKHR(renderer->vkCore.lDev, renderer->vkCore.swapChain, UINT64_MAX, renderer->vkCore.imageAvailiable[cBufIndex], VK_NULL_HANDLE, &renderer->vkCore.currentImageIndex);
 
     *renderer->vkCore.currentScImg = (Image){
-        renderer->vkCore.swapChainImages[renderer->vkCore.currentImage],
-        renderer->vkCore.swapChainImageViews[renderer->vkCore.currentImage],
+        renderer->vkCore.swapChainImages[renderer->vkCore.currentImageIndex],
+        renderer->vkCore.swapChainImageViews[renderer->vkCore.currentImageIndex],
         VK_IMAGE_LAYOUT_UNDEFINED,
     };
 
-    RenderGraph graph = buildGraph(&renderer->rg, *renderer->vkCore.currentScImg);
+    vkResetCommandBuffer(cbuf, 0);
+    vkBeginCommandBuffer(cbuf, &cBufBeginInf);
+
+    RenderGraph rg = buildGraph(renderer->rg, *renderer->vkCore.currentScImg);
 
     // Change layout of image to be optimal for clearing
     VkImageMemoryBarrier imgMemoryBarrier = {
@@ -449,14 +436,32 @@ void drawRenderer(renderer_t *renderer, int cBufIndex)
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         VK_QUEUE_FAMILY_IGNORED,
         VK_QUEUE_FAMILY_IGNORED,
-        renderer->vkCore.swapChainImages[renderer->vkCore.currentImage],
+        renderer->vkCore.currentScImg->image,
         imgSRR,
     };
     vkCmdPipelineBarrier(cbuf, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, NULL, 0, NULL, 1, &imgMemoryBarrier);
 
-    vkCmdClearColorImage(cbuf, renderer->vkCore.swapChainImages[renderer->vkCore.currentImage], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearValue, 1, &imgSRR);
+    vkCmdClearColorImage(cbuf, renderer->vkCore.currentScImg->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearValue, 1, &imgSRR);
 
-    executeGraph(&graph, cbuf);
+    VkRect2D scissor = {0};
+    scissor.offset.x = 0;
+    scissor.offset.y = 0;
+    scissor.extent.width = renderer->vkCore.extent.width;
+    scissor.extent.height = renderer->vkCore.extent.height;
+
+    vkCmdSetScissorWithCount(cbuf, 1, &scissor);
+
+    VkViewport viewport = {0};
+
+    viewport.x = 0;
+    viewport.y = 0;
+    viewport.width = renderer->vkCore.extent.width + 1.0;
+    viewport.height = renderer->vkCore.extent.height + 1.0;
+    viewport.minDepth = 0;
+    viewport.maxDepth = 1;
+    vkCmdSetViewportWithCount(cbuf, 1, &viewport);
+
+    executeGraph(renderer->vkCore.extent, &rg, cbuf);
 
     imgMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
     imgMemoryBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
@@ -475,7 +480,7 @@ void drawRenderer(renderer_t *renderer, int cBufIndex)
     submitInfo.pWaitSemaphores = &renderer->vkCore.imageAvailiable[cBufIndex];
     submitInfo.pWaitDstStageMask = (VkPipelineStageFlags[1]){VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
     submitInfo.signalSemaphoreCount = 1;
-    submitInfo.pSignalSemaphores = &renderer->vkCore.renderFinished[cBufIndex];
+    submitInfo.pSignalSemaphores = &renderer->vkCore.renderFinished[renderer->vkCore.currentImageIndex];
 
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &cbuf;
@@ -487,13 +492,13 @@ void drawRenderer(renderer_t *renderer, int cBufIndex)
     presentInfo.pNext = NULL;
 
     presentInfo.waitSemaphoreCount = 1;
-    presentInfo.pWaitSemaphores = &renderer->vkCore.renderFinished[cBufIndex];
+    presentInfo.pWaitSemaphores = &renderer->vkCore.renderFinished[renderer->vkCore.currentImageIndex];
 
     presentInfo.swapchainCount = 1;
     presentInfo.pSwapchains = &renderer->vkCore.swapChain;
-    presentInfo.pImageIndices = &renderer->vkCore.currentImage;
+    presentInfo.pImageIndices = &renderer->vkCore.currentImageIndex;
 
     vkQueuePresentKHR(renderer->vkCore.pQueue, &presentInfo);
 
-    destroyRenderGraph(&graph);
+    destroyRenderGraph(&rg);
 }
