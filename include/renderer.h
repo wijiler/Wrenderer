@@ -83,7 +83,7 @@ extern "C"
             reasterizerDiscardEnable, primitiveRestartEnable;
 
         VkLogicOp logicOp;   // if logicOp is changed logicOpEnable must be true
-        uint32_t sampleMask; // can be [0]
+        uint32_t sampleMask; // usually UINT32_MAX
 
         int pcRangeCount;
         VkPushConstantRange pcRange;
@@ -263,6 +263,7 @@ extern "C"
     void readShaderSPRV(const char *filePath, uint64_t *len, uint32_t *data);
     void setShaderSPRV(VulkanCore_t core, Pipeline *pl, uint32_t *vFileContents, int vFileLen, uint32_t *fFileContents, int fFileLen);
     void addVertexInput(Pipeline *pl, VkVertexInputAttributeDescription2EXT attrDesc, VkVertexInputBindingDescription2EXT bindDesc);
+    void setPushConstantRange(Pipeline *pl, size_t size, shaderStage stage);
 
     RenderPass newPass(char *name, passType type);
 

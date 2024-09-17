@@ -950,3 +950,14 @@ void addVertexInput(Pipeline *pl, VkVertexInputAttributeDescription2EXT attrDesc
     pl->vert.bindingDesc[index] = bindDesc;
     pl->vert.VertexDescriptons += 1;
 }
+
+void setPushConstantRange(Pipeline *pl, size_t size, shaderStage stage)
+{
+    VkPushConstantRange pcRange = {0};
+    pcRange.offset = 0;
+    pcRange.size = size;
+    pcRange.stageFlags = stage;
+
+    pl->pcRange = pcRange; // TODO: this is fine enough usually but should we create a more indepth & comprehensive shader system to make this more correct and flexible?
+    pl->pcRangeCount = 1;
+}
