@@ -8,3 +8,4 @@ Backend/main.lib
 notes/
 Build/
 Lib/
+*.spv
