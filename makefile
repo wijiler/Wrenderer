@@ -12,6 +12,8 @@ Release:
 	rc Lib/JRV2BE.lib \
 	Lib/*.o
 	rm -rf Lib/*.o
+	clang $(CFLAGS) ./src/*.c $(EXELDFLAGS) -DVK_USE_PLATFORM_WIN32_KHR -o main.exe -O3 
+
 
 Clean: 
 	rm -rf Lib/*.lib *.exe *.ilk *.pdb *.exp *.lib
