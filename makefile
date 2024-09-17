@@ -14,8 +14,8 @@ Release:
 	rm -rf Lib/*.o
 
 
-Clean: 
-	rm -rf Lib/*.lib *.exe *.ilk *.pdb *.exp *.lib
+Clean:
+	rm -rf Lib/*.lib *.exe *.ilk *.pdb *.exp *.lib examples/*.exe
 
 Debug:
 	clang -c $(CFLAGS) ./src/*.c $(LDFLAGS) -DDEBUG -DVK_USE_PLATFORM_WIN32_KHR
@@ -27,6 +27,6 @@ Debug:
 	rm -rf Lib/*.o
 
 ExamplesDebug: Debug
-	clang $(CFLAGS) ./examples/*.c $(EXELDFLAGS) -DDEBUG -DVK_USE_PLATFORM_WIN32_KHR -o main.exe -g 
+	make -C ./examples/ Debug
 ExamplesRelease: Release
-	clang $(CFLAGS) ./examples/*.c $(EXELDFLAGS) -DVK_USE_PLATFORM_WIN32_KHR -o main.exe -O3
+	make -C ./examples/ Release
