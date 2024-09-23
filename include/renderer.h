@@ -21,6 +21,8 @@ extern "C"
     {
         BUFFER_USAGE_VERTEX = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
         BUFFER_USAGE_INDEX = VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+        BUFFER_USAGE_TRANSFER_SRC = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        BUFFER_USAGE_TRANSFER_DST = VK_BUFFER_USAGE_TRANSFER_DST_BIT,
     } BUFFERTYPE;
 
     typedef enum
@@ -31,8 +33,8 @@ extern "C"
 
     typedef enum
     {
-        HOST_ACCESS,   // CPU_ONLY
-        DEVICE_ACCESS, // GPU_ONLY
+        CPU_ONLY = 0x01,
+        DEVICE_ONLY = 0x02,
     } BufferAccess;
 
     typedef struct
@@ -47,7 +49,8 @@ extern "C"
         BUFFERTYPE type;
         uint32_t index, size;
         VkBuffer buffer;
-        VkDeviceMemory *associatedMemory;
+        VkDeviceMemory associatedMemory;
+        void *mappedMemory;
     } Buffer;
 
     typedef struct
@@ -204,7 +207,7 @@ extern "C"
         VkInstance instance;
 
         VkPhysicalDevice pDev;
-        int qfi;
+        uint32_t qfi;
         VkSurfaceKHR surface;
         VkDevice lDev;
         VkQueue pQueue, gQueue;
@@ -244,9 +247,9 @@ extern "C"
     void initRenderer(renderer_t *renderer);
 
     Buffer findBuffer(int index);
-    void createBuffer(VulkanCore_t core, BufferCreateInfo *createInfo, Buffer *buf);
+    void createBuffer(VulkanCore_t core, BufferCreateInfo createInfo, Buffer *buf);
     void pushDataToBuffer(VulkanCore_t core, void *data, size_t dataSize, Buffer buf);
-    void copyBuf(VulkanCore_t core, Buffer src, Buffer dest);
+    void copyBuf(VulkanCore_t core, Buffer src, Buffer dest, size_t size);
 
     void allocate_textureDescriptorSets(VulkanCore_t *core, uint64_t setCount);
 

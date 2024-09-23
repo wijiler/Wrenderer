@@ -273,7 +273,7 @@ void optimizePasses(RenderGraph *graph, Image swapChainImg)
     Resource *rootResources = malloc(sizeof(Resource));
 
     int newPassCount = 0;
-    RenderPass *newPasses = malloc(sizeof(RenderPass) * graph->passCount);
+    RenderPass *newPasses = malloc(sizeof(RenderPass));
 
     for (int i = graph->passCount - 1; i >= 0; i--)
     {

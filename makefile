@@ -1,7 +1,7 @@
 VULKAN := $(subst \,/,$(subst C:\,C:/,${VULKAN_SDK}))
 
 LDFLAGS := -I./include/ -I./include/libs/ -I$(VULKAN)/Include -L./libs/
-EXELDFLAGS := -I./include/ -I./include/libs/ -I$(VULKAN)/Include -L./libs/ -L./Lib/ -luser32 -lmsvcrt -lgdi32 -lshell32 -llibcmt -lvulkan-1 -lglfw3 -lJRV2BE.lib
+EXELDFLAGS := -I./include/ -I./include/libs/ -I$(VULKAN)/Include -L./libs/ -L./Lib/ -luser32 -lmsvcrt -lgdi32 -lshell32 -llibcmt -lvulkan-1 -lglfw3
 CFLAGS := -x c -std=c99 -Wextra -Wall
 
 Release:
@@ -25,8 +25,4 @@ Debug:
 		rc Lib/JRV2BE.lib \
 		Lib/*.o
 	rm -rf Lib/*.o
-
-ExamplesDebug: Debug
-	make -C ./examples/ Debug
-ExamplesRelease: Release
-	make -C ./examples/ Release
+	clang $(CFLAGS) ./src/*.c $(EXELDFLAGS) -DDEBUG -DVK_USE_PLATFORM_WIN32_KHR -o main.exe -g

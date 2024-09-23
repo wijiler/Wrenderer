@@ -8,6 +8,12 @@ renderer_t renderer;
 winf_t wininfo = {0};
 GraphBuilder builder = {0};
 
+float verts[3][3] = {
+    {1.0f, 1.0f, 1.0f},
+    {-1.0f, 1.0f, 1.0f},
+    {0.0f, -1.0f, 1.0f},
+};
+
 int ImageIndex = 0;
 int FrameIndex = 0;
 int Index = 0;
@@ -15,6 +21,9 @@ void helloTriangleCallback(RenderPass pass, VkCommandBuffer cBuf)
 {
     bindPipeline(pass.pl, cBuf);
 
+    uint64_t offset = 0;
+
+    vkCmdBindVertexBuffers(cBuf, 0, 1, &pass.resources[1].value.buffer.buffer, &offset);
     vkCmdDraw(cBuf, 3, 1, 0, 0);
 
     unBindPipeline(cBuf);
@@ -35,15 +44,13 @@ void init()
 {
     initRenderer(&renderer);
     uint64_t vLen, fLen = 0;
-    readShaderSPRV("./shaders/vphong.spv", &vLen, NULL);
-    readShaderSPRV("./shaders/fphong.spv", &fLen, NULL);
+    readShaderSPRV("./shaders/vtri.spv", &vLen, NULL);
+    readShaderSPRV("./shaders/ftri.spv", &fLen, NULL);
     uint32_t *vShader = malloc(sizeof(uint32_t) * vLen);
     uint32_t *fShader = malloc(sizeof(uint32_t) * fLen);
 
-    readShaderSPRV("./shaders/vphong.spv", &vLen, vShader);
-    readShaderSPRV("./shaders/fphong.spv", &fLen, fShader);
-
-    // printf("%08" PRIx32 "\n", vShader[0]);
+    readShaderSPRV("./shaders/vtri.spv", &vLen, vShader);
+    readShaderSPRV("./shaders/ftri.spv", &fLen, fShader);
 
     Pipeline pl = {0};
 
@@ -71,23 +78,51 @@ void init()
         VK_BLEND_FACTOR_ZERO,
         VK_BLEND_OP_ADD,
     };
-    // pl.minDepth = 0;
-    // pl.maxDepth = 1;
     pl.depthBoundsEnable = VK_FALSE;
     pl.alphaToOneEnable = VK_TRUE;
     pl.sampleMask = UINT32_MAX;
 
+    VkVertexInputAttributeDescription2EXT attrDesc1 = {
+        VK_STRUCTURE_TYPE_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION_2_EXT,
+        NULL,
+        0,
+        0,
+        VK_FORMAT_R32G32B32_SFLOAT,
+        0,
+    };
+
+    VkVertexInputBindingDescription2EXT bindingDesc1 = {
+        VK_STRUCTURE_TYPE_VERTEX_INPUT_BINDING_DESCRIPTION_2_EXT,
+        NULL,
+        0,
+        sizeof(float) * 3,
+        VK_VERTEX_INPUT_RATE_VERTEX,
+        0,
+    };
     setShaderSPRV(renderer.vkCore, &pl, vShader, vLen, fShader, fLen);
+    addVertexInput(&pl, attrDesc1, bindingDesc1);
 
     BufferCreateInfo cInf = {0};
-    cInf.access = HOST_ACCESS;
-    cInf.dataSize = 160;
-    cInf.usage = BUFFER_USAGE_VERTEX;
+    cInf.access = CPU_ONLY;
+    cInf.dataSize = sizeof(verts);
+    cInf.usage = BUFFER_USAGE_TRANSFER_SRC;
+
+    Buffer stagingbuf = {0};
+    Buffer vertexBuffer = {0};
+    createBuffer(renderer.vkCore, cInf, &stagingbuf);
+    cInf.usage = BUFFER_USAGE_VERTEX | BUFFER_USAGE_TRANSFER_DST;
+    cInf.access = DEVICE_ONLY;
+    createBuffer(renderer.vkCore, cInf, &vertexBuffer);
+
+    pushDataToBuffer(renderer.vkCore, verts, sizeof(verts), stagingbuf);
+    copyBuf(renderer.vkCore, stagingbuf, vertexBuffer, sizeof(verts));
+    destroyBuffer(stagingbuf, renderer.vkCore);
 
     pass1 = newPass((char *)"name1", PASS_TYPE_GRAPHICS);
 
     pass1.pl = pl;
     addImageResource(&pass1, renderer.vkCore.currentScImg, USAGE_COLORATTACHMENT);
+    addBufferResource(&pass1, vertexBuffer, USAGE_UNDEFINED);
 
     setExecutionCallBack(&pass1, helloTriangleCallback);
 }

@@ -127,9 +127,13 @@ VkPhysicalDevice find_valid_device(int deviceCount, VkPhysicalDevice devices[], 
 {
     VkPhysicalDeviceProperties devProps = {0};
 
+    VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT vertAttrDivFeats = {0};
+    vertAttrDivFeats.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT;
+    vertAttrDivFeats.pNext = NULL;
+
     VkPhysicalDeviceDepthClipEnableFeaturesEXT depthClipEnable = {0};
     depthClipEnable.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_ENABLE_FEATURES_EXT;
-    depthClipEnable.pNext = NULL;
+    depthClipEnable.pNext = &vertAttrDivFeats;
 
     VkPhysicalDeviceShaderObjectFeaturesEXT shaderObjectFeatures = {0};
     shaderObjectFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_OBJECT_FEATURES_EXT;
@@ -177,7 +181,8 @@ VkPhysicalDevice find_valid_device(int deviceCount, VkPhysicalDevice devices[], 
         if (devProps.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && devFeat13.dynamicRendering == VK_TRUE &&
             devFeat12.bufferDeviceAddress == VK_TRUE && devFeat12.descriptorBindingUniformBufferUpdateAfterBind == VK_TRUE &&
             devFeat12.descriptorBindingPartiallyBound == VK_TRUE && devFeat12.descriptorBindingVariableDescriptorCount == VK_TRUE &&
-            shaderObjectFeatures.shaderObject == VK_TRUE && devFeat2.features.alphaToOne == VK_TRUE && depthClipEnable.depthClipEnable == VK_TRUE)
+            shaderObjectFeatures.shaderObject == VK_TRUE && devFeat2.features.alphaToOne == VK_TRUE && depthClipEnable.depthClipEnable == VK_TRUE &&
+            vertAttrDivFeats.vertexAttributeInstanceRateZeroDivisor == VK_TRUE)
         {
             graphicsFamilyIndex = &gfami;
             return devices[i];
@@ -188,13 +193,14 @@ VkPhysicalDevice find_valid_device(int deviceCount, VkPhysicalDevice devices[], 
     return NULL;
 }
 
-#define DEVICEEXTENSIONSCOUNT 5
+#define DEVICEEXTENSIONSCOUNT 6
 char *deviceExtensions[DEVICEEXTENSIONSCOUNT] = {
     VK_KHR_SWAPCHAIN_EXTENSION_NAME,
     VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,
     VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
     VK_EXT_SHADER_OBJECT_EXTENSION_NAME,
     VK_EXT_DEPTH_CLIP_ENABLE_EXTENSION_NAME,
+    VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME,
 };
 
 void create_device(VulkanCore_t *core)
@@ -220,9 +226,13 @@ void create_device(VulkanCore_t *core)
         }
     }
 
+    VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT vertAttrDivFeats = {0};
+    vertAttrDivFeats.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT;
+    vertAttrDivFeats.pNext = NULL;
+
     VkPhysicalDeviceDepthClipEnableFeaturesEXT depthClipEnable = {0};
     depthClipEnable.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_ENABLE_FEATURES_EXT;
-    depthClipEnable.pNext = NULL;
+    depthClipEnable.pNext = &vertAttrDivFeats;
 
     VkPhysicalDeviceShaderObjectFeaturesEXT shaderObjectFeatures = {0};
     shaderObjectFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_OBJECT_FEATURES_EXT;
@@ -257,6 +267,8 @@ void create_device(VulkanCore_t *core)
     shaderObjectFeatures.shaderObject = VK_TRUE;
 
     depthClipEnable.depthClipEnable = VK_TRUE;
+
+    vertAttrDivFeats.vertexAttributeInstanceRateZeroDivisor = VK_TRUE;
 
     VkDeviceQueueCreateInfo queueCreateInfo = {0};
     queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
@@ -506,12 +518,6 @@ typedef struct
 
 bufferInfo_t bufferInfo[256];
 uint32_t bufferCount = 0;
-
-Buffer findBuffer(int index)
-{
-    return bufferInfo[index].buf;
-}
-
 void MarkDestroyableBuffer(Buffer *buf)
 {
     buf->index = bufferCount;
@@ -532,20 +538,17 @@ void MarkDestroyableBuffer(Buffer *buf)
     bufferCount += 1;
 }
 
-void createBuffer(VulkanCore_t core, BufferCreateInfo *createInfo, Buffer *buf)
+void createBuffer(VulkanCore_t core, BufferCreateInfo createInfo, Buffer *buf)
 {
-    buf->size = createInfo->dataSize;
-    if ((createInfo->usage & VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) != 0)
-        buf->type = BUFFER_USAGE_VERTEX;
-    else if ((createInfo->usage & VK_BUFFER_USAGE_INDEX_BUFFER_BIT) != 0)
-        buf->type = BUFFER_USAGE_INDEX;
+    buf->size = createInfo.dataSize;
+    buf->type = createInfo.usage;
 
     VkBufferCreateInfo bufferCI = {0};
     bufferCI.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bufferCI.pNext = NULL;
 
-    bufferCI.size = createInfo->dataSize;
-    bufferCI.usage = createInfo->usage;
+    bufferCI.size = createInfo.dataSize;
+    bufferCI.usage = createInfo.usage;
     bufferCI.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
     if (vkCreateBuffer(core.lDev, &bufferCI, NULL, &buf->buffer) != VK_SUCCESS)
@@ -564,7 +567,7 @@ void createBuffer(VulkanCore_t core, BufferCreateInfo *createInfo, Buffer *buf)
     int index = -1;
     for (int i = 0; i <= 31; i++)
     {
-        if (createInfo->access == HOST_ACCESS)
+        if (createInfo.access == CPU_ONLY)
         {
             if ((memProps.memoryTypes[i].propertyFlags &
                  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0)
@@ -574,7 +577,7 @@ void createBuffer(VulkanCore_t core, BufferCreateInfo *createInfo, Buffer *buf)
             }
         }
 
-        if (createInfo->access == DEVICE_ACCESS)
+        if (createInfo.access == DEVICE_ONLY)
         {
             if ((memProps.memoryTypes[i].propertyFlags &
                  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) != 0)
@@ -604,43 +607,43 @@ void createBuffer(VulkanCore_t core, BufferCreateInfo *createInfo, Buffer *buf)
     VkMemoryRequirements vkMemReq = {0};
     vkGetBufferMemoryRequirements(core.lDev, buf->buffer, &vkMemReq);
 
-    allocInfo.allocationSize = createInfo->dataSize + vkMemReq.alignment;
+    allocInfo.allocationSize = vkMemReq.size + createInfo.dataSize;
     allocInfo.memoryTypeIndex = index;
 
-    if (vkAllocateMemory(core.lDev, &allocInfo, NULL, (VkDeviceMemory *)&buf->associatedMemory) !=
-        VK_SUCCESS)
+    if (vkAllocateMemory(core.lDev, &allocInfo, NULL, &buf->associatedMemory) != VK_SUCCESS)
     {
         printf("Could not allocate memory\n");
         exit(1);
     }
 
-    if (vkBindBufferMemory(core.lDev, buf->buffer, (VkDeviceMemory)buf->associatedMemory, 0) != VK_SUCCESS)
+    if (vkBindBufferMemory(core.lDev, buf->buffer, buf->associatedMemory, 0) != VK_SUCCESS)
     {
         printf("Could not bind memory\n");
         exit(1);
     }
     MarkDestroyableBuffer(buf);
+    buf->mappedMemory = NULL;
+    if ((createInfo.access & CPU_ONLY) != 0)
+    {
+        vkMapMemory(core.lDev, buf->associatedMemory, 0, buf->size, 0, &buf->mappedMemory);
+    }
 }
 
 void destroyBuffer(Buffer buf, VulkanCore_t core)
 {
+    vkWaitForFences(core.lDev, 1, &core.immediateFence, VK_TRUE, UINT64_MAX);
     vkDestroyBuffer(core.lDev, buf.buffer, NULL);
-    vkFreeMemory(core.lDev, (VkDeviceMemory)buf.associatedMemory, NULL);
+    vkFreeMemory(core.lDev, buf.associatedMemory, NULL);
 
     bufferInfo[buf.index].active = false;
 }
-// NOTE: will invalidate data pointer for you, dont fuck up
+
 void pushDataToBuffer(VulkanCore_t core, void *data, size_t dataSize, Buffer buf)
 {
-    void *tdata = malloc(dataSize);
-    vkMapMemory(core.lDev, (VkDeviceMemory)buf.associatedMemory, 0, dataSize, 0, tdata);
-    memcpy(tdata, data, dataSize);
-    vkUnmapMemory(core.lDev, (VkDeviceMemory)buf.associatedMemory);
-    free(data);
-    free(tdata);
+    memcpy(buf.mappedMemory, data, dataSize);
 }
 
-void copyBuf(VulkanCore_t core, Buffer src, Buffer dest)
+void copyBuf(VulkanCore_t core, Buffer src, Buffer dest, size_t size)
 {
     vkWaitForFences(core.lDev, 1, &core.immediateFence, VK_TRUE, UINT64_MAX);
     vkResetFences(core.lDev, 1, &core.immediateFence);
@@ -649,7 +652,7 @@ void copyBuf(VulkanCore_t core, Buffer src, Buffer dest)
     VkBufferCopy copyData = {0};
     copyData.dstOffset = 0;
     copyData.srcOffset = 0;
-    copyData.size = dest.size;
+    copyData.size = size;
 
     vkCmdCopyBuffer(core.immediateSubmit, src.buffer, dest.buffer, 1, &copyData);
     vkEndCommandBuffer(core.immediateSubmit);
@@ -783,7 +786,7 @@ void destroyRenderer(renderer_t *renderer)
         if (!bufferInfo[i].active)
             continue;
         vkDestroyBuffer(renderer->vkCore.lDev, bufferInfo[i].buf.buffer, NULL);
-        vkFreeMemory(renderer->vkCore.lDev, (VkDeviceMemory)bufferInfo[i].buf.associatedMemory, NULL);
+        vkFreeMemory(renderer->vkCore.lDev, bufferInfo[i].buf.associatedMemory, NULL);
     }
     for (uint32_t i = 0; i < renderer->vkCore.imgCount; i++)
     {
