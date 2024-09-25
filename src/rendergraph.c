@@ -44,7 +44,7 @@ void cache_PipeLine(Pipeline *pLine, char *Name)
     plInf.Name = Name;
     plInf.pLine = pLine;
 
-    ap_Pipelines = realloc(ap_Pipelines, sizeof(pipelineInfo) * pipelineCount + 1);
+    ap_Pipelines = realloc(ap_Pipelines, sizeof(pipelineInfo) * (pipelineCount + 1));
     ap_Pipelines[pipelineCount + 1] = plInf;
 
     pipelineCount += 1;

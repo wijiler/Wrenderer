@@ -10,9 +10,13 @@ project "Wrenderer"
     toolset "clang"
     cdialect "C99"
 
-    buildcommands {
-        "{MKDIR} -p" .. "%{wks.location}/Binaries/" .. outputdir .. "/%{prj.name}",
-        "{MKDIR} -p" .. "%{wks.location}/Binaries/Intermediates/" .. outputdir .. "/%{prj.name}"
+    prebuildcommands {
+
+        "mkdir -p" .. " %{wks.location}/Binaries/",
+        "mkdir -p" .. " %{wks.location}/Binaries/Intermediates/",
+
+        "mkdir -p" .. " %{wks.location}/Binaries/" .. outputdir,
+        "mkdir -p" .. " %{wks.location}/Binaries/Intermediates/" .. outputdir,
     }
 
 

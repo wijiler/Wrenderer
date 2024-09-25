@@ -14,4 +14,5 @@ Lib/
 *.vcxproj
 *.vcxproj.filters
 *.vcxproj.user
+Makefile
 Binaries/
