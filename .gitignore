@@ -2,7 +2,6 @@
 *.ilk
 *.pdb
 *.exp
-Backend/main.lib
 .vs/
 .vscode/
 notes/
@@ -16,3 +15,5 @@ Lib/
 *.vcxproj.user
 Makefile
 Binaries/
+obj/
+bin/

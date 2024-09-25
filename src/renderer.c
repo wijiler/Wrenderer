@@ -428,6 +428,24 @@ void create_swapchain(VulkanCore_t *core)
     core->imgCount = imagecount;
 }
 
+void recreateSwapchain(renderer_t *renderer)
+{
+    vkDeviceWaitIdle(renderer->vkCore.lDev);
+
+    vkDestroySwapchainKHR(renderer->vkCore.lDev, renderer->vkCore.swapChain, NULL);
+    for (uint32_t i = 0; i < renderer->vkCore.imgCount; i++)
+    {
+        vkDestroyImageView(renderer->vkCore.lDev, renderer->vkCore.swapChainImageViews[i], NULL);
+    }
+
+    free(renderer->vkCore.swapChainImages);
+    free(renderer->vkCore.swapChainImageViews);
+    renderer->vkCore.swapChainImages = NULL;
+    renderer->vkCore.swapChainImageViews = NULL;
+
+    create_swapchain(&renderer->vkCore);
+}
+
 void create_CommandBuffers(VulkanCore_t *core)
 {
     VkCommandPoolCreateInfo comPoolCI = {0};

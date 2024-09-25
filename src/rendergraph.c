@@ -408,6 +408,7 @@ void destroyRenderGraph(RenderGraph *graph)
     free(graph->passes);
 }
 const VkClearColorValue clearValue = {{0.0f, 0.0f, 0.0f, 0.0f}};
+bool resize = false;
 
 void drawRenderer(renderer_t *renderer, int cBufIndex)
 {
@@ -415,8 +416,17 @@ void drawRenderer(renderer_t *renderer, int cBufIndex)
 
     vkWaitForFences(renderer->vkCore.lDev, 1, &renderer->vkCore.fences[cBufIndex], VK_TRUE, UINT64_MAX);
     vkResetFences(renderer->vkCore.lDev, 1, &renderer->vkCore.fences[cBufIndex]);
-
-    vkAcquireNextImageKHR(renderer->vkCore.lDev, renderer->vkCore.swapChain, UINT64_MAX, renderer->vkCore.imageAvailiable[cBufIndex], VK_NULL_HANDLE, &renderer->vkCore.currentImageIndex);
+    if (resize)
+    {
+        recreateSwapchain(renderer);
+        resize = false;
+    }
+    VkResult result;
+    if ((result = vkAcquireNextImageKHR(renderer->vkCore.lDev, renderer->vkCore.swapChain, UINT64_MAX, renderer->vkCore.imageAvailiable[cBufIndex], VK_NULL_HANDLE, &renderer->vkCore.currentImageIndex)) ==
+        VK_ERROR_OUT_OF_DATE_KHR)
+    {
+        resize = true;
+    }
 
     *renderer->vkCore.currentScImg = (Image){
         renderer->vkCore.swapChainImages[renderer->vkCore.currentImageIndex],
@@ -501,7 +511,11 @@ void drawRenderer(renderer_t *renderer, int cBufIndex)
     presentInfo.pSwapchains = &renderer->vkCore.swapChain;
     presentInfo.pImageIndices = &renderer->vkCore.currentImageIndex;
 
-    vkQueuePresentKHR(renderer->vkCore.pQueue, &presentInfo);
+    result = 0;
+    if ((result = vkQueuePresentKHR(renderer->vkCore.pQueue, &presentInfo)) == VK_ERROR_OUT_OF_DATE_KHR)
+    {
+        resize = true;
+    }
 
     destroyRenderGraph(&rg);
 }

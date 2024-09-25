@@ -248,6 +248,8 @@ extern "C"
         GraphBuilder *rg;
     } renderer_t;
 
+    void recreateSwapchain(renderer_t *renderer);
+
     void initRenderer(renderer_t *renderer);
 
     Buffer findBuffer(int index);
