@@ -1,9 +1,8 @@
 workspace "Wrenderer"
-configurations { "Debug", "Release" }
+configurations { "Debug", "Release", "Lib"}
 project "Wrenderer"
-    kind "ConsoleApp"
     language "C"
-    targetname "main"
+    targetname "Wrenderer"
     architecture "x64"
     outputdir = "%{cfg.system}-%{cfg.architecture}/%{cfg.buildcfg}"
 
@@ -39,6 +38,18 @@ project "Wrenderer"
     filter "system:windows"
         links { "user32", "msvcrt", "gdi32", "shell32", "libcmt" }
         defines { "VK_USE_PLATFORM_WIN32_KHR" }
+    filter "system:linux"
+        defines { "VK_USE_PLATFORM_XLIB_KHR" }
+    filter "configurations:Lib"
+        optimize "On"
+        kind "StaticLib"
+        removefiles {"src/main.c"}
+
+    filter "not configurations:Lib"
+        kind "ConsoleApp"
+    
+
+    
 newaction {
     trigger     = "clean",
     description = "clean the software",
@@ -49,6 +60,8 @@ newaction {
        os.remove("*.make")
        os.remove("Makefile")
        os.remove("*.vcxproj")
+       os.remove("*.vcxproj.filters")
+       os.remove("*.vcxproj.user")
        os.remove("*.sln")
        print("done.")
     end
