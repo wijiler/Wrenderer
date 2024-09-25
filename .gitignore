@@ -9,3 +9,9 @@ notes/
 Build/
 Lib/
 *.spv
+*.make
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+Binaries/
