@@ -9,16 +9,6 @@ project "Wrenderer"
     toolset "clang"
     cdialect "C99"
 
-    prebuildcommands {
-
-        "mkdir -p" .. " %{wks.location}/Binaries/",
-        "mkdir -p" .. " %{wks.location}/Binaries/Intermediates/",
-
-        "mkdir -p" .. " %{wks.location}/Binaries/" .. outputdir,
-        "mkdir -p" .. " %{wks.location}/Binaries/Intermediates/" .. outputdir,
-    }
-
-
     targetdir("%{wks.location}/Binaries/" .. outputdir .. "/%{prj.name}")
     objdir("%{wks.location}/Binaries/Intermediates/" .. outputdir .. "/%{prj.name}")
     files { "**.h", "**.c" }
@@ -44,12 +34,26 @@ project "Wrenderer"
         optimize "On"
         kind "StaticLib"
         removefiles {"src/main.c"}
-
     filter "not configurations:Lib"
         kind "ConsoleApp"
-    
+        filter "action:gmake"
+    prebuildcommands {
 
-    
+        "mkdir -p" .. " %{wks.location}/Binaries/",
+        "mkdir -p" .. " %{wks.location}/Binaries/Intermediates/",
+
+        "mkdir -p" .. " %{wks.location}/Binaries/" .. outputdir,
+        "mkdir -p" .. " %{wks.location}/Binaries/Intermediates/" .. outputdir,
+    }
+    filter "not action:gmake"
+        prebuildcommands {
+
+            "{MKDIR}" .. " %{wks.location}/Binaries/",
+            "{MKDIR}" .. " %{wks.location}/Binaries/Intermediates/",
+
+            "{MKDIR}" .. " %{wks.location}/Binaries/" .. outputdir,
+            "{MKDIR}" .. " %{wks.location}/Binaries/Intermediates/" .. outputdir,
+        }
 newaction {
     trigger     = "clean",
     description = "clean the software",
