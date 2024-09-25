@@ -638,7 +638,7 @@ void destroyBuffer(Buffer buf, VulkanCore_t core)
     bufferInfo[buf.index].active = false;
 }
 
-void pushDataToBuffer(VulkanCore_t core, void *data, size_t dataSize, Buffer buf)
+void pushDataToBuffer(void *data, size_t dataSize, Buffer buf)
 {
     memcpy(buf.mappedMemory, data, dataSize);
 }

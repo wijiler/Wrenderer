@@ -97,7 +97,7 @@ void init()
     cInf.access = DEVICE_ONLY;
     createBuffer(renderer.vkCore, cInf, &vertexBuffer);
 
-    pushDataToBuffer(renderer.vkCore, verts, sizeof(verts), stagingbuf);
+    pushDataToBuffer(verts, sizeof(verts), stagingbuf);
     copyBuf(renderer.vkCore, stagingbuf, vertexBuffer, sizeof(verts));
     destroyBuffer(stagingbuf, renderer.vkCore);
 

@@ -252,7 +252,7 @@ extern "C"
 
     Buffer findBuffer(int index);
     void createBuffer(VulkanCore_t core, BufferCreateInfo createInfo, Buffer *buf);
-    void pushDataToBuffer(VulkanCore_t core, void *data, size_t dataSize, Buffer buf);
+    void pushDataToBuffer(void *data, size_t dataSize, Buffer buf);
     void copyBuf(VulkanCore_t core, Buffer src, Buffer dest, size_t size);
 
     void allocate_textureDescriptorSets(VulkanCore_t *core, uint64_t setCount);
