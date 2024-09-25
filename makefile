@@ -25,4 +25,4 @@ Debug:
 		rc Lib/JRV2BE.lib \
 		Lib/*.o
 	rm -rf Lib/*.o
-	clang $(CFLAGS) ./src/*.c $(EXELDFLAGS) -DDEBUG -DVK_USE_PLATFORM_WIN32_KHR -o main.exe -g
+	clang $(CFLAGS) ./src/*.c $(EXELDFLAGS) -DDEBUG -DVK_USE_PLATFORM_WIN32_KHR -o main.exe -g 

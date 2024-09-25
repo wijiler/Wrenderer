@@ -119,9 +119,12 @@ const VkCommandBufferBeginInfo bInf = {
     NULL,
 };
 
+#define RESOURCEBLOCKCOUNT 64
+
 void addResource(RenderPass *pass, Resource res)
 {
-    pass->resources = realloc(pass->resources, sizeof(Resource) * (pass->resourceCount + 1));
+    if (pass->resourceCount % RESOURCEBLOCKCOUNT == 0)
+        pass->resources = realloc(pass->resources, sizeof(Resource) * (pass->resourceCount + RESOURCEBLOCKCOUNT));
     pass->resources[pass->resourceCount] = res;
     pass->resourceCount += 1;
 }
@@ -143,9 +146,9 @@ RenderPass newPass(char *name, passType type)
     hash = p.hash;
     p.type = type;
     p.resourceCount = 0;
-    // p.resources = malloc(sizeof(Resource));
+    p.resources = malloc(sizeof(Resource) * RESOURCEBLOCKCOUNT);
     p.cAttCount = 0;
-    // p.colorAttachments = malloc(sizeof(VkRenderingAttachmentInfo));
+    p.colorAttachments = NULL;
 
     return p;
 }
@@ -270,10 +273,10 @@ void addPass(GraphBuilder *builder, RenderPass *pass)
 void optimizePasses(RenderGraph *graph, Image swapChainImg)
 {
     int rootResourceCount = 0;
-    Resource *rootResources = malloc(sizeof(Resource));
+    Resource *rootResources = NULL;
 
     int newPassCount = 0;
-    RenderPass *newPasses = malloc(sizeof(RenderPass));
+    RenderPass *newPasses = malloc(sizeof(RenderPass) * graph->passCount);
 
     for (int i = graph->passCount - 1; i >= 0; i--)
     {

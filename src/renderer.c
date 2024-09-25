@@ -946,11 +946,27 @@ void setShaderSPRV(VulkanCore_t core, Pipeline *pl, uint32_t *vFileContents, int
     vkCreateShadersEXT_(core.lDev, 1, &sCi[1], NULL, &pl->frag.shader);
 }
 
-void addVertexInput(Pipeline *pl, VkVertexInputAttributeDescription2EXT attrDesc, VkVertexInputBindingDescription2EXT bindDesc)
+void addVertexInput(Pipeline *pl, int binding, int location, int stride, int offSet, VkVertexInputRate inputRate, VkFormat format)
 {
     int index = pl->vert.VertexDescriptons;
+    VkVertexInputAttributeDescription2EXT attrDesc = {
+        VK_STRUCTURE_TYPE_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION_2_EXT,
+        NULL,
+        location,
+        binding,
+        format,
+        offSet,
+    };
+    VkVertexInputBindingDescription2EXT bindingDesc = {
+        VK_STRUCTURE_TYPE_VERTEX_INPUT_BINDING_DESCRIPTION_2_EXT,
+        NULL,
+        binding,
+        stride,
+        inputRate,
+        0,
+    };
     pl->vert.attrDesc[index] = attrDesc;
-    pl->vert.bindingDesc[index] = bindDesc;
+    pl->vert.bindingDesc[index] = bindingDesc;
     pl->vert.VertexDescriptons += 1;
 }
 

@@ -82,25 +82,8 @@ void init()
     pl.alphaToOneEnable = VK_TRUE;
     pl.sampleMask = UINT32_MAX;
 
-    VkVertexInputAttributeDescription2EXT attrDesc1 = {
-        VK_STRUCTURE_TYPE_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION_2_EXT,
-        NULL,
-        0,
-        0,
-        VK_FORMAT_R32G32B32_SFLOAT,
-        0,
-    };
-
-    VkVertexInputBindingDescription2EXT bindingDesc1 = {
-        VK_STRUCTURE_TYPE_VERTEX_INPUT_BINDING_DESCRIPTION_2_EXT,
-        NULL,
-        0,
-        sizeof(float) * 3,
-        VK_VERTEX_INPUT_RATE_VERTEX,
-        0,
-    };
     setShaderSPRV(renderer.vkCore, &pl, vShader, vLen, fShader, fLen);
-    addVertexInput(&pl, attrDesc1, bindingDesc1);
+    addVertexInput(&pl, 0, 0, sizeof(float) * 3, 0, VK_VERTEX_INPUT_RATE_VERTEX, VK_FORMAT_R32G32B32_SFLOAT);
 
     BufferCreateInfo cInf = {0};
     cInf.access = CPU_ONLY;
@@ -131,7 +114,7 @@ int main(void)
     wininfo.name = (char *)"Thing";
     wininfo.w = 1920;
     wininfo.h = 1080;
-    launch_window(wininfo, &renderer, (void *)loop, (void *)init);
+    launch_window(wininfo, &renderer, loop, init);
 
     destroyRenderer(&renderer);
 

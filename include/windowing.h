@@ -16,7 +16,7 @@ extern "C"
         char *name;
     } winf_t;
 
-    void launch_window(winf_t wininfo, renderer_t *renderer, void *PFN_update, void *PFN_start);
+    void launch_window(winf_t wininfo, renderer_t *renderer, void (*PFN_update)(), void (*PFN_start)());
 #ifdef __cplusplus
 }
 #endif
