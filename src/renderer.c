@@ -397,6 +397,7 @@ void create_swapchain(VulkanCore_t *core)
     VkSwapchainCreateInfoKHR swapchainCI;
     swapchainCI.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
     swapchainCI.pNext = NULL;
+    swapchainCI.flags = 0;
 
     swapchainCI.imageExtent = extent;
     swapchainCI.imageFormat = core->sFormat.format;
