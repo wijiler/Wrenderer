@@ -32,8 +32,8 @@ extern "C"
 
     typedef enum
     {
-        STAGE_VERTEX = VK_SHADER_STAGE_VERTEX_BIT,
-        STAGE_FRAGMENT = VK_SHADER_STAGE_FRAGMENT_BIT,
+        SHADER_STAGE_VERTEX = VK_SHADER_STAGE_VERTEX_BIT,
+        SHADER_STAGE_FRAGMENT = VK_SHADER_STAGE_FRAGMENT_BIT,
     } shaderStage;
 
     typedef enum
@@ -96,6 +96,8 @@ extern "C"
         int pcRangeCount;
         VkPushConstantRange pcRange;
         void *PushConstants;
+
+        VkPipelineLayout plLayout;
 
         int setLayoutCount;
         VkDescriptorSetLayout *setLayouts;
@@ -202,10 +204,6 @@ extern "C"
         RenderPass *passes;
     } GraphBuilder;
     // ----------------------------------------- RGEND
-    typedef struct
-    {
-        float worldMatrix[16];
-    } pushConstants;
 
     typedef struct
     {

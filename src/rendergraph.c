@@ -377,7 +377,6 @@ void optimizePasses(RenderGraph *graph, Image swapChainImg)
     memcpy(graph->passes, &newPasses[graph->passCount - newPassCount], sizeof(RenderPass) * newPassCount);
     graph->passCount = newPassCount;
     free(newPasses);
-    free(rootResources);
 }
 
 RenderGraph buildGraph(GraphBuilder *builder, Image scImage)
