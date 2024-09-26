@@ -848,6 +848,8 @@ void initRenderer(renderer_t *renderer)
     create_CommandBuffers(&renderer->vkCore);
     create_dsp(&renderer->vkCore);
     allocate_textureDescriptorSet(&renderer->vkCore);
+    renderer->meshHandler.instancedMeshes = NULL;
+    BufferCreateInfo vBCI = {0};
 }
 
 void bindPipeline(Pipeline pline, VkCommandBuffer cBuf)
@@ -900,7 +902,7 @@ void unBindPipeline(VkCommandBuffer cBuf)
     vkCmdBindShadersEXT_(cBuf, 1, (VkShaderStageFlagBits[1]){VK_SHADER_STAGE_FRAGMENT_BIT}, VK_NULL_HANDLE);
 }
 
-void readShaderSPRV(const char *filePath, uint64_t *len, uint32_t *data)
+void readShaderSPRV(const char *filePath, uint64_t *len, uint32_t **data)
 {
     FILE *file;
     errno_t err = fopen_s(&file, filePath, "rb");
@@ -914,18 +916,12 @@ void readShaderSPRV(const char *filePath, uint64_t *len, uint32_t *data)
     unsigned long file_size = ftell(file);
     rewind(file);
     *len = file_size;
-    uint32_t *spirv_data = malloc(file_size);
-    if (fread(spirv_data, 1, file_size, file) != file_size)
+    *data = malloc(file_size);
+    if (fread(*data, 1, file_size, file) != file_size)
     {
         printf("Error reading file\n");
         fclose(file);
-        free(spirv_data);
         return;
-    }
-    if (data != NULL)
-    {
-        memcpy(data, spirv_data, file_size);
-        free(spirv_data);
     }
     fclose(file);
 }

@@ -95,7 +95,7 @@ void addResource(RenderPass *pass, Resource res)
 
 void addCatt(RenderPass *pass, VkRenderingAttachmentInfo att)
 {
-    pass->colorAttachments = realloc(pass->colorAttachments, sizeof(Resource) * (pass->cAttCount + 1));
+    pass->colorAttachments = realloc(pass->colorAttachments, sizeof(VkRenderingAttachmentInfo) * (pass->cAttCount + 1));
     pass->colorAttachments[pass->cAttCount] = att;
     pass->cAttCount += 1;
 }

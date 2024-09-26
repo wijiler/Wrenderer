@@ -11,9 +11,6 @@
 extern "C"
 {
 #endif
-    // ----------------------------------------- MODELBG
-
-    // ----------------------------------------- MODELEND
 
     // ----------------------------------------- RGBEG
     static const VkCommandBufferBeginInfo cBufBeginInf = {
@@ -205,6 +202,29 @@ extern "C"
     } GraphBuilder;
     // ----------------------------------------- RGEND
 
+    // ----------------------------------------- MODELBG
+
+    typedef struct
+    {
+        int vertexCount;
+        float *verticies;
+        int indexCount;
+        uint32_t *indices;
+        uint32_t instanceCount;
+    } Mesh;
+
+    typedef struct
+    {
+        size_t unifiedSize;
+        Buffer unifiedVerts;
+        Buffer unifiedIndices;
+
+        int instancedmeshCount;
+        Mesh *instancedMeshes;
+    } MeshHandler;
+
+    // ----------------------------------------- MODELEND
+
     typedef struct
     {
         VkInstance instance;
@@ -244,6 +264,7 @@ extern "C"
     typedef struct
     {
         VulkanCore_t vkCore;
+        MeshHandler meshHandler;
         GraphBuilder *rg;
     } renderer_t;
 
@@ -268,7 +289,7 @@ extern "C"
     void cache_PipeLine(Pipeline *pLine, char *Name);
     Pipeline find_Pipeline(char *Name);
     void bindPipeline(Pipeline pline, VkCommandBuffer cBuf);
-    void readShaderSPRV(const char *filePath, uint64_t *len, uint32_t *data);
+    void readShaderSPRV(const char *filePath, uint64_t *len, uint32_t **data);
     void setShaderSPRV(VulkanCore_t core, Pipeline *pl, uint32_t *vFileContents, int vFileLen, uint32_t *fFileContents, int fFileLen);
     void addVertexInput(Pipeline *pl, int binding, int location, int stride, int offSet, VkVertexInputRate inputRate, VkFormat format);
     void setPushConstantRange(VulkanCore_t core, Pipeline *pl, size_t size, shaderStage stage);
