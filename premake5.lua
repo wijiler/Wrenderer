@@ -22,21 +22,26 @@ project "Wrenderer"
     filter "configurations:Debug"
         defines { "DEBUG" }
         symbols "On"
+        sanitize { "Address", "Fuzzer" }
     filter "configurations:Release"
         optimize "On"
 
     filter "system:windows"
         links { "user32", "msvcrt", "gdi32", "shell32", "libcmt" }
         defines { "VK_USE_PLATFORM_WIN32_KHR" }
+
     filter "system:linux"
         defines { "VK_USE_PLATFORM_XLIB_KHR" }
+
     filter "configurations:Lib"
         optimize "On"
         kind "StaticLib"
         removefiles {"src/main.c"}
+
     filter "not configurations:Lib"
         kind "ConsoleApp"
-        filter "action:gmake"
+
+    filter "action:gmake"
     prebuildcommands {
 
         "mkdir -p" .. " %{wks.location}/Binaries/",

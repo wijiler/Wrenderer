@@ -271,7 +271,7 @@ extern "C"
     void readShaderSPRV(const char *filePath, uint64_t *len, uint32_t *data);
     void setShaderSPRV(VulkanCore_t core, Pipeline *pl, uint32_t *vFileContents, int vFileLen, uint32_t *fFileContents, int fFileLen);
     void addVertexInput(Pipeline *pl, int binding, int location, int stride, int offSet, VkVertexInputRate inputRate, VkFormat format);
-    void setPushConstantRange(Pipeline *pl, size_t size, shaderStage stage);
+    void setPushConstantRange(VulkanCore_t core, Pipeline *pl, size_t size, shaderStage stage);
 
     RenderPass newPass(char *name, passType type);
 

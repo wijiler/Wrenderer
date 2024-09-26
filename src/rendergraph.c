@@ -29,42 +29,6 @@ uint64_t fnv_64a_str(char *str, uint64_t hval)
     return hval;
 }
 
-// ------------ Pipeline Info ------------
-typedef struct
-{
-    char *Name;
-    Pipeline *pLine;
-} pipelineInfo;
-pipelineInfo *ap_Pipelines = NULL; // ! NOT THREAD SAFE
-uint32_t pipelineCount = 0;
-
-void cache_PipeLine(Pipeline *pLine, char *Name)
-{
-    pipelineInfo plInf = {0};
-    plInf.Name = Name;
-    plInf.pLine = pLine;
-
-    ap_Pipelines = realloc(ap_Pipelines, sizeof(pipelineInfo) * (pipelineCount + 1));
-    ap_Pipelines[pipelineCount + 1] = plInf;
-
-    pipelineCount += 1;
-}
-
-Pipeline find_Pipeline(char *Name)
-{
-    // worst case O(n), we could technically get away without iteration but the gain is not much, and the complexity it would add would make this much less readable
-    for (uint32_t i = 0; i <= pipelineCount; i++)
-    {
-        if (ap_Pipelines[i].Name == Name)
-        {
-            return *ap_Pipelines[i].pLine;
-        }
-    }
-    printf("Could not find specified pipeline %s\n", Name);
-    Pipeline errpl = {0};
-    return errpl;
-}
-
 void recordPass(VkExtent2D extent, RenderPass *pass, VkCommandBuffer cBuf)
 {
     VkRenderingInfo renInf = {0};

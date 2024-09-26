@@ -25,6 +25,14 @@ PFN_vkCmdSetDepthClipEnableEXT vkCmdSetDepthClipEnableEXT_ = NULL;
 PFN_vkCmdSetLogicOpEXT vkCmdSetLogicOpEXT_ = NULL;
 PFN_vkDestroyShaderEXT vkDestroyShaderEXT_ = NULL;
 
+typedef struct
+{
+    char *Name;
+    Pipeline *pLine;
+} pipelineInfo;
+pipelineInfo *ap_Pipelines = NULL; // ! NOT THREAD SAFE
+uint32_t pipelineCount = 0;
+
 #define instEXTENSIONCOUNT 4
 #ifdef DEBUG
 #define instLAYERCOUNT 1
@@ -806,10 +814,17 @@ void destroyRenderer(renderer_t *renderer)
             continue;
         vkDestroyBuffer(renderer->vkCore.lDev, bufferInfo[i].buf.buffer, NULL);
         vkFreeMemory(renderer->vkCore.lDev, bufferInfo[i].buf.associatedMemory, NULL);
+        free(bufferInfo[i].buf.mappedMemory);
     }
     for (uint32_t i = 0; i < renderer->vkCore.imgCount; i++)
     {
         vkDestroyImageView(renderer->vkCore.lDev, renderer->vkCore.swapChainImageViews[i], NULL);
+    }
+    for (uint32_t i = 0; i < pipelineCount; i++)
+    {
+        vkDestroyPipelineLayout(renderer->vkCore.lDev, ap_Pipelines[i].pLine->plLayout, NULL);
+        vkDestroyShaderEXT_(renderer->vkCore.lDev, ap_Pipelines[i].pLine->vert.shader, NULL);
+        vkDestroyShaderEXT_(renderer->vkCore.lDev, ap_Pipelines[i].pLine->frag.shader, NULL);
     }
     vkDestroySwapchainKHR(renderer->vkCore.lDev, renderer->vkCore.swapChain, NULL);
     vkDestroyDevice(renderer->vkCore.lDev, NULL);
@@ -988,13 +1003,50 @@ void addVertexInput(Pipeline *pl, int binding, int location, int stride, int off
     pl->vert.VertexDescriptons += 1;
 }
 
-void setPushConstantRange(Pipeline *pl, size_t size, shaderStage stage)
+void setPushConstantRange(VulkanCore_t core, Pipeline *pl, size_t size, shaderStage stage)
 {
     VkPushConstantRange pcRange = {0};
     pcRange.offset = 0;
     pcRange.size = size;
     pcRange.stageFlags = stage;
 
-    pl->pcRange = pcRange; // TODO: this is fine enough usually but should we create a more indepth & comprehensive shader system to make this more correct and flexible?
+    pl->pcRange = pcRange;
     pl->pcRangeCount = 1;
+    VkPipelineLayoutCreateInfo plcInf = {0};
+    plcInf.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    plcInf.pNext = NULL;
+
+    plcInf.setLayoutCount = 0;
+    plcInf.pSetLayouts = NULL;
+
+    plcInf.pPushConstantRanges = &pl->pcRange;
+    plcInf.pushConstantRangeCount = pl->pcRangeCount;
+    vkCreatePipelineLayout(core.lDev, &plcInf, NULL, &pl->plLayout);
+}
+
+void cache_PipeLine(Pipeline *pLine, char *Name)
+{
+    pipelineInfo plInf = {0};
+    plInf.Name = Name;
+    plInf.pLine = pLine;
+
+    ap_Pipelines = realloc(ap_Pipelines, sizeof(pipelineInfo) * (pipelineCount + 1));
+    ap_Pipelines[pipelineCount + 1] = plInf;
+
+    pipelineCount += 1;
+}
+
+Pipeline find_Pipeline(char *Name)
+{
+    // worst case O(n), we could technically get away without iteration but the gain is not much, and the complexity it would add would make this much less readable
+    for (uint32_t i = 0; i <= pipelineCount; i++)
+    {
+        if (ap_Pipelines[i].Name == Name)
+        {
+            return *ap_Pipelines[i].pLine;
+        }
+    }
+    printf("Could not find specified pipeline %s\n", Name);
+    Pipeline errpl = {0};
+    return errpl;
 }

@@ -91,20 +91,9 @@ void init()
 
     setShaderSPRV(renderer.vkCore, &pl, vShader, vLen, fShader, fLen);
 
-    setPushConstantRange(&pl, sizeof(pushConstants), SHADER_STAGE_FRAGMENT);
+    setPushConstantRange(renderer.vkCore, &pl, sizeof(pushConstants), SHADER_STAGE_FRAGMENT);
 
     pl.PushConstants = &pc;
-
-    VkPipelineLayoutCreateInfo plcInf = {0};
-    plcInf.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    plcInf.pNext = NULL;
-
-    plcInf.setLayoutCount = 0;
-    plcInf.pSetLayouts = NULL;
-
-    plcInf.pPushConstantRanges = &pl.pcRange;
-    plcInf.pushConstantRangeCount = pl.pcRangeCount;
-    vkCreatePipelineLayout(renderer.vkCore.lDev, &plcInf, NULL, &pl.plLayout);
 
     pass1 = newPass((char *)"name1", PASS_TYPE_GRAPHICS);
 
