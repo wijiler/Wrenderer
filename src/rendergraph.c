@@ -383,12 +383,12 @@ void optimizePasses(RenderGraph *graph, Image swapChainImg)
 RenderGraph buildGraph(GraphBuilder *builder, Image scImage)
 {
     RenderGraph rg = {0};
-    rg.passes = builder->passes;
+    rg.passes = malloc(sizeof(RenderPass) * builder->passCount);
+    memcpy(rg.passes, builder->passes, sizeof(RenderPass) * builder->passCount);
     rg.barriers = malloc(sizeof(passBarrierInfo) * builder->passCount);
     rg.passCount = builder->passCount;
     optimizePasses(&rg, scImage);
-    builder->passes = NULL;
-    builder->passCount = 0;
+
     return rg;
 }
 

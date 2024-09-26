@@ -33,8 +33,6 @@ void loop()
     FrameIndex++;
     Index = FrameIndex % FRAMECOUNT;
 
-    addPass(&builder, &pass1);
-
     renderer.rg = &builder;
 
     drawRenderer(&renderer, Index);
@@ -108,6 +106,7 @@ void init()
     addBufferResource(&pass1, vertexBuffer, USAGE_UNDEFINED);
 
     setExecutionCallBack(&pass1, helloTriangleCallback);
+    addPass(&builder, &pass1);
 }
 int main(void)
 {

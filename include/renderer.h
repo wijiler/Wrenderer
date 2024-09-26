@@ -238,7 +238,7 @@ extern "C"
 
         VkDescriptorPool tdescPool;
         VkDescriptorSetLayout tdSetLayout;
-        VkDescriptorSet tdescriptorSets[MAXTEXTURES - 1];
+        VkDescriptorSet tdescriptorSet;
 
         GLFWwindow *window;
 
@@ -258,7 +258,7 @@ extern "C"
     void pushDataToBuffer(void *data, size_t dataSize, Buffer buf);
     void copyBuf(VulkanCore_t core, Buffer src, Buffer dest, size_t size);
 
-    void write_textureDescriptorSets(VulkanCore_t core, uint64_t set, VkImageView texture, VkSampler sampler, uint64_t textureIndex);
+    void write_textureDescriptorSet(VulkanCore_t core, uint64_t set, VkImageView texture, VkSampler sampler, uint64_t textureIndex);
 
     void destroyBuffer(Buffer buf, VulkanCore_t core);
     void destroyRenderer(renderer_t *renderer);

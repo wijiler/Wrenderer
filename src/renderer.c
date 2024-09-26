@@ -743,8 +743,7 @@ void create_dsp(VulkanCore_t *core)
     }
 }
 
-uint32_t totalsetCount = 0;
-void allocate_textureDescriptorSets(VulkanCore_t *core, uint64_t setCount)
+void allocate_textureDescriptorSet(VulkanCore_t *core)
 {
     VkDescriptorSetVariableDescriptorCountAllocateInfoEXT countAllocInfoEXT = {0};
     countAllocInfoEXT.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO_EXT;
@@ -762,15 +761,11 @@ void allocate_textureDescriptorSets(VulkanCore_t *core, uint64_t setCount)
     allocInfo.descriptorSetCount = 1;
     allocInfo.pSetLayouts = &core->tdSetLayout;
 
-    for (uint32_t i = 0; i < setCount; i++)
-    {
-        if (vkAllocateDescriptorSets(core->lDev, &allocInfo, &core->tdescriptorSets[totalsetCount + i]) != VK_SUCCESS)
-            printf("Couldnt allocate descriptor sets");
-    }
-    totalsetCount += setCount;
+    if (vkAllocateDescriptorSets(core->lDev, &allocInfo, &core->tdescriptorSet) != VK_SUCCESS)
+        printf("Couldnt allocate descriptor sets");
 }
 
-void write_textureDescriptorSets(VulkanCore_t core, uint64_t set, VkImageView texture, VkSampler sampler, uint64_t textureIndex)
+void write_textureDescriptorSet(VulkanCore_t core, uint64_t set, VkImageView texture, VkSampler sampler, uint64_t textureIndex)
 {
     VkWriteDescriptorSet dsWrite = {0};
     dsWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -779,7 +774,7 @@ void write_textureDescriptorSets(VulkanCore_t core, uint64_t set, VkImageView te
     dsWrite.descriptorCount = 1;
     dsWrite.dstArrayElement = textureIndex;
     dsWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    dsWrite.dstSet = core.tdescriptorSets[set];
+    dsWrite.dstSet = core.tdescriptorSet;
     dsWrite.dstBinding = 0;
 
     VkDescriptorImageInfo descImgInfo = {0};
@@ -836,11 +831,9 @@ void initRenderer(renderer_t *renderer)
     renderer->vkCore.currentImageIndex = 0;
     create_CommandBuffers(&renderer->vkCore);
     create_dsp(&renderer->vkCore);
-    allocate_textureDescriptorSets(&renderer->vkCore, 1);
-
-    allocate_textureDescriptorSets(&renderer->vkCore, 20);
+    allocate_textureDescriptorSet(&renderer->vkCore);
 }
-// needs to be here ugh
+
 void bindPipeline(Pipeline pline, VkCommandBuffer cBuf)
 {
     VkBool32 cbEnable = pline.colorBlending;
