@@ -3,9 +3,15 @@
 #include <stdio.h>
 #include <windowing.h>
 
+typedef struct
+{
+    float screensize[2];
+} pushConstants;
+
 RenderPass pass1;
 renderer_t renderer;
 winf_t wininfo = {0};
+pushConstants pc = {0};
 GraphBuilder builder = {0};
 
 float verts[3][3] = {
@@ -21,9 +27,11 @@ void helloTriangleCallback(RenderPass pass, VkCommandBuffer cBuf)
 {
     bindPipeline(pass.pl, cBuf);
 
-    uint64_t offset = 0;
+    pc.screensize[0] = renderer.vkCore.extent.width;
+    pc.screensize[1] = renderer.vkCore.extent.height;
 
-    vkCmdBindVertexBuffers(cBuf, 0, 1, &pass.resources[1].value.buffer.buffer, &offset);
+    vkCmdPushConstants(cBuf, pass.pl.plLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, pass.pl.pcRange.size, pass.pl.PushConstants);
+
     vkCmdDraw(cBuf, 3, 1, 0, 0);
 
     unBindPipeline(cBuf);
@@ -41,12 +49,13 @@ void loop()
 void init()
 {
     initRenderer(&renderer);
-    uint64_t vLen, fLen = 0;
+    uint64_t vLen = 0;
+    uint64_t fLen = 0;
     uint32_t *vShader = NULL;
     uint32_t *fShader = NULL;
 
-    readShaderSPRV("./shaders/vtri.spv", &vLen, &vShader);
-    readShaderSPRV("./shaders/ftri.spv", &fLen, &fShader);
+    readShaderSPRV("./shaders/vfractal.spv", &vLen, &vShader);
+    readShaderSPRV("./shaders/ffractal.spv", &fLen, &fShader);
 
     Pipeline pl = {0};
 
@@ -80,32 +89,16 @@ void init()
 
     setShaderSPRV(renderer.vkCore, &pl, vShader, vLen, fShader, fLen);
 
-    addVertexInput(&pl, 0, 0, sizeof(float) * 3, 0, VK_VERTEX_INPUT_RATE_VERTEX, VK_FORMAT_R32G32B32_SFLOAT);
+    setPushConstantRange(renderer.vkCore, &pl, sizeof(pushConstants), SHADER_STAGE_FRAGMENT);
 
-    BufferCreateInfo cInf = {0};
-    cInf.access = CPU_ONLY;
-    cInf.dataSize = sizeof(verts);
-    cInf.usage = BUFFER_USAGE_TRANSFER_SRC;
-
-    Buffer stagingbuf = {0};
-    Buffer vertexBuffer = {0};
-    createBuffer(renderer.vkCore, cInf, &stagingbuf);
-    cInf.usage = BUFFER_USAGE_VERTEX | BUFFER_USAGE_TRANSFER_DST;
-    cInf.access = DEVICE_ONLY;
-    createBuffer(renderer.vkCore, cInf, &vertexBuffer);
-
-    pushDataToBuffer(verts, sizeof(verts), stagingbuf);
-    copyBuf(renderer.vkCore, stagingbuf, vertexBuffer, sizeof(verts));
-    destroyBuffer(stagingbuf, renderer.vkCore);
+    pl.PushConstants = &pc;
 
     pass1 = newPass((char *)"name1", PASS_TYPE_GRAPHICS);
 
     pass1.pl = pl;
     addImageResource(&pass1, renderer.vkCore.currentScImg, USAGE_COLORATTACHMENT);
-    addBufferResource(&pass1, vertexBuffer, USAGE_UNDEFINED);
 
     setExecutionCallBack(&pass1, helloTriangleCallback);
-
     addPass(&builder, &pass1);
 }
 int main(void)

@@ -206,8 +206,7 @@ extern "C"
 
     typedef struct
     {
-        int vertexCount;
-        float *verticies;
+        Buffer verticies;
         int indexCount;
         uint32_t *indices;
         uint32_t instanceCount;
@@ -275,9 +274,9 @@ extern "C"
     Buffer findBuffer(int index);
     void createBuffer(VulkanCore_t core, BufferCreateInfo createInfo, Buffer *buf);
     void pushDataToBuffer(void *data, size_t dataSize, Buffer buf);
-    void copyBuf(VulkanCore_t core, Buffer src, Buffer dest, size_t size);
+    void copyBuf(VulkanCore_t core, Buffer src, Buffer dest, size_t size, uint32_t srcOffset, uint32_t dstOffset);
 
-    void write_textureDescriptorSet(VulkanCore_t core, uint64_t set, VkImageView texture, VkSampler sampler, uint64_t textureIndex);
+    void write_textureDescriptorSet(VulkanCore_t core, VkImageView texture, VkSampler sampler, uint64_t textureIndex);
 
     void destroyBuffer(Buffer buf, VulkanCore_t core);
     void destroyRenderer(renderer_t *renderer);

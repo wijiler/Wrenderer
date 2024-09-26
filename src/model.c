@@ -1,6 +1,6 @@
 #include <renderer.h>
 
-void submitMesh(Mesh mesh, MeshHandler *handler)
+void submitMesh(Mesh mesh, MeshHandler *handler, renderer_t renderer)
 {
     if (mesh.instanceCount > 1)
     {
@@ -9,4 +9,5 @@ void submitMesh(Mesh mesh, MeshHandler *handler)
         handler->instancedmeshCount += 1;
         return;
     }
+    copyBuf(renderer.vkCore, mesh.verticies, handler->unifiedVerts, mesh.verticies.size, 0, handler->unifiedSize);
 }

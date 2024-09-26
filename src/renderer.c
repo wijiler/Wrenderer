@@ -676,15 +676,15 @@ void pushDataToBuffer(void *data, size_t dataSize, Buffer buf)
     memcpy(buf.mappedMemory, data, dataSize);
 }
 
-void copyBuf(VulkanCore_t core, Buffer src, Buffer dest, size_t size)
+void copyBuf(VulkanCore_t core, Buffer src, Buffer dest, size_t size, uint32_t srcOffset, uint32_t dstOffset)
 {
     vkWaitForFences(core.lDev, 1, &core.immediateFence, VK_TRUE, UINT64_MAX);
     vkResetFences(core.lDev, 1, &core.immediateFence);
     vkResetCommandBuffer(core.immediateSubmit, 0);
     vkBeginCommandBuffer(core.immediateSubmit, &cBufBeginInf);
     VkBufferCopy copyData = {0};
-    copyData.dstOffset = 0;
-    copyData.srcOffset = 0;
+    copyData.dstOffset = dstOffset;
+    copyData.srcOffset = srcOffset;
     copyData.size = size;
 
     vkCmdCopyBuffer(core.immediateSubmit, src.buffer, dest.buffer, 1, &copyData);
@@ -774,7 +774,7 @@ void allocate_textureDescriptorSet(VulkanCore_t *core)
         printf("Couldnt allocate descriptor sets");
 }
 
-void write_textureDescriptorSet(VulkanCore_t core, uint64_t set, VkImageView texture, VkSampler sampler, uint64_t textureIndex)
+void write_textureDescriptorSet(VulkanCore_t core, VkImageView texture, VkSampler sampler, uint64_t textureIndex)
 {
     VkWriteDescriptorSet dsWrite = {0};
     dsWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -849,7 +849,14 @@ void initRenderer(renderer_t *renderer)
     create_dsp(&renderer->vkCore);
     allocate_textureDescriptorSet(&renderer->vkCore);
     renderer->meshHandler.instancedMeshes = NULL;
-    BufferCreateInfo vBCI = {0};
+
+    BufferCreateInfo BCI = {0};
+    BCI.access = DEVICE_ONLY;
+    BCI.dataSize = 30000 * sizeof(float[3]);
+    BCI.usage = BUFFER_USAGE_VERTEX | BUFFER_USAGE_TRANSFER_DST;
+    createBuffer(renderer->vkCore, BCI, &renderer->meshHandler.unifiedVerts);
+    BCI.usage = BUFFER_USAGE_INDEX | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    createBuffer(renderer->vkCore, BCI, &renderer->meshHandler.unifiedIndices);
 }
 
 void bindPipeline(Pipeline pline, VkCommandBuffer cBuf)
