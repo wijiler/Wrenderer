@@ -27,7 +27,8 @@ extern "C"
         BUFFER_USAGE_INDEX = VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
         BUFFER_USAGE_TRANSFER_SRC = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
         BUFFER_USAGE_TRANSFER_DST = VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-    } BUFFERTYPE;
+        BUFFER_USAGE_STORAGE_BUFFER = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+    } BufferUsage;
 
     typedef enum
     {
@@ -44,13 +45,13 @@ extern "C"
     typedef struct
     {
         int dataSize;
-        VkBufferUsageFlags usage;
+        BufferUsage usage;
         BufferAccess access;
     } BufferCreateInfo;
 
     typedef struct
     {
-        BUFFERTYPE type;
+        BufferUsage type;
         uint32_t index, size;
         VkBuffer buffer;
         VkDeviceMemory associatedMemory;
@@ -257,7 +258,7 @@ extern "C"
     void pushDataToBuffer(void *data, size_t dataSize, Buffer buf);
     void copyBuf(VulkanCore_t core, Buffer src, Buffer dest, size_t size);
 
-    void allocate_textureDescriptorSets(VulkanCore_t *core, uint64_t setCount);
+    void write_textureDescriptorSets(VulkanCore_t core, uint64_t set, VkImageView texture, VkSampler sampler, uint64_t textureIndex);
 
     void destroyBuffer(Buffer buf, VulkanCore_t core);
     void destroyRenderer(renderer_t *renderer);

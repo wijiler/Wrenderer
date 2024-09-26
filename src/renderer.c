@@ -185,7 +185,8 @@ VkPhysicalDevice find_valid_device(int deviceCount, VkPhysicalDevice devices[], 
             devFeat12.bufferDeviceAddress == VK_TRUE && devFeat12.descriptorBindingUniformBufferUpdateAfterBind == VK_TRUE &&
             devFeat12.descriptorBindingPartiallyBound == VK_TRUE && devFeat12.descriptorBindingVariableDescriptorCount == VK_TRUE &&
             shaderObjectFeatures.shaderObject == VK_TRUE && devFeat2.features.alphaToOne == VK_TRUE && depthClipEnable.depthClipEnable == VK_TRUE &&
-            vertAttrDivFeats.vertexAttributeInstanceRateZeroDivisor == VK_TRUE)
+            vertAttrDivFeats.vertexAttributeInstanceRateZeroDivisor == VK_TRUE && devFeat12.descriptorBindingPartiallyBound == VK_TRUE &&
+            devFeat12.runtimeDescriptorArray == VK_TRUE && devFeat12.descriptorBindingSampledImageUpdateAfterBind == VK_TRUE)
         {
             graphicsFamilyIndex = &gfami;
             return devices[i];
@@ -264,8 +265,10 @@ void create_device(VulkanCore_t *core)
     devFeatures12.bufferDeviceAddress = VK_TRUE;
 
     devFeatures12.descriptorBindingUniformBufferUpdateAfterBind = VK_TRUE;
+    devFeatures12.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
     devFeatures12.descriptorBindingPartiallyBound = VK_TRUE;
     devFeatures12.descriptorBindingVariableDescriptorCount = VK_TRUE;
+    devFeatures12.runtimeDescriptorArray = VK_TRUE;
 
     shaderObjectFeatures.shaderObject = VK_TRUE;
 
@@ -713,10 +716,10 @@ void create_dsp(VulkanCore_t *core)
 
     VkDescriptorSetLayoutBinding UBindingInf = {0};
     UBindingInf.binding = 0;
-    UBindingInf.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    UBindingInf.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     UBindingInf.descriptorCount = MAXTEXTURES;
 
-    UBindingInf.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    UBindingInf.stageFlags = VK_SHADER_STAGE_ALL;
 
     VkDescriptorBindingFlagsEXT slciFlags = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT_EXT | VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT_EXT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT_EXT;
     VkDescriptorSetLayoutBindingFlagsCreateInfoEXT slciFlagsEXT = {0};
@@ -833,6 +836,7 @@ void initRenderer(renderer_t *renderer)
     renderer->vkCore.currentImageIndex = 0;
     create_CommandBuffers(&renderer->vkCore);
     create_dsp(&renderer->vkCore);
+    allocate_textureDescriptorSets(&renderer->vkCore, 1);
 
     allocate_textureDescriptorSets(&renderer->vkCore, 20);
 }

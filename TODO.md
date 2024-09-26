@@ -3,11 +3,11 @@
 ## working on
 
 - [ ] Add Bindless Uniform buffers (non texture)
-- [ ] Add support for actual pipelines
 
 ## high priority
 
 - [ ] Add multi-os support
+- [ ] Add support for actual pipelines
 
 ## low priority
 
