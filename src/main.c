@@ -33,8 +33,6 @@ void loop()
     FrameIndex++;
     Index = FrameIndex % FRAMECOUNT;
 
-    addPass(&builder, &pass1);
-
     renderer.rg = &builder;
 
     drawRenderer(&renderer, Index);
@@ -81,6 +79,7 @@ void init()
     pl.sampleMask = UINT32_MAX;
 
     setShaderSPRV(renderer.vkCore, &pl, vShader, vLen, fShader, fLen);
+
     addVertexInput(&pl, 0, 0, sizeof(float) * 3, 0, VK_VERTEX_INPUT_RATE_VERTEX, VK_FORMAT_R32G32B32_SFLOAT);
 
     BufferCreateInfo cInf = {0};
@@ -106,6 +105,8 @@ void init()
     addBufferResource(&pass1, vertexBuffer, USAGE_UNDEFINED);
 
     setExecutionCallBack(&pass1, helloTriangleCallback);
+
+    addPass(&builder, &pass1);
 }
 int main(void)
 {

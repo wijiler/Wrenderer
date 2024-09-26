@@ -83,12 +83,9 @@ const VkCommandBufferBeginInfo bInf = {
     NULL,
 };
 
-#define RESOURCEBLOCKCOUNT 64
-
 void addResource(RenderPass *pass, Resource res)
 {
-    if (pass->resourceCount % RESOURCEBLOCKCOUNT == 0)
-        pass->resources = realloc(pass->resources, sizeof(Resource) * (pass->resourceCount + RESOURCEBLOCKCOUNT));
+    pass->resources = realloc(pass->resources, sizeof(Resource) * (pass->resourceCount + 1));
     pass->resources[pass->resourceCount] = res;
     pass->resourceCount += 1;
 }
@@ -110,7 +107,7 @@ RenderPass newPass(char *name, passType type)
     hash = p.hash;
     p.type = type;
     p.resourceCount = 0;
-    p.resources = malloc(sizeof(Resource) * RESOURCEBLOCKCOUNT);
+    p.resources = NULL;
     p.cAttCount = 0;
     p.colorAttachments = NULL;
 
