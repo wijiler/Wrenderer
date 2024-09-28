@@ -89,7 +89,9 @@ void init()
 
     setShaderSPRV(renderer.vkCore, &pl, vShader, vLen, fShader, fLen);
 
-    setPushConstantRange(renderer.vkCore, &pl, sizeof(pushConstants), SHADER_STAGE_FRAGMENT);
+    setPushConstantRange(&pl, sizeof(pushConstants), SHADER_STAGE_FRAGMENT);
+
+    createPipelineLayout(renderer.vkCore, &pl);
 
     pl.PushConstants = &pc;
 

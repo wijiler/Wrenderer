@@ -1011,7 +1011,7 @@ void addVertexInput(Pipeline *pl, int binding, int location, int stride, int off
     pl->vert.VertexDescriptons += 1;
 }
 
-void setPushConstantRange(VulkanCore_t core, Pipeline *pl, size_t size, shaderStage stage)
+void setPushConstantRange(Pipeline *pl, size_t size, shaderStage stage)
 {
     VkPushConstantRange pcRange = {0};
     pcRange.offset = 0;
@@ -1020,12 +1020,20 @@ void setPushConstantRange(VulkanCore_t core, Pipeline *pl, size_t size, shaderSt
 
     pl->pcRange = pcRange;
     pl->pcRangeCount = 1;
+}
+
+void createPipelineLayout(VulkanCore_t core, Pipeline *pl)
+{
     VkPipelineLayoutCreateInfo plcInf = {0};
     plcInf.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     plcInf.pNext = NULL;
 
-    plcInf.setLayoutCount = 0;
-    plcInf.pSetLayouts = NULL;
+    VkDescriptorSetLayout *setLayouts = malloc(sizeof(VkDescriptorSetLayout) * (pl->setLayoutCount + 1));
+    memcpy(setLayouts, pl->setLayouts, sizeof(VkDescriptorSetLayout) * (pl->setLayoutCount));
+    setLayouts[pl->setLayoutCount] = core.tdSetLayout;
+
+    plcInf.setLayoutCount = pl->setLayoutCount + 1;
+    plcInf.pSetLayouts = setLayouts;
 
     plcInf.pPushConstantRanges = &pl->pcRange;
     plcInf.pushConstantRangeCount = pl->pcRangeCount;
