@@ -38,6 +38,15 @@ $ make config=debug/release/lib
 
 -- TO BE DETERMINED
 
+## Features of Wrenderer
+
+Vulkan lol  
+Immediate Rendergraph  
+Dead pass removal  
+Bindless textures  
+Optimized mesh api  
+Shader Object Support  
+
 ## Issues
 
 If you encounter any issues either building the project or using it please open up a github issue, just put in enough effort into actually describing the problem and I will fix it  
