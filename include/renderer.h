@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <vulkan/vulkan.h>
 
-#define MAXTEXTURES 2048
+#define MAXTEXTURES 4096
 #define FRAMECOUNT 3
 
 #ifdef __cplusplus
