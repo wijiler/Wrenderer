@@ -671,9 +671,9 @@ void destroyBuffer(Buffer buf, VulkanCore_t core)
     bufferInfo[buf.index].active = false;
 }
 
-void pushDataToBuffer(void *data, size_t dataSize, Buffer buf)
+void pushDataToBuffer(void *data, size_t dataSize, Buffer buf, int offSet)
 {
-    memcpy(buf.mappedMemory, data, dataSize);
+    memcpy(buf.mappedMemory + offSet, data, dataSize);
 }
 
 void copyBuf(VulkanCore_t core, Buffer src, Buffer dest, size_t size, uint32_t srcOffset, uint32_t dstOffset)
@@ -833,6 +833,8 @@ void destroyRenderer(renderer_t *renderer)
     vkDestroyInstance(renderer->vkCore.instance, NULL);
 }
 
+const uint64_t maxVerts = 1000000;
+
 void initRenderer(renderer_t *renderer)
 {
     create_instance(renderer);
@@ -852,11 +854,13 @@ void initRenderer(renderer_t *renderer)
 
     BufferCreateInfo BCI = {0};
     BCI.access = DEVICE_ONLY;
-    BCI.dataSize = 30000 * sizeof(float[3]);
-    BCI.usage = BUFFER_USAGE_VERTEX | BUFFER_USAGE_TRANSFER_DST;
+    BCI.dataSize = maxVerts * sizeof(float[3]);
+    BCI.usage = BUFFER_USAGE_VERTEX | BUFFER_USAGE_TRANSFER_DST | BUFFER_USAGE_TRANSFER_SRC;
     createBuffer(renderer->vkCore, BCI, &renderer->meshHandler.unifiedVerts);
-    BCI.usage = BUFFER_USAGE_INDEX | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    BCI.usage = BUFFER_USAGE_INDEX | VK_BUFFER_USAGE_TRANSFER_DST_BIT | BUFFER_USAGE_TRANSFER_SRC;
     createBuffer(renderer->vkCore, BCI, &renderer->meshHandler.unifiedIndices);
+    renderer->meshHandler.unifiedVertexCapacity = maxVerts * sizeof(float[3]);
+    renderer->meshHandler.unifiedIndexCapacity = maxVerts * sizeof(uint32_t);
 }
 
 void bindPipeline(Pipeline pline, VkCommandBuffer cBuf)

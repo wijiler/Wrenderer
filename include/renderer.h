@@ -49,11 +49,32 @@ extern "C"
     typedef struct
     {
         BufferUsage type;
-        uint32_t index, size;
+        uint32_t index;
+        size_t size;
         VkBuffer buffer;
         VkDeviceMemory associatedMemory;
         void *mappedMemory;
     } Buffer;
+
+    typedef struct
+    {
+        Buffer verticies;
+        Buffer indices;
+        uint32_t instanceCount;
+    } Mesh;
+
+    typedef struct
+    {
+        uint64_t unifiedVertexCapacity;
+        uint64_t unifiedIndexCapacity;
+        size_t unifiedVertexSize;
+        size_t unifiedIndexSize;
+        Buffer unifiedVerts;
+        Buffer unifiedIndices;
+
+        uint32_t instancedmeshCount;
+        Mesh *instancedMeshes;
+    } MeshHandler;
 
     typedef struct
     {
@@ -141,15 +162,16 @@ extern "C"
         int cAttIndex; // only used if the image is a color attachment but very useful
         union resourceVal
         {
-            Buffer buffer; // used if RES_TYPE_Buffer
+            Buffer buffer;
             Image *img;
+            Mesh mesh;
         } value;
     } Resource;
     typedef enum
     {
         PASS_TYPE_GRAPHICS,
         // compute will be added soon
-        PASS_TYPE_TRANSFER,
+        PASS_TYPE_BLIT,
     } passType;
     /*
      * We are able to tell if another pass is dependent of the other by the resources it uses
@@ -177,7 +199,7 @@ extern "C"
         int resourceCount;
         Resource *resources;
 
-        void (*callBack)(struct RenderPass pass, VkCommandBuffer cBuf); // allows us to use lambdas in the C++ wrapper
+        void (*callBack)(struct RenderPass pass, VkCommandBuffer cBuf);
     } RenderPass;
 
     typedef struct
@@ -201,28 +223,6 @@ extern "C"
         RenderPass *passes;
     } GraphBuilder;
     // ----------------------------------------- RGEND
-
-    // ----------------------------------------- MODELBG
-
-    typedef struct
-    {
-        Buffer verticies;
-        int indexCount;
-        uint32_t *indices;
-        uint32_t instanceCount;
-    } Mesh;
-
-    typedef struct
-    {
-        size_t unifiedSize;
-        Buffer unifiedVerts;
-        Buffer unifiedIndices;
-
-        int instancedmeshCount;
-        Mesh *instancedMeshes;
-    } MeshHandler;
-
-    // ----------------------------------------- MODELEND
 
     typedef struct
     {
@@ -260,6 +260,7 @@ extern "C"
         GLFWwindow *window;
 
     } VulkanCore_t;
+
     typedef struct
     {
         VulkanCore_t vkCore;
@@ -273,7 +274,7 @@ extern "C"
 
     Buffer findBuffer(int index);
     void createBuffer(VulkanCore_t core, BufferCreateInfo createInfo, Buffer *buf);
-    void pushDataToBuffer(void *data, size_t dataSize, Buffer buf);
+    void pushDataToBuffer(void *data, size_t dataSize, Buffer buf, int offSet);
     void copyBuf(VulkanCore_t core, Buffer src, Buffer dest, size_t size, uint32_t srcOffset, uint32_t dstOffset);
 
     void write_textureDescriptorSet(VulkanCore_t core, VkImageView texture, VkSampler sampler, uint64_t textureIndex);
@@ -310,6 +311,15 @@ extern "C"
     uint64_t fnv_64a_str(char *str, uint64_t hval);
 
     // ---------------------------- RGFUNEND
+
+    // ----------------------------------------- MODELFUNBG
+
+    void addMeshResource(RenderPass *pass, Mesh mesh, ResourceUsageFlags_t usage);
+
+    Mesh createMesh(renderer_t renderer, uint32_t vertCount, float vertices[], uint32_t indexCount, uint32_t indices[], uint32_t instanceCount);
+    void submitMesh(Mesh mesh, renderer_t *renderer);
+    RenderPass sceneDraw(renderer_t *renderer);
+    // ----------------------------------------- MODELFUNEND
 
 #ifdef __cplusplus
 }

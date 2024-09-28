@@ -215,6 +215,16 @@ void addBufferResource(RenderPass *pass, Buffer buf, ResourceUsageFlags_t usage)
     addResource(pass, res);
 }
 
+void addMeshResource(RenderPass *pass, Mesh mesh, ResourceUsageFlags_t usage)
+{
+    Resource res = {0};
+    res.type = RES_TYPE_Buffer;
+    res.value.mesh = mesh;
+    res.usage = usage;
+
+    addResource(pass, res);
+}
+
 void setPipeline(Pipeline pl, RenderPass *pass)
 {
     pass->pl = pl;
