@@ -90,6 +90,7 @@ void submitMesh(Mesh mesh, renderer_t *renderer)
 const uint64_t offSet = 0;
 void sceneDrawCallBack(RenderPass pass, VkCommandBuffer cBuf)
 {
+    int indexCount = *((int *)pass.resources[3].value.arbitrary);
     bindPipeline(pass.pl, cBuf);
     if (pass.pl.PushConstants != NULL)
     {
@@ -99,9 +100,9 @@ void sceneDrawCallBack(RenderPass pass, VkCommandBuffer cBuf)
     vkCmdBindVertexBuffers(cBuf, 0, 1, &pass.resources[1].value.buffer.buffer, &offSet);
     vkCmdBindIndexBuffer(cBuf, pass.resources[2].value.buffer.buffer, offSet, VK_INDEX_TYPE_UINT32);
 
-    vkCmdDrawIndexed(cBuf, pass.resources[2].value.buffer.size / sizeof(uint32_t), 1, 0, 0, 0);
+    vkCmdDrawIndexed(cBuf, indexCount / sizeof(uint32_t), 1, 0, 0, 0);
 
-    for (int i = 3; i < pass.resourceCount; i++)
+    for (int i = 4; i < pass.resourceCount; i++)
     {
         vkCmdBindVertexBuffers(cBuf, 0, 1, &pass.resources[i].value.mesh.verticies.buffer, &offSet);
         vkCmdBindIndexBuffer(cBuf, pass.resources[i].value.mesh.indices.buffer, offSet, VK_INDEX_TYPE_UINT32);
@@ -117,6 +118,7 @@ RenderPass sceneDraw(renderer_t *renderer)
     addImageResource(&pass, renderer->vkCore.currentScImg, USAGE_COLORATTACHMENT);
     addBufferResource(&pass, renderer->meshHandler.unifiedVerts, USAGE_UNDEFINED);
     addBufferResource(&pass, renderer->meshHandler.unifiedIndices, USAGE_UNDEFINED);
+    addArbitraryResource(&pass, &renderer->meshHandler.unifiedIndexSize);
 
     for (uint32_t i = 0; i < renderer->meshHandler.instancedmeshCount; i++)
     {

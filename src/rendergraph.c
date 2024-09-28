@@ -218,9 +218,18 @@ void addBufferResource(RenderPass *pass, Buffer buf, ResourceUsageFlags_t usage)
 void addMeshResource(RenderPass *pass, Mesh mesh, ResourceUsageFlags_t usage)
 {
     Resource res = {0};
-    res.type = RES_TYPE_Buffer;
+    res.type = RES_TYPE_Mesh;
     res.value.mesh = mesh;
     res.usage = usage;
+
+    addResource(pass, res);
+}
+
+void addArbitraryResource(RenderPass *pass, void *data)
+{
+    Resource res = {0};
+    res.type = RES_TYPE_Arb;
+    res.value.arbitrary = data;
 
     addResource(pass, res);
 }

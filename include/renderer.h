@@ -11,11 +11,7 @@
 extern "C"
 {
 #endif
-    static const VkPushConstantRange NoPushConstants = {
-        VK_SHADER_STAGE_ALL,
-        0,
-        0,
-    };
+
     // ----------------------------------------- RGBEG
     static const VkCommandBufferBeginInfo cBufBeginInf = {
         VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -137,6 +133,8 @@ extern "C"
 
     typedef enum
     {
+        RES_TYPE_Mesh,
+        RES_TYPE_Arb,
         RES_TYPE_Buffer,
         RES_TYPE_Image,
     } Resourcetype;
@@ -170,6 +168,7 @@ extern "C"
             Buffer buffer;
             Image *img;
             Mesh mesh;
+            void *arbitrary;
         } value;
     } Resource;
     typedef enum
@@ -305,6 +304,7 @@ extern "C"
     void setPipeline(Pipeline pl, RenderPass *pass);
     void addImageResource(RenderPass *pass, Image *image, ResourceUsageFlags_t usage);
     void addBufferResource(RenderPass *pass, Buffer buf, ResourceUsageFlags_t usage);
+    void addArbitraryResource(RenderPass *pass, void *data);
     void addColorAttachment(Image *img, RenderPass *pass, VkClearValue *clear);
     void setDepthStencilAttachment(Image img, RenderPass *pass);
     void setExecutionCallBack(RenderPass *pass, void (*callBack)(RenderPass pass, VkCommandBuffer cBuf));
