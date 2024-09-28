@@ -83,6 +83,7 @@ extern "C"
         VkImageView imgview;
         // Do not set manually
         VkImageLayout CurrentLayout;
+        VkAccessFlags accessMask;
     } Image;
 
     typedef struct

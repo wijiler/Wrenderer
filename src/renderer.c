@@ -845,6 +845,7 @@ void initRenderer(renderer_t *renderer)
         renderer->vkCore.swapChainImages[0],
         renderer->vkCore.swapChainImageViews[0],
         VK_IMAGE_LAYOUT_UNDEFINED,
+        0,
     };
     renderer->vkCore.currentImageIndex = 0;
     create_CommandBuffers(&renderer->vkCore);

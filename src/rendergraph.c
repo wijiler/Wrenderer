@@ -157,33 +157,39 @@ void addImageResource(RenderPass *pass, Image *image, ResourceUsageFlags_t usage
         res.access = ACCESS_COLORATTACHMENT;
         res.value.img->CurrentLayout |= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
         res.cAttIndex = pass->cAttCount;
+        res.value.img->accessMask |= ACCESS_COLORATTACHMENT;
         addColorAttachment(image, pass, NULL);
     }
     else if ((usage & USAGE_DEPTHSTENCILATTACHMENT) != 0)
     {
         res.access = ACCESS_DEPTHATTACHMENT;
         res.value.img->CurrentLayout |= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        res.value.img->accessMask |= ACCESS_DEPTHATTACHMENT;
         setDepthStencilAttachment(*image, pass);
     }
     else if ((usage & USAGE_TRANSFER_SRC) != 0)
     {
         res.access = ACCESS_TRANSFER_READ;
         res.value.img->CurrentLayout |= VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        res.value.img->accessMask |= ACCESS_TRANSFER_READ;
     }
     else if ((usage & USAGE_TRANSFER_DST) != 0)
     {
         res.access = ACCESS_TRANSFER_WRITE;
         res.value.img->CurrentLayout |= VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        res.value.img->accessMask |= ACCESS_TRANSFER_WRITE;
     }
     else if ((usage & USAGE_SAMPLED) != 0)
     {
         res.access = ACCESS_READ;
         res.value.img->CurrentLayout |= VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        res.value.img->accessMask |= ACCESS_READ;
     }
     else if ((usage & USAGE_UNDEFINED) != 0)
     {
         res.access = 0;
         res.value.img->CurrentLayout |= VK_IMAGE_LAYOUT_UNDEFINED;
+        res.value.img->accessMask = 0;
     }
 
     addResource(pass, res);
@@ -329,6 +335,8 @@ void optimizePasses(RenderGraph *graph, Image swapChainImg)
                             bufMemBarriers[bufBrrCount] = bcBar;
                             bufBrrCount += 1;
                             break;
+                        default:
+                            break;
                         }
                         if ((cr.usage & USAGE_COLORATTACHMENT) != 0 || (cr.usage & USAGE_TRANSFER_DST) != 0 || (cr.usage & USAGE_DEPTHSTENCILATTACHMENT) != 0)
                         {
@@ -412,6 +420,7 @@ void drawRenderer(renderer_t *renderer, int cBufIndex)
         renderer->vkCore.swapChainImages[renderer->vkCore.currentImageIndex],
         renderer->vkCore.swapChainImageViews[renderer->vkCore.currentImageIndex],
         VK_IMAGE_LAYOUT_UNDEFINED,
+        0,
     };
 
     vkResetCommandBuffer(cbuf, 0);
@@ -433,6 +442,8 @@ void drawRenderer(renderer_t *renderer, int cBufIndex)
         imgSRR,
     };
     vkCmdPipelineBarrier(cbuf, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, NULL, 0, NULL, 1, &imgMemoryBarrier);
+    renderer->vkCore.currentScImg->CurrentLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    renderer->vkCore.currentScImg->accessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 
     vkCmdClearColorImage(cbuf, renderer->vkCore.currentScImg->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearValue, 1, &imgSRR);
 
@@ -456,12 +467,14 @@ void drawRenderer(renderer_t *renderer, int cBufIndex)
 
     executeGraph(renderer->vkCore.extent, &rg, cbuf);
 
-    imgMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    imgMemoryBarrier.srcAccessMask = renderer->vkCore.currentScImg->accessMask;
     imgMemoryBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-    imgMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    imgMemoryBarrier.oldLayout = renderer->vkCore.currentScImg->CurrentLayout;
     imgMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
     vkCmdPipelineBarrier(cbuf, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 0, NULL, 0, NULL, 1, &imgMemoryBarrier);
+    renderer->vkCore.currentScImg->CurrentLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    renderer->vkCore.currentScImg->accessMask = VK_ACCESS_MEMORY_READ_BIT;
 
     vkEndCommandBuffer(cbuf);
 
