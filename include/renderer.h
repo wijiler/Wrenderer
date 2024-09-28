@@ -11,7 +11,11 @@
 extern "C"
 {
 #endif
-
+    static const VkPushConstantRange NoPushConstants = {
+        VK_SHADER_STAGE_ALL,
+        0,
+        0,
+    };
     // ----------------------------------------- RGBEG
     static const VkCommandBufferBeginInfo cBufBeginInf = {
         VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -31,6 +35,7 @@ extern "C"
     {
         SHADER_STAGE_VERTEX = VK_SHADER_STAGE_VERTEX_BIT,
         SHADER_STAGE_FRAGMENT = VK_SHADER_STAGE_FRAGMENT_BIT,
+        SHADER_STAGE_ALL = VK_SHADER_STAGE_ALL,
     } shaderStage;
 
     typedef enum

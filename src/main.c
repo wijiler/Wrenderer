@@ -3,15 +3,8 @@
 #include <stdio.h>
 #include <windowing.h>
 
-typedef struct
-{
-    float screensize[2];
-} pushConstants;
-
-RenderPass pass1;
 renderer_t renderer;
 winf_t wininfo = {0};
-pushConstants pc = {0};
 GraphBuilder builder = {0};
 
 float verts[3][3] = {
@@ -23,19 +16,6 @@ float verts[3][3] = {
 int ImageIndex = 0;
 int FrameIndex = 0;
 int Index = 0;
-void helloTriangleCallback(RenderPass pass, VkCommandBuffer cBuf)
-{
-    bindPipeline(pass.pl, cBuf);
-
-    pc.screensize[0] = renderer.vkCore.extent.width;
-    pc.screensize[1] = renderer.vkCore.extent.height;
-
-    vkCmdPushConstants(cBuf, pass.pl.plLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, pass.pl.pcRange.size, pass.pl.PushConstants);
-
-    vkCmdDraw(cBuf, 3, 1, 0, 0);
-
-    unBindPipeline(cBuf);
-}
 void loop()
 {
     FrameIndex++;
@@ -49,13 +29,12 @@ void loop()
 void init()
 {
     initRenderer(&renderer);
-    uint64_t vLen = 0;
-    uint64_t fLen = 0;
+    uint64_t vLen, fLen = 0;
     uint32_t *vShader = NULL;
     uint32_t *fShader = NULL;
 
-    readShaderSPRV("./shaders/vfractal.spv", &vLen, &vShader);
-    readShaderSPRV("./shaders/ffractal.spv", &fLen, &fShader);
+    readShaderSPRV("./shaders/vtri.spv", &vLen, &vShader);
+    readShaderSPRV("./shaders/ftri.spv", &fLen, &fShader);
 
     Pipeline pl = {0};
 
@@ -89,19 +68,17 @@ void init()
 
     setShaderSPRV(renderer.vkCore, &pl, vShader, vLen, fShader, fLen);
 
-    setPushConstantRange(&pl, sizeof(pushConstants), SHADER_STAGE_FRAGMENT);
+    addVertexInput(&pl, 0, 0, sizeof(float) * 3, 0, VK_VERTEX_INPUT_RATE_VERTEX, VK_FORMAT_R32G32B32_SFLOAT);
 
-    createPipelineLayout(renderer.vkCore, &pl);
+    uint32_t indices[3] = {0, 1, 2};
 
-    pl.PushConstants = &pc;
+    Mesh triangle = createMesh(renderer, 3, (float *)verts, 3, indices, 1);
+    submitMesh(triangle, &renderer);
 
-    pass1 = newPass((char *)"name1", PASS_TYPE_GRAPHICS);
+    RenderPass scenePass = sceneDraw(&renderer);
+    scenePass.pl = pl;
 
-    pass1.pl = pl;
-    addImageResource(&pass1, renderer.vkCore.currentScImg, USAGE_COLORATTACHMENT);
-
-    setExecutionCallBack(&pass1, helloTriangleCallback);
-    addPass(&builder, &pass1);
+    addPass(&builder, &scenePass);
 }
 int main(void)
 {
