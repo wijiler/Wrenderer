@@ -1,6 +1,6 @@
 #include <renderer.h>
 
-Mesh createMesh(renderer_t renderer, uint32_t vertCount, float vertices[], uint32_t indexCount, uint32_t indices[], uint32_t instanceCount)
+Mesh createMesh(renderer_t renderer, uint32_t vertCount, void *vertices, uint32_t indexCount, uint32_t indices[], uint32_t instanceCount)
 {
     Mesh mesh = {0};
     mesh.instanceCount = instanceCount;
@@ -8,12 +8,12 @@ Mesh createMesh(renderer_t renderer, uint32_t vertCount, float vertices[], uint3
     uint32_t *newIndices = indices;
     for (uint32_t i = 0; i < indexCount; i++)
     {
-        newIndices[i] += renderer.meshHandler.unifiedVertexSize / sizeof(float[3]);
+        newIndices[i] += renderer.meshHandler.unifiedVertexSize / renderer.meshHandler.vertexSize;
     }
 
     BufferCreateInfo bCI = {0};
     bCI.access = DEVICE_ONLY;
-    bCI.dataSize = vertCount * sizeof(float[3]);
+    bCI.dataSize = vertCount * renderer.meshHandler.vertexSize;
     bCI.usage = BUFFER_USAGE_TRANSFER_SRC | BUFFER_USAGE_TRANSFER_DST;
 
     Buffer stagingBuf = {0};
@@ -25,10 +25,10 @@ Mesh createMesh(renderer_t renderer, uint32_t vertCount, float vertices[], uint3
     bCI.dataSize = indexCount * sizeof(uint32_t);
     createBuffer(renderer.vkCore, bCI, &mesh.indices);
 
-    pushDataToBuffer(vertices, vertCount * sizeof(float[3]), stagingBuf, 0);
-    copyBuf(renderer.vkCore, stagingBuf, mesh.verticies, vertCount * sizeof(float[3]), 0, 0);
-    pushDataToBuffer(indices, indexCount * sizeof(uint32_t), stagingBuf, vertCount * sizeof(float[3]));
-    copyBuf(renderer.vkCore, stagingBuf, mesh.indices, indexCount * sizeof(uint32_t), vertCount * sizeof(float[3]), 0);
+    pushDataToBuffer(vertices, vertCount * renderer.meshHandler.vertexSize, stagingBuf, 0);
+    copyBuf(renderer.vkCore, stagingBuf, mesh.verticies, vertCount * renderer.meshHandler.vertexSize, 0, 0);
+    pushDataToBuffer(indices, indexCount * sizeof(uint32_t), stagingBuf, vertCount * renderer.meshHandler.vertexSize);
+    copyBuf(renderer.vkCore, stagingBuf, mesh.indices, indexCount * sizeof(uint32_t), vertCount * renderer.meshHandler.vertexSize, 0);
 
     destroyBuffer(stagingBuf, renderer.vkCore);
 

@@ -17,7 +17,8 @@ extern "C"
         VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
         NULL,
         VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-        NULL};
+        NULL,
+    };
     typedef enum
     {
         BUFFER_USAGE_VERTEX = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
@@ -66,6 +67,7 @@ extern "C"
 
     typedef struct
     {
+        size_t vertexSize; // size of single vertex
         uint64_t unifiedVertexCapacity;
         uint64_t unifiedIndexCapacity;
         size_t unifiedVertexSize;
@@ -219,7 +221,6 @@ extern "C"
         int passCount;
         passBarrierInfo *barriers;
         RenderPass *passes;
-
     } RenderGraph;
 
     typedef struct
@@ -323,7 +324,7 @@ extern "C"
 
     void addMeshResource(RenderPass *pass, Mesh mesh, ResourceUsageFlags_t usage);
 
-    Mesh createMesh(renderer_t renderer, uint32_t vertCount, float vertices[], uint32_t indexCount, uint32_t indices[], uint32_t instanceCount);
+    Mesh createMesh(renderer_t renderer, uint32_t vertCount, void *vertices, uint32_t indexCount, uint32_t indices[], uint32_t instanceCount);
     void submitMesh(Mesh mesh, renderer_t *renderer);
     RenderPass sceneDraw(renderer_t *renderer);
     // ----------------------------------------- MODELFUNEND

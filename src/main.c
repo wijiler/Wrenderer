@@ -21,8 +21,6 @@ void loop()
     FrameIndex++;
     Index = FrameIndex % FRAMECOUNT;
 
-    renderer.rg = &builder;
-
     drawRenderer(&renderer, Index);
 }
 
@@ -72,13 +70,15 @@ void init()
 
     uint32_t indices[3] = {0, 1, 2};
 
-    Mesh triangle = createMesh(renderer, 3, (float *)verts, 3, indices, 1);
+    renderer.meshHandler.vertexSize = sizeof(float[3]);
+    Mesh triangle = createMesh(renderer, 3, verts, 3, indices, 1);
     submitMesh(triangle, &renderer);
 
     RenderPass scenePass = sceneDraw(&renderer);
     scenePass.pl = pl;
 
     addPass(&builder, &scenePass);
+    renderer.rg = &builder;
 }
 int main(void)
 {
