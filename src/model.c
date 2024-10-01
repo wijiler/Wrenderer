@@ -86,25 +86,26 @@ void submitMesh(Mesh mesh, renderer_t *renderer)
     destroyBuffer(mesh.verticies, renderer->vkCore);
     destroyBuffer(mesh.indices, renderer->vkCore);
 }
-
+typedef struct
+{
+    VkDeviceAddress address;
+} pushConstants;
 const uint64_t offSet = 0;
 void sceneDrawCallBack(RenderPass pass, VkCommandBuffer cBuf)
 {
     int indexCount = *((int *)pass.resources[3].value.arbitrary);
     bindPipeline(pass.pl, cBuf);
-    if (pass.pl.PushConstants != NULL)
-    {
-        vkCmdPushConstants(cBuf, pass.pl.plLayout, VK_SHADER_STAGE_ALL, 0, pass.pl.pcRange.size, pass.pl.PushConstants);
-    }
+    pushConstants uConstants = {pass.resources[1].value.mesh.verticies.gpuAddress};
+    vkCmdPushConstants(cBuf, pass.pl.plLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, pass.pl.pcRange.size, &uConstants);
 
-    vkCmdBindVertexBuffers(cBuf, 0, 1, &pass.resources[1].value.buffer.buffer, &offSet);
     vkCmdBindIndexBuffer(cBuf, pass.resources[2].value.buffer.buffer, offSet, VK_INDEX_TYPE_UINT32);
 
     vkCmdDrawIndexed(cBuf, indexCount / sizeof(uint32_t), 1, 0, 0, 0);
 
     for (int i = 4; i < pass.resourceCount; i++)
     {
-        vkCmdBindVertexBuffers(cBuf, 0, 1, &pass.resources[i].value.mesh.verticies.buffer, &offSet);
+        pushConstants constants = {pass.resources[i].value.mesh.verticies.gpuAddress};
+        vkCmdPushConstants(cBuf, pass.pl.plLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, pass.pl.pcRange.size, &constants);
         vkCmdBindIndexBuffer(cBuf, pass.resources[i].value.mesh.indices.buffer, offSet, VK_INDEX_TYPE_UINT32);
 
         vkCmdDrawIndexed(cBuf, pass.resources[i].value.mesh.indices.size / sizeof(uint32_t), pass.resources[i].value.mesh.instanceCount, 0, 0, 0);

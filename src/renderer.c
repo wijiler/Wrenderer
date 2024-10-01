@@ -194,7 +194,8 @@ VkPhysicalDevice find_valid_device(int deviceCount, VkPhysicalDevice devices[], 
             devFeat12.descriptorBindingPartiallyBound == VK_TRUE && devFeat12.descriptorBindingVariableDescriptorCount == VK_TRUE &&
             shaderObjectFeatures.shaderObject == VK_TRUE && devFeat2.features.alphaToOne == VK_TRUE && depthClipEnable.depthClipEnable == VK_TRUE &&
             vertAttrDivFeats.vertexAttributeInstanceRateZeroDivisor == VK_TRUE && devFeat12.descriptorBindingPartiallyBound == VK_TRUE &&
-            devFeat12.runtimeDescriptorArray == VK_TRUE && devFeat12.descriptorBindingSampledImageUpdateAfterBind == VK_TRUE)
+            devFeat12.runtimeDescriptorArray == VK_TRUE && devFeat12.descriptorBindingSampledImageUpdateAfterBind == VK_TRUE && devFeat2.features.shaderInt64 &&
+            devFeat12.scalarBlockLayout == VK_TRUE)
         {
             graphicsFamilyIndex = &gfami;
             return devices[i];
@@ -267,6 +268,7 @@ void create_device(VulkanCore_t *core)
     devFeatures2.pNext = &devFeatures13;
 
     devFeatures2.features.alphaToOne = VK_TRUE;
+    devFeatures2.features.shaderInt64 = VK_TRUE;
 
     devFeatures13.dynamicRendering = VK_TRUE;
 
@@ -277,6 +279,7 @@ void create_device(VulkanCore_t *core)
     devFeatures12.descriptorBindingPartiallyBound = VK_TRUE;
     devFeatures12.descriptorBindingVariableDescriptorCount = VK_TRUE;
     devFeatures12.runtimeDescriptorArray = VK_TRUE;
+    devFeatures12.scalarBlockLayout = VK_TRUE;
 
     shaderObjectFeatures.shaderObject = VK_TRUE;
 
@@ -622,7 +625,7 @@ void createBuffer(VulkanCore_t core, BufferCreateInfo createInfo, Buffer *buf)
     }
     if (index == -1)
     {
-        printf("Could not find suitable memory for vertex buffer");
+        printf("Could not find suitable memory for buffer");
         exit(1);
     }
 
@@ -654,12 +657,22 @@ void createBuffer(VulkanCore_t core, BufferCreateInfo createInfo, Buffer *buf)
         printf("Could not bind memory\n");
         exit(1);
     }
-    MarkDestroyableBuffer(buf);
     buf->mappedMemory = NULL;
     if ((createInfo.access & CPU_ONLY) != 0)
     {
         vkMapMemory(core.lDev, buf->associatedMemory, 0, buf->size, 0, &buf->mappedMemory);
     }
+
+    if ((createInfo.usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR) != 0)
+    {
+        VkBufferDeviceAddressInfoKHR bufferAddrInf = {0};
+        bufferAddrInf.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO_KHR;
+        bufferAddrInf.pNext = NULL;
+        bufferAddrInf.buffer = buf->buffer;
+        buf->gpuAddress = vkGetBufferDeviceAddress(core.lDev, &bufferAddrInf);
+    }
+
+    MarkDestroyableBuffer(buf);
 }
 
 void destroyBuffer(Buffer buf, VulkanCore_t core)
@@ -855,12 +868,12 @@ void initRenderer(renderer_t *renderer)
 
     BufferCreateInfo BCI = {0};
     BCI.access = DEVICE_ONLY;
-    BCI.dataSize = maxVerts * sizeof(float[3]);
+    BCI.dataSize = maxVerts * sizeof(renderer->meshHandler.vertexSize);
     BCI.usage = BUFFER_USAGE_VERTEX | BUFFER_USAGE_TRANSFER_DST | BUFFER_USAGE_TRANSFER_SRC;
     createBuffer(renderer->vkCore, BCI, &renderer->meshHandler.unifiedVerts);
     BCI.usage = BUFFER_USAGE_INDEX | VK_BUFFER_USAGE_TRANSFER_DST_BIT | BUFFER_USAGE_TRANSFER_SRC;
     createBuffer(renderer->vkCore, BCI, &renderer->meshHandler.unifiedIndices);
-    renderer->meshHandler.unifiedVertexCapacity = maxVerts * sizeof(float[3]);
+    renderer->meshHandler.unifiedVertexCapacity = maxVerts * sizeof(renderer->meshHandler.vertexSize);
     renderer->meshHandler.unifiedIndexCapacity = maxVerts * sizeof(uint32_t);
 }
 
@@ -1033,8 +1046,8 @@ void createPipelineLayout(VulkanCore_t core, Pipeline *pl)
     memcpy(setLayouts, pl->setLayouts, sizeof(VkDescriptorSetLayout) * (pl->setLayoutCount));
     setLayouts[pl->setLayoutCount] = core.tdSetLayout;
 
-    plcInf.setLayoutCount = pl->setLayoutCount + 1;
-    plcInf.pSetLayouts = setLayouts;
+    plcInf.setLayoutCount = 0;
+    plcInf.pSetLayouts = NULL;
 
     plcInf.pPushConstantRanges = &pl->pcRange;
     plcInf.pushConstantRangeCount = pl->pcRangeCount;

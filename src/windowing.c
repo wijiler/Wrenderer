@@ -28,7 +28,6 @@ void launch_window(winf_t wininfo, renderer_t *renderer, void (*PFN_update)(), v
     void (*start)() = PFN_start;
 
     start();
-
     while (!glfwWindowShouldClose(renderer->vkCore.window))
     {
         glfwPollEvents();

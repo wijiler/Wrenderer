@@ -7,6 +7,11 @@ renderer_t renderer;
 winf_t wininfo = {0};
 GraphBuilder builder = {0};
 
+typedef struct
+{
+    VkDeviceAddress address;
+} pushConstants;
+
 float verts[3][3] = {
     {1.0f, 1.0f, 1.0f},
     {-1.0f, 1.0f, 1.0f},
@@ -26,6 +31,7 @@ void loop()
 
 void init()
 {
+    renderer.meshHandler.vertexSize = sizeof(float[3]);
     initRenderer(&renderer);
     uint64_t vLen, fLen = 0;
     uint32_t *vShader = NULL;
@@ -66,14 +72,14 @@ void init()
 
     setShaderSPRV(renderer.vkCore, &pl, vShader, vLen, fShader, fLen);
 
-    addVertexInput(&pl, 0, 0, sizeof(float) * 3, 0, VK_VERTEX_INPUT_RATE_VERTEX, VK_FORMAT_R32G32B32_SFLOAT);
-
     uint32_t indices[3] = {0, 1, 2};
 
-    renderer.meshHandler.vertexSize = sizeof(float[3]);
     Mesh triangle = createMesh(renderer, 3, verts, 3, indices, 1);
     submitMesh(triangle, &renderer);
 
+    setPushConstantRange(&pl, sizeof(pushConstants), SHADER_STAGE_VERTEX);
+
+    createPipelineLayout(renderer.vkCore, &pl);
     RenderPass scenePass = sceneDraw(&renderer);
     scenePass.pl = pl;
 

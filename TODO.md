@@ -2,7 +2,7 @@
 
 ## working on
 
-- [ ] Add Bindless Uniform buffers (non texture)
+- [ ] Storage Buffers
 
 ## high priority
 
