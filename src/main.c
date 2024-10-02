@@ -12,10 +12,16 @@ typedef struct
     VkDeviceAddress address;
 } pushConstants;
 
-float verts[3][3] = {
-    {1.0f, 1.0f, 1.0f},
-    {-1.0f, 1.0f, 1.0f},
-    {0.0f, -1.0f, 1.0f},
+typedef struct
+{
+    float position[3];
+    float color[3];
+} vertex;
+
+vertex verts[3] = {
+    {{1.0f, 1.0f, 1.0f}, {1.0f, 0.0f, 0.0f}},
+    {{-1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
+    {{0.0f, -1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}},
 };
 
 int ImageIndex = 0;
@@ -31,7 +37,7 @@ void loop()
 
 void init()
 {
-    renderer.meshHandler.vertexSize = sizeof(float[3]);
+    renderer.meshHandler.vertexSize = sizeof(vertex);
     initRenderer(&renderer);
     uint64_t vLen, fLen = 0;
     uint32_t *vShader = NULL;
