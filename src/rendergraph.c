@@ -29,8 +29,14 @@ uint64_t fnv_64a_str(char *str, uint64_t hval)
     return hval;
 }
 
-void recordPass(VkExtent2D extent, RenderPass *pass, VkCommandBuffer cBuf)
+void recordPass(VkExtent2D extent, RenderPass *pass, renderer_t *renderer, uint32_t cBufIndex)
 {
+    if (pass->type == PASS_TYPE_COMPUTE)
+    {
+        vkWaitForFences(renderer->vkCore.lDev, 1, &renderer->vkCore.computeFences[cBufIndex], VK_TRUE, UINT64_MAX);
+        vkResetFences(renderer->vkCore.lDev, 1, &renderer->vkCore.computeFences[cBufIndex]);
+        vkBeginCommandBuffer(renderer->vkCore.computeCommandBuffer, &cBufBeginInf);
+    }
     VkRenderingInfo renInf = {0};
     renInf.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
     renInf.pNext = NULL;
@@ -46,11 +52,34 @@ void recordPass(VkExtent2D extent, RenderPass *pass, VkCommandBuffer cBuf)
     renInf.pDepthAttachment = NULL;
     renInf.pStencilAttachment = NULL;
 
-    vkCmdBeginRendering(cBuf, &renInf);
+    vkCmdBeginRendering(renderer->vkCore.commandBuffers[cBufIndex], &renInf);
 
-    pass->callBack(*pass, cBuf);
+    if (pass->type == PASS_TYPE_COMPUTE)
+    {
+        pass->callBack(*pass, renderer->vkCore.computeCommandBuffer);
+    }
+    else
+    {
+        pass->callBack(*pass, renderer->vkCore.commandBuffers[cBufIndex]);
+    }
 
-    vkCmdEndRendering(cBuf);
+    vkCmdEndRendering(renderer->vkCore.commandBuffers[cBufIndex]);
+
+    if (pass->type == PASS_TYPE_COMPUTE)
+    {
+        VkSubmitInfo submitInfo = {0};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.pNext = NULL;
+
+        submitInfo.waitSemaphoreCount = 0;
+        submitInfo.signalSemaphoreCount = 1;
+        submitInfo.pSignalSemaphores = &renderer->vkCore.computeFinished[renderer->vkCore.currentImageIndex];
+
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &renderer->vkCore.commandBuffers[cBufIndex];
+        vkQueueSubmit(renderer->vkCore.compQueue, 1, &submitInfo, renderer->vkCore.computeFences[cBufIndex]);
+        vkResetCommandBuffer(renderer->vkCore.computeCommandBuffer, 0);
+    }
 }
 
 bool resEq(Resource rhs, Resource lhs)
@@ -380,13 +409,20 @@ RenderGraph buildGraph(GraphBuilder *builder, Image scImage)
     return rg;
 }
 
-void executeGraph(VkExtent2D extent, RenderGraph *graph, VkCommandBuffer cBuf)
+void executeGraph(VkExtent2D extent, RenderGraph *graph, renderer_t *renderer, uint32_t cBufIndex)
 {
     for (int i = 0; i <= graph->passCount - 1; i++)
     {
         passBarrierInfo cb = graph->barriers[i];
-        vkCmdPipelineBarrier(cBuf, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, 0, NULL, cb.bufPBCount, cb.bufMemBarriers, cb.imgPBCount, cb.imgMemBarriers);
-        recordPass(extent, &graph->passes[i], cBuf);
+        if (graph->passes[i].type == PASS_TYPE_COMPUTE)
+        {
+            vkCmdPipelineBarrier(renderer->vkCore.commandBuffers[cBufIndex], VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, 0, NULL, cb.bufPBCount, cb.bufMemBarriers, cb.imgPBCount, cb.imgMemBarriers);
+        }
+        else
+        {
+            vkCmdPipelineBarrier(renderer->vkCore.commandBuffers[cBufIndex], VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, 0, NULL, cb.bufPBCount, cb.bufMemBarriers, cb.imgPBCount, cb.imgMemBarriers);
+        }
+        recordPass(extent, &graph->passes[i], renderer, cBufIndex);
     }
 }
 
@@ -404,13 +440,14 @@ void drawRenderer(renderer_t *renderer, int cBufIndex)
 
     vkWaitForFences(renderer->vkCore.lDev, 1, &renderer->vkCore.fences[cBufIndex], VK_TRUE, UINT64_MAX);
     vkResetFences(renderer->vkCore.lDev, 1, &renderer->vkCore.fences[cBufIndex]);
+
     if (resize)
     {
         recreateSwapchain(renderer);
         resize = false;
     }
     VkResult result;
-    if ((result = vkAcquireNextImageKHR(renderer->vkCore.lDev, renderer->vkCore.swapChain, UINT64_MAX, renderer->vkCore.imageAvailiable[cBufIndex], VK_NULL_HANDLE, &renderer->vkCore.currentImageIndex)) ==
+    if ((result = vkAcquireNextImageKHR(renderer->vkCore.lDev, renderer->vkCore.swapChain, UINT64_MAX, renderer->vkCore.imageAvailable[cBufIndex], VK_NULL_HANDLE, &renderer->vkCore.currentImageIndex)) ==
         VK_ERROR_OUT_OF_DATE_KHR)
     {
         resize = true;
@@ -465,7 +502,7 @@ void drawRenderer(renderer_t *renderer, int cBufIndex)
     viewport.maxDepth = 1;
     vkCmdSetViewportWithCount(cbuf, 1, &viewport);
 
-    executeGraph(renderer->vkCore.extent, &rg, cbuf);
+    executeGraph(renderer->vkCore.extent, &rg, renderer, cBufIndex);
 
     imgMemoryBarrier.srcAccessMask = renderer->vkCore.currentScImg->accessMask;
     imgMemoryBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
@@ -483,7 +520,7 @@ void drawRenderer(renderer_t *renderer, int cBufIndex)
     submitInfo.pNext = NULL;
 
     submitInfo.waitSemaphoreCount = 1;
-    submitInfo.pWaitSemaphores = &renderer->vkCore.imageAvailiable[cBufIndex];
+    submitInfo.pWaitSemaphores = &renderer->vkCore.imageAvailable[cBufIndex];
     submitInfo.pWaitDstStageMask = (VkPipelineStageFlags[1]){VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = &renderer->vkCore.renderFinished[renderer->vkCore.currentImageIndex];

@@ -1,5 +1,5 @@
 #include <renderer.h>
-
+// This should probably be moved to engine to avoid generalization limitations of the renderer
 Mesh createMesh(renderer_t renderer, uint32_t vertCount, void *vertices, uint32_t indexCount, uint32_t indices[], uint32_t instanceCount)
 {
     Mesh mesh = {0};
@@ -94,9 +94,9 @@ const uint64_t offSet = 0;
 void sceneDrawCallBack(RenderPass pass, VkCommandBuffer cBuf)
 {
     int indexCount = *((int *)pass.resources[3].value.arbitrary);
-    bindPipeline(pass.pl, cBuf);
+    bindGraphicsPipeline(pass.pl, cBuf);
     pushConstants uConstants = {pass.resources[1].value.mesh.verticies.gpuAddress};
-    vkCmdPushConstants(cBuf, pass.pl.plLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, pass.pl.pcRange.size, &uConstants);
+    vkCmdPushConstants(cBuf, pass.pl.value.graphics.plLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, pass.pl.value.graphics.pcRange.size, &uConstants);
 
     vkCmdBindIndexBuffer(cBuf, pass.resources[2].value.buffer.buffer, offSet, VK_INDEX_TYPE_UINT32);
 
@@ -105,7 +105,7 @@ void sceneDrawCallBack(RenderPass pass, VkCommandBuffer cBuf)
     for (int i = 4; i < pass.resourceCount; i++)
     {
         pushConstants constants = {pass.resources[i].value.mesh.verticies.gpuAddress};
-        vkCmdPushConstants(cBuf, pass.pl.plLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, pass.pl.pcRange.size, &constants);
+        vkCmdPushConstants(cBuf, pass.pl.value.graphics.plLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, pass.pl.value.graphics.pcRange.size, &constants);
         vkCmdBindIndexBuffer(cBuf, pass.resources[i].value.mesh.indices.buffer, offSet, VK_INDEX_TYPE_UINT32);
 
         vkCmdDrawIndexed(cBuf, pass.resources[i].value.mesh.indices.size / sizeof(uint32_t), pass.resources[i].value.mesh.instanceCount, 0, 0, 0);

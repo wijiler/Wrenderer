@@ -134,7 +134,7 @@ void create_instance(renderer_t *renderer)
     vkDestroyShaderEXT_ = (PFN_vkDestroyShaderEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkDestroyShaderEXT");
 }
 
-VkPhysicalDevice find_valid_device(int deviceCount, VkPhysicalDevice devices[], unsigned int *graphicsFamilyIndex, VkSurfaceKHR surface)
+VkPhysicalDevice find_valid_device(int deviceCount, VkPhysicalDevice devices[], unsigned int *graphicsFamilyIndex, unsigned int *computeFamilyIndex, VkSurfaceKHR surface)
 {
     VkPhysicalDeviceProperties devProps = {0};
 
@@ -163,6 +163,7 @@ VkPhysicalDevice find_valid_device(int deviceCount, VkPhysicalDevice devices[], 
     devFeat2.pNext = &devFeat13;
 
     unsigned int gfami = 0;
+    unsigned int cfami = 0;
     for (int i = 0; i < deviceCount; i++)
     {
         vkGetPhysicalDeviceProperties(devices[i], &devProps);
@@ -181,10 +182,14 @@ VkPhysicalDevice find_valid_device(int deviceCount, VkPhysicalDevice devices[], 
             vkGetPhysicalDeviceSurfaceSupportKHR(devices[i], j, surface, &supports_present);
             // we want the graphics queue on the present queue, its faster, AKA
             // Exclusive Mode
-            if (qfamProps[j].queueFlags & VK_QUEUE_GRAPHICS_BIT &&
-                supports_present == VK_TRUE)
+            if (qfamProps[j].queueFlags & VK_QUEUE_GRAPHICS_BIT && supports_present == VK_TRUE)
             {
                 gfami = j;
+                break;
+            }
+            if (qfamProps[j].queueFlags & VK_QUEUE_COMPUTE_BIT && qfamProps[j].queueFlags & VK_QUEUE_GRAPHICS_BIT)
+            {
+                cfami = j;
                 break;
             }
         }
@@ -198,6 +203,7 @@ VkPhysicalDevice find_valid_device(int deviceCount, VkPhysicalDevice devices[], 
             devFeat12.scalarBlockLayout == VK_TRUE)
         {
             graphicsFamilyIndex = &gfami;
+            computeFamilyIndex = &cfami;
             return devices[i];
         }
     }
@@ -262,9 +268,11 @@ void create_device(VulkanCore_t *core)
     VkPhysicalDeviceFeatures2 devFeatures2 = {0};
     devFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
     unsigned int gfi = 0;
+    unsigned int cfi = 0;
 
-    core->pDev = find_valid_device(deviceCount, devices, &gfi, core->surface);
+    core->pDev = find_valid_device(deviceCount, devices, &gfi, &cfi, core->surface);
     core->qfi = gfi;
+    core->compQfi = cfi;
     devFeatures2.pNext = &devFeatures13;
 
     devFeatures2.features.alphaToOne = VK_TRUE;
@@ -317,6 +325,7 @@ void create_device(VulkanCore_t *core)
     vkGetDeviceQueue(core->lDev, gfi, 0, &core->gQueue);
     vkGetDeviceQueue(core->lDev, gfi, 0, &core->pQueue); // why do we store the same queue in two different things? Orginization + ordering + Synchronization
     // We already know that we can present on our window surface because we check for that while finding a valid queue
+    vkGetDeviceQueue(core->lDev, cfi, 0, &core->compQueue);
 }
 
 VkImageView get_image_view(VkImage image, VulkanCore_t core)
@@ -494,6 +503,11 @@ void create_CommandBuffers(VulkanCore_t *core)
         printf("Could not create command buffers\n");
         exit(1);
     }
+    if (vkAllocateCommandBuffers(core->lDev, &cbAI, &core->computeCommandBuffer) != VK_SUCCESS)
+    {
+        printf("Could not create command buffers\n");
+        exit(1);
+    }
 
     for (int i = 0; i < FRAMECOUNT; i++)
     {
@@ -502,7 +516,7 @@ void create_CommandBuffers(VulkanCore_t *core)
         semaphoreCI.pNext = NULL;
         semaphoreCI.flags = 0;
 
-        if (vkCreateSemaphore(core->lDev, &semaphoreCI, NULL, &core->imageAvailiable[i]) != VK_SUCCESS)
+        if (vkCreateSemaphore(core->lDev, &semaphoreCI, NULL, &core->imageAvailable[i]) != VK_SUCCESS)
         {
             printf("Could not create semaphore\n");
             exit(1);
@@ -518,9 +532,15 @@ void create_CommandBuffers(VulkanCore_t *core)
             printf("Could not create fence\n");
             exit(1);
         }
+        if (vkCreateFence(core->lDev, &fenceCI, NULL, &core->computeFences[i]) != VK_SUCCESS)
+        {
+            printf("Could not create fence\n");
+            exit(1);
+        }
     }
 
     core->renderFinished = malloc(sizeof(VkSemaphore) * core->imgCount + 1);
+    core->computeFinished = malloc(sizeof(VkSemaphore) * core->imgCount + 1);
     for (uint32_t i = 0; i < core->imgCount; i++)
     {
         VkSemaphoreCreateInfo semaphoreCI = {0};
@@ -528,6 +548,11 @@ void create_CommandBuffers(VulkanCore_t *core)
         semaphoreCI.pNext = NULL;
         semaphoreCI.flags = 0;
         if (vkCreateSemaphore(core->lDev, &semaphoreCI, NULL, &core->renderFinished[i]) != VK_SUCCESS)
+        {
+            printf("Could not create semaphore\n");
+            exit(1);
+        }
+        if (vkCreateSemaphore(core->lDev, &semaphoreCI, NULL, &core->computeFinished[i]) != VK_SUCCESS)
         {
             printf("Could not create semaphore\n");
             exit(1);
@@ -816,9 +841,9 @@ void destroyRenderer(renderer_t *renderer)
     vkDestroyDescriptorSetLayout(renderer->vkCore.lDev, renderer->vkCore.tdSetLayout, NULL);
     for (uint32_t i = 0; i < FRAMECOUNT; i++)
     {
-        vkDestroySemaphore(renderer->vkCore.lDev, renderer->vkCore.imageAvailiable[i], NULL);
-        vkDestroySemaphore(renderer->vkCore.lDev, renderer->vkCore.renderFinished[i], NULL);
+        vkDestroySemaphore(renderer->vkCore.lDev, renderer->vkCore.imageAvailable[i], NULL);
         vkDestroyFence(renderer->vkCore.lDev, renderer->vkCore.fences[i], NULL);
+        vkDestroyFence(renderer->vkCore.lDev, renderer->vkCore.computeFences[i], NULL);
     }
     vkDestroyFence(renderer->vkCore.lDev, renderer->vkCore.immediateFence, NULL);
     vkDestroyCommandPool(renderer->vkCore.lDev, (VkCommandPool)renderer->vkCore.commandPool, NULL);
@@ -833,13 +858,10 @@ void destroyRenderer(renderer_t *renderer)
     for (uint32_t i = 0; i < renderer->vkCore.imgCount; i++)
     {
         vkDestroyImageView(renderer->vkCore.lDev, renderer->vkCore.swapChainImageViews[i], NULL);
+        vkDestroySemaphore(renderer->vkCore.lDev, renderer->vkCore.renderFinished[i], NULL);
+        vkDestroySemaphore(renderer->vkCore.lDev, renderer->vkCore.computeFinished[i], NULL);
     }
-    for (uint32_t i = 0; i < pipelineCount; i++)
-    {
-        vkDestroyPipelineLayout(renderer->vkCore.lDev, ap_Pipelines[i].pLine->plLayout, NULL);
-        vkDestroyShaderEXT_(renderer->vkCore.lDev, ap_Pipelines[i].pLine->vert.shader, NULL);
-        vkDestroyShaderEXT_(renderer->vkCore.lDev, ap_Pipelines[i].pLine->frag.shader, NULL);
-    }
+
     vkDestroySwapchainKHR(renderer->vkCore.lDev, renderer->vkCore.swapChain, NULL);
     vkDestroyDevice(renderer->vkCore.lDev, NULL);
     vkDestroySurfaceKHR(renderer->vkCore.instance, renderer->vkCore.surface, NULL);
@@ -877,51 +899,59 @@ void initRenderer(renderer_t *renderer)
     renderer->meshHandler.unifiedIndexCapacity = maxVerts * sizeof(uint32_t);
 }
 
-void bindPipeline(Pipeline pline, VkCommandBuffer cBuf)
+void bindGraphicsPipeline(Pipeline pline, VkCommandBuffer cBuf)
 {
-    VkBool32 cbEnable = pline.colorBlending;
-    vkCmdSetColorWriteMaskEXT_(cBuf, 0, 1, &pline.colorWriteMask);
-
-    vkCmdSetColorBlendEnableEXT_(cBuf, 0, 1, &cbEnable);
-    vkCmdSetLogicOpEnableEXT_(cBuf, pline.logicOpEnable);
-
-    vkCmdSetDepthTestEnable(cBuf, pline.depthTestEnable);
-    vkCmdSetDepthBiasEnable(cBuf, pline.depthBiasEnable);
-    vkCmdSetDepthClampEnableEXT_(cBuf, pline.depthClampEnable);
-    vkCmdSetDepthClipEnableEXT_(cBuf, pline.depthClipEnable);
-    vkCmdSetStencilTestEnable(cBuf, pline.stencilTestEnable);
-    vkCmdSetDepthWriteEnable(cBuf, pline.depthWriteEnable);
-    vkCmdSetDepthBoundsTestEnable(cBuf, pline.depthBoundsEnable);
-    vkCmdSetAlphaToCoverageEnableEXT_(cBuf, pline.alphaToCoverageEnable);
-    vkCmdSetAlphaToOneEnableEXT_(cBuf, pline.alphaToOneEnable);
-
-    vkCmdSetColorWriteMaskEXT_(cBuf, 0, 1, &pline.colorWriteMask);
-    vkCmdSetPolygonModeEXT_(cBuf, pline.polyMode);
-    vkCmdSetPrimitiveTopology(cBuf, pline.topology);
-    vkCmdSetRasterizerDiscardEnable(cBuf, pline.reasterizerDiscardEnable);
-    vkCmdSetPrimitiveRestartEnable(cBuf, pline.primitiveRestartEnable);
-    vkCmdSetRasterizationSamplesEXT_(cBuf, pline.rastSampleCount);
-    vkCmdSetFrontFace(cBuf, pline.frontFace);
-    vkCmdSetCullMode(cBuf, pline.cullMode);
-
-    if (pline.colorBlending == VK_TRUE)
-        vkCmdSetColorBlendEquationEXT_(cBuf, 0, 1, &pline.colorBlendEq);
-
-    if (pline.logicOpEnable == VK_TRUE)
-        vkCmdSetLogicOpEXT_(cBuf, pline.logicOp);
-    if (pline.depthTestEnable == VK_TRUE)
+    switch (pline.type)
     {
-        vkCmdSetDepthBounds(cBuf, pline.minDepth, pline.maxDepth);
-        vkCmdSetDepthCompareOp(cBuf, pline.depthCompareOp);
+    case PIPELINE_GRAPHICS:
+        VkBool32 cbEnable = pline.value.graphics.colorBlending;
+        vkCmdSetColorWriteMaskEXT_(cBuf, 0, 1, &pline.value.graphics.colorWriteMask);
+
+        vkCmdSetColorBlendEnableEXT_(cBuf, 0, 1, &cbEnable);
+        vkCmdSetLogicOpEnableEXT_(cBuf, pline.value.graphics.logicOpEnable);
+
+        vkCmdSetDepthTestEnable(cBuf, pline.value.graphics.depthTestEnable);
+        vkCmdSetDepthBiasEnable(cBuf, pline.value.graphics.depthBiasEnable);
+        vkCmdSetDepthClampEnableEXT_(cBuf, pline.value.graphics.depthClampEnable);
+        vkCmdSetDepthClipEnableEXT_(cBuf, pline.value.graphics.depthClipEnable);
+        vkCmdSetStencilTestEnable(cBuf, pline.value.graphics.stencilTestEnable);
+        vkCmdSetDepthWriteEnable(cBuf, pline.value.graphics.depthWriteEnable);
+        vkCmdSetDepthBoundsTestEnable(cBuf, pline.value.graphics.depthBoundsEnable);
+        vkCmdSetAlphaToCoverageEnableEXT_(cBuf, pline.value.graphics.alphaToCoverageEnable);
+        vkCmdSetAlphaToOneEnableEXT_(cBuf, pline.value.graphics.alphaToOneEnable);
+
+        vkCmdSetColorWriteMaskEXT_(cBuf, 0, 1, &pline.value.graphics.colorWriteMask);
+        vkCmdSetPolygonModeEXT_(cBuf, pline.value.graphics.polyMode);
+        vkCmdSetPrimitiveTopology(cBuf, pline.value.graphics.topology);
+        vkCmdSetRasterizerDiscardEnable(cBuf, pline.value.graphics.reasterizerDiscardEnable);
+        vkCmdSetPrimitiveRestartEnable(cBuf, pline.value.graphics.primitiveRestartEnable);
+        vkCmdSetRasterizationSamplesEXT_(cBuf, pline.value.graphics.rastSampleCount);
+        vkCmdSetFrontFace(cBuf, pline.value.graphics.frontFace);
+        vkCmdSetCullMode(cBuf, pline.value.graphics.cullMode);
+
+        if (pline.value.graphics.colorBlending == VK_TRUE)
+            vkCmdSetColorBlendEquationEXT_(cBuf, 0, 1, &pline.value.graphics.colorBlendEq);
+
+        if (pline.value.graphics.logicOpEnable == VK_TRUE)
+            vkCmdSetLogicOpEXT_(cBuf, pline.value.graphics.logicOp);
+        if (pline.value.graphics.depthTestEnable == VK_TRUE)
+        {
+            vkCmdSetDepthBounds(cBuf, pline.value.graphics.minDepth, pline.value.graphics.maxDepth);
+            vkCmdSetDepthCompareOp(cBuf, pline.value.graphics.depthCompareOp);
+        }
+        vkCmdSetSampleMaskEXT_(cBuf, 1, &pline.value.graphics.sampleMask);
+        vkCmdBindShadersEXT_(cBuf, 1, (VkShaderStageFlagBits[1]){VK_SHADER_STAGE_VERTEX_BIT}, &pline.value.graphics.vert.shader);
+        vkCmdBindShadersEXT_(cBuf, 1, (VkShaderStageFlagBits[1]){VK_SHADER_STAGE_FRAGMENT_BIT}, &pline.value.graphics.frag.shader);
+        int vertexDescCount = pline.value.graphics.vert.VertexDescriptons;
+        vkCmdSetVertexInputEXT_(cBuf, vertexDescCount, pline.value.graphics.vert.bindingDesc, vertexDescCount, pline.value.graphics.vert.attrDesc);
+        break;
+    case PIPELINE_COMPUTE:
+        vkCmdBindShadersEXT_(cBuf, 1, (VkShaderStageFlagBits[1]){VK_SHADER_STAGE_COMPUTE_BIT}, &pline.value.compute.shader.shader);
+        break;
     }
-    vkCmdSetSampleMaskEXT_(cBuf, 1, &pline.sampleMask);
-    vkCmdBindShadersEXT_(cBuf, 1, (VkShaderStageFlagBits[1]){VK_SHADER_STAGE_VERTEX_BIT}, &pline.vert.shader);
-    vkCmdBindShadersEXT_(cBuf, 1, (VkShaderStageFlagBits[1]){VK_SHADER_STAGE_FRAGMENT_BIT}, &pline.frag.shader);
-    int vertexDescCount = pline.vert.VertexDescriptons;
-    vkCmdSetVertexInputEXT_(cBuf, vertexDescCount, pline.vert.bindingDesc, vertexDescCount, pline.vert.attrDesc);
 }
 
-void unBindPipeline(VkCommandBuffer cBuf)
+void unbindGraphicsPipeline(VkCommandBuffer cBuf)
 {
     vkCmdBindShadersEXT_(cBuf, 1, (VkShaderStageFlagBits[1]){VK_SHADER_STAGE_VERTEX_BIT}, VK_NULL_HANDLE);
     vkCmdBindShadersEXT_(cBuf, 1, (VkShaderStageFlagBits[1]){VK_SHADER_STAGE_FRAGMENT_BIT}, VK_NULL_HANDLE);
@@ -960,10 +990,10 @@ void setShaderSPRV(VulkanCore_t core, Pipeline *pl, uint32_t *vFileContents, int
 
     vCI.flags = 0;
 
-    vCI.setLayoutCount = pl->setLayoutCount;
-    vCI.pSetLayouts = pl->setLayouts;
-    vCI.pushConstantRangeCount = pl->pcRangeCount;
-    vCI.pPushConstantRanges = &pl->pcRange;
+    vCI.setLayoutCount = pl->value.graphics.setLayoutCount;
+    vCI.pSetLayouts = pl->value.graphics.setLayouts;
+    vCI.pushConstantRangeCount = pl->value.graphics.pcRangeCount;
+    vCI.pPushConstantRanges = &pl->value.graphics.pcRange;
 
     vCI.codeType = VK_SHADER_CODE_TYPE_SPIRV_EXT;
     vCI.codeSize = vFileLen;
@@ -980,10 +1010,10 @@ void setShaderSPRV(VulkanCore_t core, Pipeline *pl, uint32_t *vFileContents, int
 
     fCI.flags = 0;
 
-    fCI.setLayoutCount = pl->setLayoutCount;
-    fCI.pSetLayouts = pl->setLayouts;
-    fCI.pushConstantRangeCount = pl->pcRangeCount;
-    fCI.pPushConstantRanges = &pl->pcRange;
+    fCI.setLayoutCount = pl->value.graphics.setLayoutCount;
+    fCI.pSetLayouts = pl->value.graphics.setLayouts;
+    fCI.pushConstantRangeCount = pl->value.graphics.pcRangeCount;
+    fCI.pPushConstantRanges = &pl->value.graphics.pcRange;
 
     fCI.codeType = VK_SHADER_CODE_TYPE_SPIRV_EXT;
     fCI.codeSize = fFileLen;
@@ -997,13 +1027,38 @@ void setShaderSPRV(VulkanCore_t core, Pipeline *pl, uint32_t *vFileContents, int
         vCI,
         fCI,
     };
-    vkCreateShadersEXT_(core.lDev, 1, &sCi[0], NULL, &pl->vert.shader);
-    vkCreateShadersEXT_(core.lDev, 1, &sCi[1], NULL, &pl->frag.shader);
+    vkCreateShadersEXT_(core.lDev, 1, &sCi[0], NULL, &pl->value.graphics.vert.shader);
+    vkCreateShadersEXT_(core.lDev, 1, &sCi[1], NULL, &pl->value.graphics.frag.shader);
+}
+
+void setCompShaderSPRV(VulkanCore_t core, Pipeline *pl, uint32_t *contents, int fileLen)
+{
+    VkShaderCreateInfoEXT cCI = {0};
+
+    cCI.sType = VK_STRUCTURE_TYPE_SHADER_CREATE_INFO_EXT;
+    cCI.pNext = NULL;
+
+    cCI.flags = 0;
+
+    cCI.setLayoutCount = pl->value.graphics.setLayoutCount;
+    cCI.pSetLayouts = pl->value.graphics.setLayouts;
+    cCI.pushConstantRangeCount = pl->value.graphics.pcRangeCount;
+    cCI.pPushConstantRanges = &pl->value.graphics.pcRange;
+
+    cCI.codeType = VK_SHADER_CODE_TYPE_SPIRV_EXT;
+    cCI.codeSize = fileLen;
+    cCI.pCode = contents;
+    cCI.pName = "main";
+    cCI.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+    cCI.nextStage = 0;
+    cCI.pSpecializationInfo = NULL;
+
+    vkCreateShadersEXT_(core.lDev, 1, (VkShaderCreateInfoEXT[1]){cCI}, NULL, &pl->value.graphics.vert.shader);
 }
 
 void addVertexInput(Pipeline *pl, int binding, int location, int stride, int offSet, VkVertexInputRate inputRate, VkFormat format)
 {
-    int index = pl->vert.VertexDescriptons;
+    int index = pl->value.graphics.vert.VertexDescriptons;
     VkVertexInputAttributeDescription2EXT attrDesc = {
         VK_STRUCTURE_TYPE_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION_2_EXT,
         NULL,
@@ -1020,9 +1075,9 @@ void addVertexInput(Pipeline *pl, int binding, int location, int stride, int off
         inputRate,
         0,
     };
-    pl->vert.attrDesc[index] = attrDesc;
-    pl->vert.bindingDesc[index] = bindingDesc;
-    pl->vert.VertexDescriptons += 1;
+    pl->value.graphics.vert.attrDesc[index] = attrDesc;
+    pl->value.graphics.vert.bindingDesc[index] = bindingDesc;
+    pl->value.graphics.vert.VertexDescriptons += 1;
 }
 
 void setPushConstantRange(Pipeline *pl, size_t size, shaderStage stage)
@@ -1032,8 +1087,8 @@ void setPushConstantRange(Pipeline *pl, size_t size, shaderStage stage)
     pcRange.size = size;
     pcRange.stageFlags = stage;
 
-    pl->pcRange = pcRange;
-    pl->pcRangeCount = 1;
+    pl->value.graphics.pcRange = pcRange;
+    pl->value.graphics.pcRangeCount = 1;
 }
 
 void createPipelineLayout(VulkanCore_t core, Pipeline *pl)
@@ -1041,17 +1096,37 @@ void createPipelineLayout(VulkanCore_t core, Pipeline *pl)
     VkPipelineLayoutCreateInfo plcInf = {0};
     plcInf.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     plcInf.pNext = NULL;
+    switch (pl->type)
+    {
+    case PIPELINE_GRAPHICS:
+    {
+        VkDescriptorSetLayout *setLayouts = malloc(sizeof(VkDescriptorSetLayout) * (pl->value.graphics.setLayoutCount + 1));
+        memcpy(setLayouts, pl->value.graphics.setLayouts, sizeof(VkDescriptorSetLayout) * (pl->value.graphics.setLayoutCount));
+        setLayouts[pl->value.graphics.setLayoutCount] = core.tdSetLayout;
 
-    VkDescriptorSetLayout *setLayouts = malloc(sizeof(VkDescriptorSetLayout) * (pl->setLayoutCount + 1));
-    memcpy(setLayouts, pl->setLayouts, sizeof(VkDescriptorSetLayout) * (pl->setLayoutCount));
-    setLayouts[pl->setLayoutCount] = core.tdSetLayout;
+        plcInf.setLayoutCount = 0;
+        plcInf.pSetLayouts = NULL;
 
-    plcInf.setLayoutCount = 0;
-    plcInf.pSetLayouts = NULL;
+        plcInf.pPushConstantRanges = &pl->value.graphics.pcRange;
+        plcInf.pushConstantRangeCount = pl->value.graphics.pcRangeCount;
+        vkCreatePipelineLayout(core.lDev, &plcInf, NULL, &pl->value.graphics.plLayout);
+    }
+    break;
+    case PIPELINE_COMPUTE:
+    {
+        VkDescriptorSetLayout *setLayouts = malloc(sizeof(VkDescriptorSetLayout) * (pl->value.compute.setLayoutCount + 1));
+        memcpy(setLayouts, pl->value.compute.setLayouts, sizeof(VkDescriptorSetLayout) * (pl->value.compute.setLayoutCount));
+        setLayouts[pl->value.compute.setLayoutCount] = core.tdSetLayout;
 
-    plcInf.pPushConstantRanges = &pl->pcRange;
-    plcInf.pushConstantRangeCount = pl->pcRangeCount;
-    vkCreatePipelineLayout(core.lDev, &plcInf, NULL, &pl->plLayout);
+        plcInf.setLayoutCount = 0;
+        plcInf.pSetLayouts = NULL;
+
+        plcInf.pPushConstantRanges = &pl->value.compute.pcRange;
+        plcInf.pushConstantRangeCount = pl->value.compute.pcRangeCount;
+        vkCreatePipelineLayout(core.lDev, &plcInf, NULL, &pl->value.compute.plLayout);
+    }
+    break;
+    }
 }
 
 void cache_PipeLine(Pipeline *pLine, char *Name)

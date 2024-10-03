@@ -2,19 +2,20 @@
 
 ## working on
 
-- [ ] Storage Buffers
+- [ ] Compute passes
 
 ## high priority
 
-- [ ] Add multi-os support
-- [ ] Add support for actual pipelines
+- [ ] metal backend
 
 ## low priority
 
 - [ ] Timeline Semaphores?
 - [ ] Check Extension support for VK_KHR_swapchain  
+- [ ] Add support for actual pipelines
 
 ## completed
 
 - [x] RenderGraph
 - [x] Nicer shader API
+- [x] BDA
