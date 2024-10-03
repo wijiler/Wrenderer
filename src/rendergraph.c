@@ -49,8 +49,14 @@ void recordPass(VkExtent2D extent, RenderPass *pass, renderer_t *renderer, uint3
 
     renInf.colorAttachmentCount = pass->cAttCount;
     renInf.pColorAttachments = pass->colorAttachments;
-    renInf.pDepthAttachment = NULL;
-    renInf.pStencilAttachment = NULL;
+    if (pass->depthAttachment)
+    {
+        renInf.pDepthAttachment = pass->depthAttachment;
+    }
+    if (pass->stencilAttachment)
+    {
+        renInf.pDepthAttachment = pass->depthAttachment;
+    }
 
     vkCmdBeginRendering(renderer->vkCore.commandBuffers[cBufIndex], &renInf);
 
@@ -172,7 +178,7 @@ void setDepthStencilAttachment(Image img, RenderPass *pass)
     dAttInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
     dAttInfo.clearValue.depthStencil.depth = 0;
 
-    pass->depthAttachment = dAttInfo;
+    pass->depthAttachment = &dAttInfo;
 }
 void addImageResource(RenderPass *pass, Image *image, ResourceUsageFlags_t usage)
 {
@@ -246,16 +252,6 @@ void addBufferResource(RenderPass *pass, Buffer buf, ResourceUsageFlags_t usage)
         res.access = 0;
         break;
     }
-
-    addResource(pass, res);
-}
-
-void addMeshResource(RenderPass *pass, Mesh mesh, ResourceUsageFlags_t usage)
-{
-    Resource res = {0};
-    res.type = RES_TYPE_Mesh;
-    res.value.mesh = mesh;
-    res.usage = usage;
 
     addResource(pass, res);
 }

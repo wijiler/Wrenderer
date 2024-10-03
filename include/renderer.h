@@ -160,7 +160,6 @@ extern "C"
 
     typedef enum
     {
-        RES_TYPE_Mesh,
         RES_TYPE_Arb,
         RES_TYPE_Buffer,
         RES_TYPE_Image,
@@ -194,7 +193,6 @@ extern "C"
         {
             Buffer buffer;
             Image *img;
-            Mesh mesh;
             void *arbitrary;
         } value;
     } Resource;
@@ -224,8 +222,8 @@ extern "C"
         // for renderingBeginInfo
         int cAttCount;
         VkRenderingAttachmentInfo *colorAttachments;
-        VkRenderingAttachmentInfo depthAttachment;
-        VkRenderingAttachmentInfo stencilAttachment;
+        VkRenderingAttachmentInfo *depthAttachment;
+        VkRenderingAttachmentInfo *stencilAttachment;
 
         int resourceCount;
         Resource *resources;
@@ -351,8 +349,6 @@ extern "C"
     // ---------------------------- RGFUNEND
 
     // ----------------------------------------- MODELFUNBG
-
-    void addMeshResource(RenderPass *pass, Mesh mesh, ResourceUsageFlags_t usage);
 
     Mesh createMesh(renderer_t renderer, uint32_t vertCount, void *vertices, uint32_t indexCount, uint32_t indices[], uint32_t instanceCount);
     void submitMesh(Mesh mesh, renderer_t *renderer);

@@ -95,20 +95,20 @@ void sceneDrawCallBack(RenderPass pass, VkCommandBuffer cBuf)
 {
     int indexCount = *((int *)pass.resources[3].value.arbitrary);
     bindGraphicsPipeline(pass.pl, cBuf);
-    pushConstants uConstants = {pass.resources[1].value.mesh.verticies.gpuAddress};
+    pushConstants uConstants = {pass.resources[1].value.buffer.gpuAddress};
     vkCmdPushConstants(cBuf, pass.pl.value.graphics.plLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, pass.pl.value.graphics.pcRange.size, &uConstants);
 
     vkCmdBindIndexBuffer(cBuf, pass.resources[2].value.buffer.buffer, offSet, VK_INDEX_TYPE_UINT32);
 
     vkCmdDrawIndexed(cBuf, indexCount / sizeof(uint32_t), 1, 0, 0, 0);
 
-    for (int i = 4; i < pass.resourceCount; i++)
+    for (int i = 4; i < pass.resourceCount; i += 3)
     {
-        pushConstants constants = {pass.resources[i].value.mesh.verticies.gpuAddress};
+        pushConstants constants = {pass.resources[i].value.buffer.gpuAddress};
         vkCmdPushConstants(cBuf, pass.pl.value.graphics.plLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, pass.pl.value.graphics.pcRange.size, &constants);
-        vkCmdBindIndexBuffer(cBuf, pass.resources[i].value.mesh.indices.buffer, offSet, VK_INDEX_TYPE_UINT32);
+        vkCmdBindIndexBuffer(cBuf, pass.resources[i + 1].value.buffer.buffer, offSet, VK_INDEX_TYPE_UINT32);
 
-        vkCmdDrawIndexed(cBuf, pass.resources[i].value.mesh.indices.size / sizeof(uint32_t), pass.resources[i].value.mesh.instanceCount, 0, 0, 0);
+        vkCmdDrawIndexed(cBuf, pass.resources[i + 2].value.buffer.size / sizeof(uint32_t), *((uint32_t *)pass.resources[i].value.arbitrary), 0, 0, 0);
     }
 }
 
@@ -123,7 +123,9 @@ RenderPass sceneDraw(renderer_t *renderer)
 
     for (uint32_t i = 0; i < renderer->meshHandler.instancedmeshCount; i++)
     {
-        addMeshResource(&pass, renderer->meshHandler.instancedMeshes[i], USAGE_UNDEFINED);
+        addBufferResource(&pass, renderer->meshHandler.instancedMeshes[i].verticies, USAGE_UNDEFINED);
+        addBufferResource(&pass, renderer->meshHandler.instancedMeshes[i].indices, USAGE_UNDEFINED);
+        addArbitraryResource(&pass, &renderer->meshHandler.instancedMeshes[i].instanceCount);
     }
 
     setExecutionCallBack(&pass, sceneDrawCallBack);
