@@ -20,8 +20,8 @@ typedef struct
 
 vertex verts[3] = {
     {{1.0f, 1.0f, 1.0f}, {1.0f, 0.0f, 0.0f}},
-    {{-1.0f, 1.0f, 1.0f}, {1.0f, 0.0f, 0.0f}},
-    {{0.0f, -1.0f, 1.0f}, {1.0f, 0.0f, 0.0f}},
+    {{-1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
+    {{0.0f, -1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}},
 };
 
 int ImageIndex = 0;
@@ -46,25 +46,25 @@ void init()
     readShaderSPRV("./shaders/vtri.spv", &vLen, &vShader);
     readShaderSPRV("./shaders/ftri.spv", &fLen, &fShader);
 
-    Pipeline pl = {0};
+    graphicsPipeline pl = {0};
 
-    pl.value.graphics.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-    pl.value.graphics.colorBlending = VK_TRUE;
-    pl.value.graphics.logicOp = VK_FALSE;
-    pl.value.graphics.reasterizerDiscardEnable = VK_FALSE;
-    pl.value.graphics.polyMode = VK_POLYGON_MODE_FILL;
-    pl.value.graphics.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-    pl.value.graphics.primitiveRestartEnable = VK_FALSE;
-    pl.value.graphics.depthBiasEnable = VK_FALSE;
-    pl.value.graphics.depthTestEnable = VK_FALSE;
-    pl.value.graphics.depthClampEnable = VK_FALSE;
-    pl.value.graphics.depthClipEnable = VK_FALSE;
-    pl.value.graphics.stencilTestEnable = VK_FALSE;
-    pl.value.graphics.alphaToCoverageEnable = VK_FALSE;
-    pl.value.graphics.rastSampleCount = VK_SAMPLE_COUNT_1_BIT;
-    pl.value.graphics.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-    pl.value.graphics.cullMode = VK_CULL_MODE_NONE;
-    pl.value.graphics.colorBlendEq = (VkColorBlendEquationEXT){
+    pl.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    pl.colorBlending = VK_TRUE;
+    pl.logicOp = VK_FALSE;
+    pl.reasterizerDiscardEnable = VK_FALSE;
+    pl.polyMode = VK_POLYGON_MODE_FILL;
+    pl.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    pl.primitiveRestartEnable = VK_FALSE;
+    pl.depthBiasEnable = VK_FALSE;
+    pl.depthTestEnable = VK_FALSE;
+    pl.depthClampEnable = VK_FALSE;
+    pl.depthClipEnable = VK_FALSE;
+    pl.stencilTestEnable = VK_FALSE;
+    pl.alphaToCoverageEnable = VK_FALSE;
+    pl.rastSampleCount = VK_SAMPLE_COUNT_1_BIT;
+    pl.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    pl.cullMode = VK_CULL_MODE_NONE;
+    pl.colorBlendEq = (VkColorBlendEquationEXT){
         VK_BLEND_FACTOR_SRC_ALPHA,
         VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
         VK_BLEND_OP_ADD,
@@ -72,9 +72,9 @@ void init()
         VK_BLEND_FACTOR_ZERO,
         VK_BLEND_OP_ADD,
     };
-    pl.value.graphics.depthBoundsEnable = VK_FALSE;
-    pl.value.graphics.alphaToOneEnable = VK_TRUE;
-    pl.value.graphics.sampleMask = UINT32_MAX;
+    pl.depthBoundsEnable = VK_FALSE;
+    pl.alphaToOneEnable = VK_TRUE;
+    pl.sampleMask = UINT32_MAX;
 
     setShaderSPRV(renderer.vkCore, &pl, vShader, vLen, fShader, fLen);
 
@@ -87,7 +87,7 @@ void init()
 
     createPipelineLayout(renderer.vkCore, &pl);
     RenderPass scenePass = sceneDraw(&renderer);
-    scenePass.pl = pl;
+    scenePass.gPl = pl;
 
     addPass(&builder, &scenePass);
     renderer.rg = &builder;

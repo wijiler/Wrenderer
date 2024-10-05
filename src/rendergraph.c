@@ -265,9 +265,13 @@ void addArbitraryResource(RenderPass *pass, void *data)
     addResource(pass, res);
 }
 
-void setPipeline(Pipeline pl, RenderPass *pass)
+void setGraphicsPipeline(graphicsPipeline pl, RenderPass *pass)
 {
-    pass->pl = pl;
+    pass->gPl = pl;
+}
+void setComputePipeline(computePipeline pl, RenderPass *pass)
+{
+    pass->cPl = pl;
 }
 
 void setExecutionCallBack(RenderPass *pass, void (*callBack)(struct RenderPass, VkCommandBuffer cBuf))

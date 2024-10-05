@@ -94,9 +94,9 @@ const uint64_t offSet = 0;
 void sceneDrawCallBack(RenderPass pass, VkCommandBuffer cBuf)
 {
     int indexCount = *((int *)pass.resources[3].value.arbitrary);
-    bindGraphicsPipeline(pass.pl, cBuf);
+    bindGraphicsPipeline(pass.gPl, cBuf);
     pushConstants uConstants = {pass.resources[1].value.buffer.gpuAddress};
-    vkCmdPushConstants(cBuf, pass.pl.value.graphics.plLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, pass.pl.value.graphics.pcRange.size, &uConstants);
+    vkCmdPushConstants(cBuf, pass.gPl.plLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, pass.gPl.pcRange.size, &uConstants);
 
     vkCmdBindIndexBuffer(cBuf, pass.resources[2].value.buffer.buffer, offSet, VK_INDEX_TYPE_UINT32);
 
@@ -105,7 +105,7 @@ void sceneDrawCallBack(RenderPass pass, VkCommandBuffer cBuf)
     for (int i = 4; i < pass.resourceCount; i += 3)
     {
         pushConstants constants = {pass.resources[i].value.buffer.gpuAddress};
-        vkCmdPushConstants(cBuf, pass.pl.value.graphics.plLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, pass.pl.value.graphics.pcRange.size, &constants);
+        vkCmdPushConstants(cBuf, pass.gPl.plLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, pass.gPl.pcRange.size, &constants);
         vkCmdBindIndexBuffer(cBuf, pass.resources[i + 1].value.buffer.buffer, offSet, VK_INDEX_TYPE_UINT32);
 
         vkCmdDrawIndexed(cBuf, pass.resources[i + 2].value.buffer.size / sizeof(uint32_t), *((uint32_t *)pass.resources[i].value.arbitrary), 0, 0, 0);

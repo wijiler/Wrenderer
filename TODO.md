@@ -2,7 +2,6 @@
 
 ## working on
 
-- [ ] Compute passes
 
 ## high priority
 
@@ -19,3 +18,4 @@
 - [x] RenderGraph
 - [x] Nicer shader API
 - [x] BDA
+- [x] Compute passes

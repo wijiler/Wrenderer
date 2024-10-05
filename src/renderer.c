@@ -25,14 +25,6 @@ PFN_vkCmdSetDepthClipEnableEXT vkCmdSetDepthClipEnableEXT_ = NULL;
 PFN_vkCmdSetLogicOpEXT vkCmdSetLogicOpEXT_ = NULL;
 PFN_vkDestroyShaderEXT vkDestroyShaderEXT_ = NULL;
 
-typedef struct
-{
-    char *Name;
-    Pipeline *pLine;
-} pipelineInfo;
-pipelineInfo *ap_Pipelines = NULL; // ! NOT THREAD SAFE
-uint32_t pipelineCount = 0;
-
 #define instEXTENSIONCOUNT 4
 #ifdef DEBUG
 #define instLAYERCOUNT 1
@@ -213,7 +205,7 @@ VkPhysicalDevice find_valid_device(int deviceCount, VkPhysicalDevice devices[], 
 }
 
 #define DEVICEEXTENSIONSCOUNT 6
-char *deviceExtensions[DEVICEEXTENSIONSCOUNT] = {
+const char *deviceExtensions[DEVICEEXTENSIONSCOUNT] = {
     VK_KHR_SWAPCHAIN_EXTENSION_NAME,
     VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,
     VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
@@ -899,59 +891,62 @@ void initRenderer(renderer_t *renderer)
     renderer->meshHandler.unifiedIndexCapacity = maxVerts * sizeof(uint32_t);
 }
 
-void bindGraphicsPipeline(Pipeline pline, VkCommandBuffer cBuf)
+void bindGraphicsPipeline(graphicsPipeline pline, VkCommandBuffer cBuf)
 {
-    switch (pline.type)
+    VkBool32 cbEnable = pline.colorBlending;
+    vkCmdSetColorWriteMaskEXT_(cBuf, 0, 1, &pline.colorWriteMask);
+
+    vkCmdSetColorBlendEnableEXT_(cBuf, 0, 1, &cbEnable);
+    vkCmdSetLogicOpEnableEXT_(cBuf, pline.logicOpEnable);
+
+    vkCmdSetDepthTestEnable(cBuf, pline.depthTestEnable);
+    vkCmdSetDepthBiasEnable(cBuf, pline.depthBiasEnable);
+    vkCmdSetDepthClampEnableEXT_(cBuf, pline.depthClampEnable);
+    vkCmdSetDepthClipEnableEXT_(cBuf, pline.depthClipEnable);
+    vkCmdSetStencilTestEnable(cBuf, pline.stencilTestEnable);
+    vkCmdSetDepthWriteEnable(cBuf, pline.depthWriteEnable);
+    vkCmdSetDepthBoundsTestEnable(cBuf, pline.depthBoundsEnable);
+    vkCmdSetAlphaToCoverageEnableEXT_(cBuf, pline.alphaToCoverageEnable);
+    vkCmdSetAlphaToOneEnableEXT_(cBuf, pline.alphaToOneEnable);
+
+    vkCmdSetColorWriteMaskEXT_(cBuf, 0, 1, &pline.colorWriteMask);
+    vkCmdSetPolygonModeEXT_(cBuf, pline.polyMode);
+    vkCmdSetPrimitiveTopology(cBuf, pline.topology);
+    vkCmdSetRasterizerDiscardEnable(cBuf, pline.reasterizerDiscardEnable);
+    vkCmdSetPrimitiveRestartEnable(cBuf, pline.primitiveRestartEnable);
+    vkCmdSetRasterizationSamplesEXT_(cBuf, pline.rastSampleCount);
+    vkCmdSetFrontFace(cBuf, pline.frontFace);
+    vkCmdSetCullMode(cBuf, pline.cullMode);
+
+    if (pline.colorBlending == VK_TRUE)
+        vkCmdSetColorBlendEquationEXT_(cBuf, 0, 1, &pline.colorBlendEq);
+
+    if (pline.logicOpEnable == VK_TRUE)
+        vkCmdSetLogicOpEXT_(cBuf, pline.logicOp);
+    if (pline.depthTestEnable == VK_TRUE)
     {
-    case PIPELINE_GRAPHICS:
-        VkBool32 cbEnable = pline.value.graphics.colorBlending;
-        vkCmdSetColorWriteMaskEXT_(cBuf, 0, 1, &pline.value.graphics.colorWriteMask);
-
-        vkCmdSetColorBlendEnableEXT_(cBuf, 0, 1, &cbEnable);
-        vkCmdSetLogicOpEnableEXT_(cBuf, pline.value.graphics.logicOpEnable);
-
-        vkCmdSetDepthTestEnable(cBuf, pline.value.graphics.depthTestEnable);
-        vkCmdSetDepthBiasEnable(cBuf, pline.value.graphics.depthBiasEnable);
-        vkCmdSetDepthClampEnableEXT_(cBuf, pline.value.graphics.depthClampEnable);
-        vkCmdSetDepthClipEnableEXT_(cBuf, pline.value.graphics.depthClipEnable);
-        vkCmdSetStencilTestEnable(cBuf, pline.value.graphics.stencilTestEnable);
-        vkCmdSetDepthWriteEnable(cBuf, pline.value.graphics.depthWriteEnable);
-        vkCmdSetDepthBoundsTestEnable(cBuf, pline.value.graphics.depthBoundsEnable);
-        vkCmdSetAlphaToCoverageEnableEXT_(cBuf, pline.value.graphics.alphaToCoverageEnable);
-        vkCmdSetAlphaToOneEnableEXT_(cBuf, pline.value.graphics.alphaToOneEnable);
-
-        vkCmdSetColorWriteMaskEXT_(cBuf, 0, 1, &pline.value.graphics.colorWriteMask);
-        vkCmdSetPolygonModeEXT_(cBuf, pline.value.graphics.polyMode);
-        vkCmdSetPrimitiveTopology(cBuf, pline.value.graphics.topology);
-        vkCmdSetRasterizerDiscardEnable(cBuf, pline.value.graphics.reasterizerDiscardEnable);
-        vkCmdSetPrimitiveRestartEnable(cBuf, pline.value.graphics.primitiveRestartEnable);
-        vkCmdSetRasterizationSamplesEXT_(cBuf, pline.value.graphics.rastSampleCount);
-        vkCmdSetFrontFace(cBuf, pline.value.graphics.frontFace);
-        vkCmdSetCullMode(cBuf, pline.value.graphics.cullMode);
-
-        if (pline.value.graphics.colorBlending == VK_TRUE)
-            vkCmdSetColorBlendEquationEXT_(cBuf, 0, 1, &pline.value.graphics.colorBlendEq);
-
-        if (pline.value.graphics.logicOpEnable == VK_TRUE)
-            vkCmdSetLogicOpEXT_(cBuf, pline.value.graphics.logicOp);
-        if (pline.value.graphics.depthTestEnable == VK_TRUE)
-        {
-            vkCmdSetDepthBounds(cBuf, pline.value.graphics.minDepth, pline.value.graphics.maxDepth);
-            vkCmdSetDepthCompareOp(cBuf, pline.value.graphics.depthCompareOp);
-        }
-        vkCmdSetSampleMaskEXT_(cBuf, 1, &pline.value.graphics.sampleMask);
-        vkCmdBindShadersEXT_(cBuf, 1, (VkShaderStageFlagBits[1]){VK_SHADER_STAGE_VERTEX_BIT}, &pline.value.graphics.vert.shader);
-        vkCmdBindShadersEXT_(cBuf, 1, (VkShaderStageFlagBits[1]){VK_SHADER_STAGE_FRAGMENT_BIT}, &pline.value.graphics.frag.shader);
-        int vertexDescCount = pline.value.graphics.vert.VertexDescriptons;
-        vkCmdSetVertexInputEXT_(cBuf, vertexDescCount, pline.value.graphics.vert.bindingDesc, vertexDescCount, pline.value.graphics.vert.attrDesc);
-        break;
-    case PIPELINE_COMPUTE:
-        vkCmdBindShadersEXT_(cBuf, 1, (VkShaderStageFlagBits[1]){VK_SHADER_STAGE_COMPUTE_BIT}, &pline.value.compute.shader.shader);
-        break;
+        vkCmdSetDepthBounds(cBuf, pline.minDepth, pline.maxDepth);
+        vkCmdSetDepthCompareOp(cBuf, pline.depthCompareOp);
     }
+    vkCmdSetSampleMaskEXT_(cBuf, 1, &pline.sampleMask);
+    vkCmdBindShadersEXT_(cBuf, 1, (VkShaderStageFlagBits[1]){VK_SHADER_STAGE_VERTEX_BIT}, &pline.vert.shader);
+    vkCmdBindShadersEXT_(cBuf, 1, (VkShaderStageFlagBits[1]){VK_SHADER_STAGE_FRAGMENT_BIT}, &pline.frag.shader);
+    int vertexDescCount = pline.vert.VertexDescriptons;
+    vkCmdSetVertexInputEXT_(cBuf, vertexDescCount, pline.vert.bindingDesc, vertexDescCount, pline.vert.attrDesc);
+}
+
+void bindComputePipeline(computePipeline pline, VkCommandBuffer cBuf)
+{
+    vkCmdBindShadersEXT_(cBuf, 1, (VkShaderStageFlagBits[1]){VK_SHADER_STAGE_COMPUTE_BIT}, &pline.shader.shader);
 }
 
 void unbindGraphicsPipeline(VkCommandBuffer cBuf)
+{
+    vkCmdBindShadersEXT_(cBuf, 1, (VkShaderStageFlagBits[1]){VK_SHADER_STAGE_VERTEX_BIT}, VK_NULL_HANDLE);
+    vkCmdBindShadersEXT_(cBuf, 1, (VkShaderStageFlagBits[1]){VK_SHADER_STAGE_FRAGMENT_BIT}, VK_NULL_HANDLE);
+}
+
+void unbindComputePipeline(VkCommandBuffer cBuf)
 {
     vkCmdBindShadersEXT_(cBuf, 1, (VkShaderStageFlagBits[1]){VK_SHADER_STAGE_VERTEX_BIT}, VK_NULL_HANDLE);
     vkCmdBindShadersEXT_(cBuf, 1, (VkShaderStageFlagBits[1]){VK_SHADER_STAGE_FRAGMENT_BIT}, VK_NULL_HANDLE);
@@ -981,7 +976,7 @@ void readShaderSPRV(const char *filePath, uint64_t *len, uint32_t **data)
     fclose(file);
 }
 
-void setShaderSPRV(VulkanCore_t core, Pipeline *pl, uint32_t *vFileContents, int vFileLen, uint32_t *fFileContents, int fFileLen)
+void setShaderSPRV(VulkanCore_t core, graphicsPipeline *pl, uint32_t *vFileContents, int vFileLen, uint32_t *fFileContents, int fFileLen)
 {
     VkShaderCreateInfoEXT vCI = {0};
 
@@ -990,10 +985,10 @@ void setShaderSPRV(VulkanCore_t core, Pipeline *pl, uint32_t *vFileContents, int
 
     vCI.flags = 0;
 
-    vCI.setLayoutCount = pl->value.graphics.setLayoutCount;
-    vCI.pSetLayouts = pl->value.graphics.setLayouts;
-    vCI.pushConstantRangeCount = pl->value.graphics.pcRangeCount;
-    vCI.pPushConstantRanges = &pl->value.graphics.pcRange;
+    vCI.setLayoutCount = pl->setLayoutCount;
+    vCI.pSetLayouts = pl->setLayouts;
+    vCI.pushConstantRangeCount = pl->pcRangeCount;
+    vCI.pPushConstantRanges = &pl->pcRange;
 
     vCI.codeType = VK_SHADER_CODE_TYPE_SPIRV_EXT;
     vCI.codeSize = vFileLen;
@@ -1010,10 +1005,10 @@ void setShaderSPRV(VulkanCore_t core, Pipeline *pl, uint32_t *vFileContents, int
 
     fCI.flags = 0;
 
-    fCI.setLayoutCount = pl->value.graphics.setLayoutCount;
-    fCI.pSetLayouts = pl->value.graphics.setLayouts;
-    fCI.pushConstantRangeCount = pl->value.graphics.pcRangeCount;
-    fCI.pPushConstantRanges = &pl->value.graphics.pcRange;
+    fCI.setLayoutCount = pl->setLayoutCount;
+    fCI.pSetLayouts = pl->setLayouts;
+    fCI.pushConstantRangeCount = pl->pcRangeCount;
+    fCI.pPushConstantRanges = &pl->pcRange;
 
     fCI.codeType = VK_SHADER_CODE_TYPE_SPIRV_EXT;
     fCI.codeSize = fFileLen;
@@ -1027,11 +1022,11 @@ void setShaderSPRV(VulkanCore_t core, Pipeline *pl, uint32_t *vFileContents, int
         vCI,
         fCI,
     };
-    vkCreateShadersEXT_(core.lDev, 1, &sCi[0], NULL, &pl->value.graphics.vert.shader);
-    vkCreateShadersEXT_(core.lDev, 1, &sCi[1], NULL, &pl->value.graphics.frag.shader);
+    vkCreateShadersEXT_(core.lDev, 1, &sCi[0], NULL, &pl->vert.shader);
+    vkCreateShadersEXT_(core.lDev, 1, &sCi[1], NULL, &pl->frag.shader);
 }
 
-void setCompShaderSPRV(VulkanCore_t core, Pipeline *pl, uint32_t *contents, int fileLen)
+void setCompShaderSPRV(VulkanCore_t core, computePipeline *pl, uint32_t *contents, int fileLen)
 {
     VkShaderCreateInfoEXT cCI = {0};
 
@@ -1040,10 +1035,10 @@ void setCompShaderSPRV(VulkanCore_t core, Pipeline *pl, uint32_t *contents, int 
 
     cCI.flags = 0;
 
-    cCI.setLayoutCount = pl->value.graphics.setLayoutCount;
-    cCI.pSetLayouts = pl->value.graphics.setLayouts;
-    cCI.pushConstantRangeCount = pl->value.graphics.pcRangeCount;
-    cCI.pPushConstantRanges = &pl->value.graphics.pcRange;
+    cCI.setLayoutCount = pl->setLayoutCount;
+    cCI.pSetLayouts = pl->setLayouts;
+    cCI.pushConstantRangeCount = pl->pcRangeCount;
+    cCI.pPushConstantRanges = &pl->pcRange;
 
     cCI.codeType = VK_SHADER_CODE_TYPE_SPIRV_EXT;
     cCI.codeSize = fileLen;
@@ -1053,12 +1048,12 @@ void setCompShaderSPRV(VulkanCore_t core, Pipeline *pl, uint32_t *contents, int 
     cCI.nextStage = 0;
     cCI.pSpecializationInfo = NULL;
 
-    vkCreateShadersEXT_(core.lDev, 1, (VkShaderCreateInfoEXT[1]){cCI}, NULL, &pl->value.graphics.vert.shader);
+    vkCreateShadersEXT_(core.lDev, 1, (VkShaderCreateInfoEXT[1]){cCI}, NULL, &pl->shader.shader);
 }
 
-void addVertexInput(Pipeline *pl, int binding, int location, int stride, int offSet, VkVertexInputRate inputRate, VkFormat format)
+void addVertexInput(graphicsPipeline *pl, int binding, int location, int stride, int offSet, VkVertexInputRate inputRate, VkFormat format)
 {
-    int index = pl->value.graphics.vert.VertexDescriptons;
+    int index = pl->vert.VertexDescriptons;
     VkVertexInputAttributeDescription2EXT attrDesc = {
         VK_STRUCTURE_TYPE_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION_2_EXT,
         NULL,
@@ -1075,83 +1070,64 @@ void addVertexInput(Pipeline *pl, int binding, int location, int stride, int off
         inputRate,
         0,
     };
-    pl->value.graphics.vert.attrDesc[index] = attrDesc;
-    pl->value.graphics.vert.bindingDesc[index] = bindingDesc;
-    pl->value.graphics.vert.VertexDescriptons += 1;
+    pl->vert.attrDesc[index] = attrDesc;
+    pl->vert.bindingDesc[index] = bindingDesc;
+    pl->vert.VertexDescriptons += 1;
 }
 
-void setPushConstantRange(Pipeline *pl, size_t size, shaderStage stage)
+void setPushConstantRange(graphicsPipeline *pl, size_t size, shaderStage stage)
 {
     VkPushConstantRange pcRange = {0};
     pcRange.offset = 0;
     pcRange.size = size;
     pcRange.stageFlags = stage;
 
-    pl->value.graphics.pcRange = pcRange;
-    pl->value.graphics.pcRangeCount = 1;
+    pl->pcRange = pcRange;
+    pl->pcRangeCount = 1;
 }
 
-void createPipelineLayout(VulkanCore_t core, Pipeline *pl)
+void setComputePushConstantRange(computePipeline *pl, size_t size)
+{
+    VkPushConstantRange pcRange = {0};
+    pcRange.offset = 0;
+    pcRange.size = size;
+    pcRange.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
+    pl->pcRange = pcRange;
+    pl->pcRangeCount = 1;
+}
+
+void createPipelineLayout(VulkanCore_t core, graphicsPipeline *pl)
 {
     VkPipelineLayoutCreateInfo plcInf = {0};
     plcInf.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     plcInf.pNext = NULL;
-    switch (pl->type)
-    {
-    case PIPELINE_GRAPHICS:
-    {
-        VkDescriptorSetLayout *setLayouts = malloc(sizeof(VkDescriptorSetLayout) * (pl->value.graphics.setLayoutCount + 1));
-        memcpy(setLayouts, pl->value.graphics.setLayouts, sizeof(VkDescriptorSetLayout) * (pl->value.graphics.setLayoutCount));
-        setLayouts[pl->value.graphics.setLayoutCount] = core.tdSetLayout;
 
-        plcInf.setLayoutCount = 0;
-        plcInf.pSetLayouts = NULL;
+    VkDescriptorSetLayout *setLayouts = malloc(sizeof(VkDescriptorSetLayout) * (pl->setLayoutCount + 1));
+    memcpy(setLayouts, pl->setLayouts, sizeof(VkDescriptorSetLayout) * (pl->setLayoutCount));
+    setLayouts[pl->setLayoutCount] = core.tdSetLayout;
 
-        plcInf.pPushConstantRanges = &pl->value.graphics.pcRange;
-        plcInf.pushConstantRangeCount = pl->value.graphics.pcRangeCount;
-        vkCreatePipelineLayout(core.lDev, &plcInf, NULL, &pl->value.graphics.plLayout);
-    }
-    break;
-    case PIPELINE_COMPUTE:
-    {
-        VkDescriptorSetLayout *setLayouts = malloc(sizeof(VkDescriptorSetLayout) * (pl->value.compute.setLayoutCount + 1));
-        memcpy(setLayouts, pl->value.compute.setLayouts, sizeof(VkDescriptorSetLayout) * (pl->value.compute.setLayoutCount));
-        setLayouts[pl->value.compute.setLayoutCount] = core.tdSetLayout;
+    plcInf.setLayoutCount = 0;
+    plcInf.pSetLayouts = NULL;
 
-        plcInf.setLayoutCount = 0;
-        plcInf.pSetLayouts = NULL;
-
-        plcInf.pPushConstantRanges = &pl->value.compute.pcRange;
-        plcInf.pushConstantRangeCount = pl->value.compute.pcRangeCount;
-        vkCreatePipelineLayout(core.lDev, &plcInf, NULL, &pl->value.compute.plLayout);
-    }
-    break;
-    }
+    plcInf.pPushConstantRanges = &pl->pcRange;
+    plcInf.pushConstantRangeCount = pl->pcRangeCount;
+    vkCreatePipelineLayout(core.lDev, &plcInf, NULL, &pl->plLayout);
 }
 
-void cache_PipeLine(Pipeline *pLine, char *Name)
+void createComputePipelineLayout(VulkanCore_t core, computePipeline *pl)
 {
-    pipelineInfo plInf = {0};
-    plInf.Name = Name;
-    plInf.pLine = pLine;
+    VkPipelineLayoutCreateInfo plcInf = {0};
+    plcInf.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    plcInf.pNext = NULL;
+    VkDescriptorSetLayout *setLayouts = malloc(sizeof(VkDescriptorSetLayout) * (pl->setLayoutCount + 1));
+    memcpy(setLayouts, pl->setLayouts, sizeof(VkDescriptorSetLayout) * (pl->setLayoutCount));
+    setLayouts[pl->setLayoutCount] = core.tdSetLayout;
 
-    ap_Pipelines = realloc(ap_Pipelines, sizeof(pipelineInfo) * (pipelineCount + 1));
-    ap_Pipelines[pipelineCount + 1] = plInf;
+    plcInf.setLayoutCount = 0;
+    plcInf.pSetLayouts = NULL;
 
-    pipelineCount += 1;
-}
-
-Pipeline find_Pipeline(char *Name)
-{
-    // worst case O(n), we could technically get away without iteration but the gain is not much, and the complexity it would add would make this much less readable
-    for (uint32_t i = 0; i <= pipelineCount; i++)
-    {
-        if (ap_Pipelines[i].Name == Name)
-        {
-            return *ap_Pipelines[i].pLine;
-        }
-    }
-    printf("Could not find specified pipeline %s\n", Name);
-    Pipeline errpl = {0};
-    return errpl;
+    plcInf.pPushConstantRanges = &pl->pcRange;
+    plcInf.pushConstantRangeCount = pl->pcRangeCount;
+    vkCreatePipelineLayout(core.lDev, &plcInf, NULL, &pl->plLayout);
 }

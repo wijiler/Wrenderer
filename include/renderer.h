@@ -100,63 +100,56 @@ extern "C"
 
     typedef struct
     {
-        enum
-        {
-            PIPELINE_GRAPHICS,
-            PIPELINE_COMPUTE,
-        } type;
-        union
-        {
-            struct
-            {
-                Shader vert, frag;
+        Shader vert, frag;
 
-                VkColorComponentFlags colorWriteMask;
-                VkColorBlendEquationEXT colorBlendEq;
-                VkPolygonMode polyMode;
-                VkPrimitiveTopology topology;
-                VkSampleCountFlagBits rastSampleCount;
-                VkFrontFace frontFace;
-                VkCullModeFlags cullMode;
+        VkColorComponentFlags colorWriteMask;
+        VkColorBlendEquationEXT colorBlendEq;
+        VkPolygonMode polyMode;
+        VkPrimitiveTopology topology;
+        VkSampleCountFlagBits rastSampleCount;
+        VkFrontFace frontFace;
+        VkCullModeFlags cullMode;
 
-                VkBool32 colorBlending, logicOpEnable, depthTestEnable, depthBiasEnable, depthClampEnable, depthClipEnable, stencilTestEnable, depthWriteEnable, depthBoundsEnable, alphaToCoverageEnable, alphaToOneEnable, reasterizerDiscardEnable, primitiveRestartEnable;
+        VkBool32 colorBlending, logicOpEnable, depthTestEnable, depthBiasEnable, depthClampEnable, depthClipEnable, stencilTestEnable, depthWriteEnable, depthBoundsEnable, alphaToCoverageEnable, alphaToOneEnable, reasterizerDiscardEnable, primitiveRestartEnable;
 
-                VkLogicOp logicOp;   // if logicOp is changed logicOpEnable must be true
-                uint32_t sampleMask; // usually UINT32_MAX
+        VkLogicOp logicOp;   // if logicOp is changed logicOpEnable must be true
+        uint32_t sampleMask; // usually UINT32_MAX
 
-                int pcRangeCount;
-                VkPushConstantRange pcRange;
-                void *PushConstants;
+        int pcRangeCount;
+        VkPushConstantRange pcRange;
+        void *PushConstants;
 
-                VkPipelineLayout plLayout;
+        VkPipelineLayout plLayout;
 
-                int setLayoutCount;
-                VkDescriptorSetLayout *setLayouts;
+        int setLayoutCount;
+        VkDescriptorSetLayout *setLayouts;
 
-                size_t uboSize;
-                void *ubo;
+        size_t uboSize;
+        void *ubo;
 
-                VkCompareOp depthCompareOp;
-                int minDepth, maxDepth; // must be set if depthTestEnable is VK_TRUE
-            } graphics;
-            struct
-            {
-                Shader shader;
+        VkCompareOp depthCompareOp;
+        int minDepth, maxDepth; // must be set if depthTestEnable is VK_TRUE
 
-                int pcRangeCount;
-                VkPushConstantRange pcRange;
-                void *PushConstants;
+    } graphicsPipeline;
 
-                VkPipelineLayout plLayout;
+    typedef struct
+    {
+        Shader shader;
 
-                int setLayoutCount;
-                VkDescriptorSetLayout *setLayouts;
-            } compute;
-        } value;
-    } Pipeline;
+        int pcRangeCount;
+        VkPushConstantRange pcRange;
+        void *PushConstants;
 
-    void bindGraphicsPipeline(Pipeline pline, VkCommandBuffer cBuf);
+        VkPipelineLayout plLayout;
+
+        int setLayoutCount;
+        VkDescriptorSetLayout *setLayouts;
+    } computePipeline;
+
+    void bindGraphicsPipeline(graphicsPipeline pline, VkCommandBuffer cBuf);
+    void bindComputePipeline(computePipeline pline, VkCommandBuffer cBuf);
     void unbindGraphicsPipeline(VkCommandBuffer cBuf);
+    void unbindComputePipeline(VkCommandBuffer cBuf);
 
     typedef enum
     {
@@ -216,7 +209,8 @@ extern "C"
         char *name;
         uint64_t hash;
 
-        Pipeline pl;
+        graphicsPipeline gPl;
+        computePipeline cPl;
         passType type;
 
         // for renderingBeginInfo
@@ -319,19 +313,20 @@ extern "C"
 
     // ---------------------------- RGFUNBEG
 
-    void cache_PipeLine(Pipeline *pLine, char *Name);
-    Pipeline find_Pipeline(char *Name);
-    void bindGraphicsPipeline(Pipeline pline, VkCommandBuffer cBuf);
+    void bindGraphicsPipeline(graphicsPipeline pline, VkCommandBuffer cBuf);
     void readShaderSPRV(const char *filePath, uint64_t *len, uint32_t **data);
-    void setShaderSPRV(VulkanCore_t core, Pipeline *pl, uint32_t *vFileContents, int vFileLen, uint32_t *fFileContents, int fFileLen);
-    void setCompShaderSPRV(VulkanCore_t core, Pipeline *pl, uint32_t *contents, int fileLen);
-    void addVertexInput(Pipeline *pl, int binding, int location, int stride, int offSet, VkVertexInputRate inputRate, VkFormat format);
-    void setPushConstantRange(Pipeline *pl, size_t size, shaderStage stage);
-    void createPipelineLayout(VulkanCore_t core, Pipeline *pl);
+    void setShaderSPRV(VulkanCore_t core, graphicsPipeline *pl, uint32_t *vFileContents, int vFileLen, uint32_t *fFileContents, int fFileLen);
+    void setCompShaderSPRV(VulkanCore_t core, computePipeline *pl, uint32_t *contents, int fileLen);
+    void addVertexInput(graphicsPipeline *pl, int binding, int location, int stride, int offSet, VkVertexInputRate inputRate, VkFormat format);
+    void setPushConstantRange(graphicsPipeline *pl, size_t size, shaderStage stage);
+    void setComputePushConstantRange(computePipeline *pl, size_t size);
+    void createPipelineLayout(VulkanCore_t core, graphicsPipeline *pl);
+    void createComputePipelineLayout(VulkanCore_t core, computePipeline *pl);
 
     RenderPass newPass(char *name, passType type);
 
-    void setPipeline(Pipeline pl, RenderPass *pass);
+    void setGraphicsPipeline(graphicsPipeline pl, RenderPass *pass);
+    void setComputePipeline(computePipeline pl, RenderPass *pass);
     void addImageResource(RenderPass *pass, Image *image, ResourceUsageFlags_t usage);
     void addBufferResource(RenderPass *pass, Buffer buf, ResourceUsageFlags_t usage);
     void addArbitraryResource(RenderPass *pass, void *data);
