@@ -39,6 +39,7 @@ void init()
 {
     renderer.meshHandler.vertexSize = sizeof(vertex);
     initRenderer(&renderer);
+
     uint64_t vLen, fLen = 0;
     uint32_t *vShader = NULL;
     uint32_t *fShader = NULL;

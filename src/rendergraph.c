@@ -458,6 +458,7 @@ void drawRenderer(renderer_t *renderer, int cBufIndex)
         renderer->vkCore.swapChainImageViews[renderer->vkCore.currentImageIndex],
         VK_IMAGE_LAYOUT_UNDEFINED,
         0,
+        NULL,
     };
 
     vkResetCommandBuffer(cbuf, 0);

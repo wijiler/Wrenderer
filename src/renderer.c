@@ -620,24 +620,10 @@ void createBuffer(VulkanCore_t core, BufferCreateInfo createInfo, Buffer *buf)
     int index = -1;
     for (int i = 0; i <= 31; i++)
     {
-        if (createInfo.access == CPU_ONLY)
+        if ((memProps.memoryTypes[i].propertyFlags & createInfo.access) != 0)
         {
-            if ((memProps.memoryTypes[i].propertyFlags &
-                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0)
-            {
-                index = i;
-                break;
-            }
-        }
-
-        if (createInfo.access == DEVICE_ONLY)
-        {
-            if ((memProps.memoryTypes[i].propertyFlags &
-                 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) != 0)
-            {
-                index = i;
-                break;
-            }
+            index = i;
+            break;
         }
     }
     if (index == -1)
@@ -873,6 +859,7 @@ void initRenderer(renderer_t *renderer)
         renderer->vkCore.swapChainImageViews[0],
         VK_IMAGE_LAYOUT_UNDEFINED,
         0,
+        NULL,
     };
     renderer->vkCore.currentImageIndex = 0;
     create_CommandBuffers(&renderer->vkCore);

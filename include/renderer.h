@@ -38,15 +38,15 @@ extern "C"
 
     typedef enum
     {
-        CPU_ONLY = 0x01,
-        DEVICE_ONLY = 0x02,
-    } BufferAccess;
+        CPU_ONLY = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        DEVICE_ONLY = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+    } MemoryAccess;
 
     typedef struct
     {
         int dataSize;
         BufferUsage usage;
-        BufferAccess access;
+        MemoryAccess access;
     } BufferCreateInfo;
 
     typedef struct
@@ -88,6 +88,7 @@ extern "C"
         // Do not set manually
         VkImageLayout CurrentLayout;
         VkAccessFlags accessMask;
+        VkDeviceMemory memory;
     } Image;
 
     typedef struct
@@ -341,7 +342,7 @@ extern "C"
 
     uint64_t fnv_64a_str(char *str, uint64_t hval);
 
-    // ---------------------------- RGFUNEND
+    // ----------------------------------------- RGFUNEND
 
     // ----------------------------------------- MODELFUNBG
 
@@ -349,6 +350,12 @@ extern "C"
     void submitMesh(Mesh mesh, renderer_t *renderer);
     RenderPass sceneDraw(renderer_t *renderer);
     // ----------------------------------------- MODELFUNEND
+
+    // ----------------------------------------- IMGUTILBEG
+    Image createImage(VulkanCore_t core, VkImageUsageFlags usage, VkFormat format, VkImageType type, VkImageTiling tiling, uint32_t width, uint32_t height, MemoryAccess access, VkImageAspectFlags aspects);
+    Image createTextureImage(VulkanCore_t core, uint32_t width, uint32_t height);
+    void copyDataToTextureImage(VulkanCore_t core, Image *image, Buffer *buffer, uint32_t width, uint32_t height);
+    // ----------------------------------------- IMGUTILEND
 
 #ifdef __cplusplus
 }

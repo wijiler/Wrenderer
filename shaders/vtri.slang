@@ -7,6 +7,8 @@ struct Vertex
 [vk_push_constant]
 const Vertex *ptrs;
 [shader("vertex")]
-func main()->float3
+float4 main(uint32_t vertID: SV_VertexID)
+    : SV_Position
 {
+    return float4(ptrs[vertID].position, 0);
 }
