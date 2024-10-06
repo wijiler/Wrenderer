@@ -109,7 +109,7 @@ void immediateSubmitEnd(VulkanCore_t core)
     vkQueueSubmit(core.gQueue, 1, &submitInfo, core.immediateFence);
 }
 
-void transitionLayout(VulkanCore_t core, Image *img, VkImageLayout newLayout, VkAccessFlags dstAccess) // texture images will always be colorful :D
+void transitionLayout(VulkanCore_t core, Image *img, VkImageLayout newLayout, VkAccessFlags dstAccess, VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage) // texture images will always be colorful :D
 {
     VkImageMemoryBarrier memBarrier = {0};
     memBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -131,18 +131,6 @@ void transitionLayout(VulkanCore_t core, Image *img, VkImageLayout newLayout, Vk
         0,
         1,
     };
-    VkPipelineStageFlags srcStage, dstStage;
-    srcStage = dstStage = 0;
-    if (img->CurrentLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-    {
-        srcStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-        dstStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-    }
-    else if (img->CurrentLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-    {
-        srcStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-        dstStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    }
     vkCmdPipelineBarrier(core.immediateSubmit, srcStage, dstStage, 0, 0, NULL, 0, NULL, 1, &memBarrier);
     img->CurrentLayout = newLayout;
     img->accessMask = dstAccess;
@@ -156,7 +144,7 @@ Image createTextureImage(VulkanCore_t core, uint32_t width, uint32_t height)
 void copyDataToTextureImage(VulkanCore_t core, Image *image, Buffer *buffer, uint32_t width, uint32_t height)
 {
     immediateSubmitBegin(core);
-    transitionLayout(core, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT);
+    transitionLayout(core, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
     VkBufferImageCopy bICopy = {0};
     bICopy.bufferOffset = 0;
     bICopy.bufferRowLength = 0;
@@ -177,6 +165,6 @@ void copyDataToTextureImage(VulkanCore_t core, Image *image, Buffer *buffer, uin
     bICopy.imageOffset = (VkOffset3D){0, 0, 0};
 
     vkCmdCopyBufferToImage(core.immediateSubmit, buffer->buffer, image->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &bICopy);
-    transitionLayout(core, image, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_SHADER_READ_BIT);
+    transitionLayout(core, image, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
     immediateSubmitEnd(core);
 }
