@@ -23,7 +23,6 @@ project "Wrenderer"
     filter "configurations:Debug"
         defines { "DEBUG" }
         symbols "On"
-        sanitize { "Address", "Fuzzer" }
     filter "configurations:Release"
         optimize "On"
 
