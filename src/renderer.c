@@ -481,15 +481,9 @@ void create_CommandBuffers(VulkanCore_t *core)
     cbAI.pNext = NULL;
 
     cbAI.commandPool = (VkCommandPool)core->commandPool;
-    cbAI.commandBufferCount = FRAMECOUNT;
     cbAI.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-
-    if (vkAllocateCommandBuffers(core->lDev, &cbAI, core->commandBuffers) != VK_SUCCESS)
-    {
-        printf("Could not create command buffers\n");
-        exit(1);
-    }
     cbAI.commandBufferCount = 1;
+
     if (vkAllocateCommandBuffers(core->lDev, &cbAI, &core->immediateSubmit) != VK_SUCCESS)
     {
         printf("Could not create command buffers\n");
@@ -503,6 +497,11 @@ void create_CommandBuffers(VulkanCore_t *core)
 
     for (int i = 0; i < FRAMECOUNT; i++)
     {
+        if (vkAllocateCommandBuffers(core->lDev, &cbAI, &core->commandBuffers[i]) != VK_SUCCESS) // could we batch this?
+        {
+            printf("Could not create command buffers\n");
+            exit(1);
+        }
         VkSemaphoreCreateInfo semaphoreCI = {0};
         semaphoreCI.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
         semaphoreCI.pNext = NULL;

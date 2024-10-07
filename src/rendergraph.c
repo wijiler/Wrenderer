@@ -1,3 +1,4 @@
+#include <math.h>
 #include <renderer.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -29,7 +30,7 @@ uint64_t fnv_64a_str(char *str, uint64_t hval)
     return hval;
 }
 
-void recordPass(VkExtent2D extent, RenderPass *pass, renderer_t *renderer, uint32_t cBufIndex)
+void recordPass(RenderPass *pass, renderer_t *renderer, uint32_t cBufIndex)
 {
     if (pass->type == PASS_TYPE_COMPUTE)
     {
@@ -37,14 +38,15 @@ void recordPass(VkExtent2D extent, RenderPass *pass, renderer_t *renderer, uint3
         vkResetFences(renderer->vkCore.lDev, 1, &renderer->vkCore.computeFences[cBufIndex]);
         vkBeginCommandBuffer(renderer->vkCore.computeCommandBuffer, &cBufBeginInf);
     }
+
     VkRenderingInfo renInf = {0};
     renInf.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
     renInf.pNext = NULL;
 
     renInf.layerCount = 1;
     renInf.renderArea = (VkRect2D){
-        {0, 0},
-        extent,
+        *pass->drawArea.offSet,
+        *pass->drawArea.extent,
     };
 
     renInf.colorAttachmentCount = pass->cAttCount;
@@ -409,7 +411,7 @@ RenderGraph buildGraph(GraphBuilder *builder, Image scImage)
     return rg;
 }
 
-void executeGraph(VkExtent2D extent, RenderGraph *graph, renderer_t *renderer, uint32_t cBufIndex)
+void executeGraph(RenderGraph *graph, renderer_t *renderer, uint32_t cBufIndex)
 {
     for (int i = 0; i <= graph->passCount - 1; i++)
     {
@@ -422,7 +424,7 @@ void executeGraph(VkExtent2D extent, RenderGraph *graph, renderer_t *renderer, u
         {
             vkCmdPipelineBarrier(renderer->vkCore.commandBuffers[cBufIndex], VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, 0, NULL, cb.bufPBCount, cb.bufMemBarriers, cb.imgPBCount, cb.imgMemBarriers);
         }
-        recordPass(extent, &graph->passes[i], renderer, cBufIndex);
+        recordPass(&graph->passes[i], renderer, cBufIndex);
     }
 }
 
@@ -503,7 +505,7 @@ void drawRenderer(renderer_t *renderer, int cBufIndex)
     viewport.maxDepth = 1;
     vkCmdSetViewportWithCount(cbuf, 1, &viewport);
 
-    executeGraph(renderer->vkCore.extent, &rg, renderer, cBufIndex);
+    executeGraph(&rg, renderer, cBufIndex);
 
     imgMemoryBarrier.srcAccessMask = renderer->vkCore.currentScImg->accessMask;
     imgMemoryBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;

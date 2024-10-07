@@ -89,7 +89,11 @@ void init()
     createPipelineLayout(renderer.vkCore, &pl);
     RenderPass scenePass = sceneDraw(&renderer);
     scenePass.gPl = pl;
-
+    VkOffset2D offSet = {0, 0};
+    scenePass.drawArea = (drawArea){
+        &offSet,
+        &renderer.vkCore.extent,
+    };
     addPass(&builder, &scenePass);
     renderer.rg = &builder;
 }

@@ -196,6 +196,11 @@ extern "C"
         PASS_TYPE_COMPUTE,
         PASS_TYPE_BLIT,
     } passType;
+    typedef struct
+    {
+        VkOffset2D *offSet;
+        VkExtent2D *extent;
+    } drawArea;
     /*
      * We are able to tell if another pass is dependent of the other by the resources it uses
      * Ex.
@@ -222,6 +227,8 @@ extern "C"
 
         int resourceCount;
         Resource *resources;
+
+        drawArea drawArea;
 
         void (*callBack)(struct RenderPass pass, VkCommandBuffer cBuf);
     } RenderPass;
