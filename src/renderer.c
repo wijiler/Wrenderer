@@ -130,9 +130,13 @@ VkPhysicalDevice find_valid_device(int deviceCount, VkPhysicalDevice devices[], 
 {
     VkPhysicalDeviceProperties devProps = {0};
 
+    VkPhysicalDeviceVulkan11Features devFeat11 = {0};
+    devFeat11.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+    devFeat11.pNext = NULL;
+
     VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT vertAttrDivFeats = {0};
     vertAttrDivFeats.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT;
-    vertAttrDivFeats.pNext = NULL;
+    vertAttrDivFeats.pNext = &devFeat11;
 
     VkPhysicalDeviceDepthClipEnableFeaturesEXT depthClipEnable = {0};
     depthClipEnable.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_ENABLE_FEATURES_EXT;
@@ -192,7 +196,7 @@ VkPhysicalDevice find_valid_device(int deviceCount, VkPhysicalDevice devices[], 
             shaderObjectFeatures.shaderObject == VK_TRUE && devFeat2.features.alphaToOne == VK_TRUE && depthClipEnable.depthClipEnable == VK_TRUE &&
             vertAttrDivFeats.vertexAttributeInstanceRateZeroDivisor == VK_TRUE && devFeat12.descriptorBindingPartiallyBound == VK_TRUE &&
             devFeat12.runtimeDescriptorArray == VK_TRUE && devFeat12.descriptorBindingSampledImageUpdateAfterBind == VK_TRUE && devFeat2.features.shaderInt64 &&
-            devFeat12.scalarBlockLayout == VK_TRUE)
+            devFeat12.scalarBlockLayout == VK_TRUE && devFeat11.variablePointers == VK_TRUE && devFeat11.variablePointersStorageBuffer == VK_TRUE)
         {
             graphicsFamilyIndex = &gfami;
             computeFamilyIndex = &cfami;
@@ -236,10 +240,13 @@ void create_device(VulkanCore_t *core)
             exit(1);
         }
     }
+    VkPhysicalDeviceVulkan11Features devFeat11 = {0};
+    devFeat11.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+    devFeat11.pNext = NULL;
 
     VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT vertAttrDivFeats = {0};
     vertAttrDivFeats.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT;
-    vertAttrDivFeats.pNext = NULL;
+    vertAttrDivFeats.pNext = &devFeat11;
 
     VkPhysicalDeviceDepthClipEnableFeaturesEXT depthClipEnable = {0};
     depthClipEnable.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_ENABLE_FEATURES_EXT;
@@ -286,6 +293,9 @@ void create_device(VulkanCore_t *core)
     depthClipEnable.depthClipEnable = VK_TRUE;
 
     vertAttrDivFeats.vertexAttributeInstanceRateZeroDivisor = VK_TRUE;
+
+    devFeat11.variablePointers = VK_TRUE;
+    devFeat11.variablePointersStorageBuffer = VK_TRUE;
 
     VkDeviceQueueCreateInfo queueCreateInfo = {0};
     queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
@@ -962,7 +972,7 @@ void readShaderSPRV(const char *filePath, uint64_t *len, uint32_t **data)
     fclose(file);
 }
 
-void setShaderSPRV(VulkanCore_t core, graphicsPipeline *pl, uint32_t *vFileContents, int vFileLen, uint32_t *fFileContents, int fFileLen)
+void setShaderGLSPRV(VulkanCore_t core, graphicsPipeline *pl, uint32_t *vFileContents, int vFileLen, uint32_t *fFileContents, int fFileLen)
 {
     VkShaderCreateInfoEXT vCI = {0};
 
@@ -1012,6 +1022,56 @@ void setShaderSPRV(VulkanCore_t core, graphicsPipeline *pl, uint32_t *vFileConte
     vkCreateShadersEXT_(core.lDev, 1, &sCi[1], NULL, &pl->frag.shader);
 }
 
+void setShaderSLSPRV(VulkanCore_t core, graphicsPipeline *pl, uint32_t *FileContents, int FileLen)
+{
+    VkShaderCreateInfoEXT vCI = {0};
+
+    vCI.sType = VK_STRUCTURE_TYPE_SHADER_CREATE_INFO_EXT;
+    vCI.pNext = NULL;
+
+    vCI.flags = 0;
+
+    vCI.setLayoutCount = pl->setLayoutCount;
+    vCI.pSetLayouts = pl->setLayouts;
+    vCI.pushConstantRangeCount = pl->pcRangeCount;
+    vCI.pPushConstantRanges = &pl->pcRange;
+
+    vCI.codeType = VK_SHADER_CODE_TYPE_SPIRV_EXT;
+    vCI.codeSize = FileLen;
+    vCI.pCode = FileContents;
+    vCI.pName = "vertMain";
+    vCI.stage = VK_SHADER_STAGE_VERTEX_BIT;
+    vCI.nextStage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    vCI.pSpecializationInfo = NULL;
+
+    VkShaderCreateInfoEXT fCI = {0};
+
+    fCI.sType = VK_STRUCTURE_TYPE_SHADER_CREATE_INFO_EXT;
+    fCI.pNext = NULL;
+
+    fCI.flags = 0;
+
+    fCI.setLayoutCount = pl->setLayoutCount;
+    fCI.pSetLayouts = pl->setLayouts;
+    fCI.pushConstantRangeCount = pl->pcRangeCount;
+    fCI.pPushConstantRanges = &pl->pcRange;
+
+    fCI.codeType = VK_SHADER_CODE_TYPE_SPIRV_EXT;
+    fCI.codeSize = FileLen;
+    fCI.pCode = FileContents;
+    fCI.pName = "fragMain";
+    fCI.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    fCI.nextStage = 0;
+    fCI.pSpecializationInfo = NULL;
+
+    VkShaderCreateInfoEXT sCi[2] = {
+        vCI,
+        fCI,
+    };
+    vkCreateShadersEXT_(core.lDev, 1, &sCi[0], NULL, &pl->vert.shader);
+    vkCreateShadersEXT_(core.lDev, 1, &sCi[1], NULL, &pl->frag.shader);
+}
+
 void setCompShaderSPRV(VulkanCore_t core, computePipeline *pl, uint32_t *contents, int fileLen)
 {
     VkShaderCreateInfoEXT cCI = {0};
@@ -1029,7 +1089,7 @@ void setCompShaderSPRV(VulkanCore_t core, computePipeline *pl, uint32_t *content
     cCI.codeType = VK_SHADER_CODE_TYPE_SPIRV_EXT;
     cCI.codeSize = fileLen;
     cCI.pCode = contents;
-    cCI.pName = "main";
+    cCI.pName = "compMain";
     cCI.stage = VK_SHADER_STAGE_COMPUTE_BIT;
     cCI.nextStage = 0;
     cCI.pSpecializationInfo = NULL;

@@ -323,7 +323,8 @@ extern "C"
 
     void bindGraphicsPipeline(graphicsPipeline pline, VkCommandBuffer cBuf);
     void readShaderSPRV(const char *filePath, uint64_t *len, uint32_t **data);
-    void setShaderSPRV(VulkanCore_t core, graphicsPipeline *pl, uint32_t *vFileContents, int vFileLen, uint32_t *fFileContents, int fFileLen);
+    void setShaderGLSPRV(VulkanCore_t core, graphicsPipeline *pl, uint32_t *vFileContents, int vFileLen, uint32_t *fFileContents, int fFileLen);
+    void setShaderSLSPRV(VulkanCore_t core, graphicsPipeline *pl, uint32_t *FileContents, int FileLen);
     void setCompShaderSPRV(VulkanCore_t core, computePipeline *pl, uint32_t *contents, int fileLen);
     void addVertexInput(graphicsPipeline *pl, int binding, int location, int stride, int offSet, VkVertexInputRate inputRate, VkFormat format);
     void setPushConstantRange(graphicsPipeline *pl, size_t size, shaderStage stage);

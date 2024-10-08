@@ -40,12 +40,10 @@ void init()
     renderer.meshHandler.vertexSize = sizeof(vertex);
     initRenderer(&renderer);
 
-    uint64_t vLen, fLen = 0;
-    uint32_t *vShader = NULL;
-    uint32_t *fShader = NULL;
+    uint64_t Len = 0;
+    uint32_t *Shader = NULL;
 
-    readShaderSPRV("./shaders/vtri.spv", &vLen, &vShader);
-    readShaderSPRV("./shaders/ftri.spv", &fLen, &fShader);
+    readShaderSPRV("./shaders/tri.spv", &Len, &Shader);
 
     graphicsPipeline pl = {0};
 
@@ -77,7 +75,7 @@ void init()
     pl.alphaToOneEnable = VK_TRUE;
     pl.sampleMask = UINT32_MAX;
 
-    setShaderSPRV(renderer.vkCore, &pl, vShader, vLen, fShader, fLen);
+    setShaderSLSPRV(renderer.vkCore, &pl, Shader, Len);
 
     uint32_t indices[3] = {0, 1, 2};
 
