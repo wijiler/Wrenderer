@@ -910,15 +910,15 @@ void initRenderer(renderer_t *renderer)
     createSamplers(&renderer->vkCore);
     renderer->meshHandler.instancedMeshes = NULL;
 
-    BufferCreateInfo BCI = {0};
-    BCI.access = DEVICE_ONLY;
-    BCI.dataSize = maxVerts * sizeof(renderer->meshHandler.vertexSize);
-    BCI.usage = BUFFER_USAGE_VERTEX | BUFFER_USAGE_TRANSFER_DST | BUFFER_USAGE_TRANSFER_SRC;
-    createBuffer(renderer->vkCore, BCI, &renderer->meshHandler.unifiedVerts);
-    BCI.usage = BUFFER_USAGE_INDEX | VK_BUFFER_USAGE_TRANSFER_DST_BIT | BUFFER_USAGE_TRANSFER_SRC;
-    createBuffer(renderer->vkCore, BCI, &renderer->meshHandler.unifiedIndices);
-    renderer->meshHandler.unifiedVertexCapacity = maxVerts * sizeof(renderer->meshHandler.vertexSize);
-    renderer->meshHandler.unifiedIndexCapacity = maxVerts * sizeof(uint32_t);
+    // BufferCreateInfo BCI = {0};
+    // BCI.access = DEVICE_ONLY;
+    // BCI.dataSize = maxVerts * sizeof(renderer->meshHandler.vertexSize);
+    // BCI.usage = BUFFER_USAGE_VERTEX | BUFFER_USAGE_TRANSFER_DST | BUFFER_USAGE_TRANSFER_SRC;
+    // createBuffer(renderer->vkCore, BCI, &renderer->meshHandler.unifiedVerts);
+    // BCI.usage = BUFFER_USAGE_INDEX | VK_BUFFER_USAGE_TRANSFER_DST_BIT | BUFFER_USAGE_TRANSFER_SRC;
+    // createBuffer(renderer->vkCore, BCI, &renderer->meshHandler.unifiedIndices);
+    // renderer->meshHandler.unifiedVertexCapacity = maxVerts * sizeof(renderer->meshHandler.vertexSize);
+    // renderer->meshHandler.unifiedIndexCapacity = maxVerts * sizeof(uint32_t);
 }
 
 void bindGraphicsPipeline(graphicsPipeline pline, VkCommandBuffer cBuf)

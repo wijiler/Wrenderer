@@ -59,6 +59,16 @@ extern "C"
         void *mappedMemory;
         VkDeviceAddress gpuAddress;
     } Buffer;
+    typedef struct
+    {
+        Buffer *buffer;
+        uint64_t capacity, filled;
+    } VirtualBufferParent;
+    typedef struct
+    {
+        VirtualBufferParent parentBuffer;
+        uint64_t offSet;
+    } VirtualBuffer;
 
     typedef struct
     {
@@ -69,14 +79,7 @@ extern "C"
 
     typedef struct
     {
-        size_t vertexSize; // size of single vertex
-        uint64_t unifiedVertexCapacity;
-        uint64_t unifiedIndexCapacity;
-        size_t unifiedVertexSize;
-        size_t unifiedIndexSize;
-        Buffer unifiedVerts;
-        Buffer unifiedIndices;
-
+        size_t vertexSize;
         uint32_t instancedmeshCount;
         Mesh *instancedMeshes;
     } MeshHandler;
