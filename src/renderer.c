@@ -963,6 +963,8 @@ void bindGraphicsPipeline(graphicsPipeline pline, VkCommandBuffer cBuf)
     vkCmdBindShadersEXT_(cBuf, 1, (VkShaderStageFlagBits[1]){VK_SHADER_STAGE_FRAGMENT_BIT}, &pline.frag.shader);
     int vertexDescCount = pline.vert.VertexDescriptons;
     vkCmdSetVertexInputEXT_(cBuf, vertexDescCount, pline.vert.bindingDesc, vertexDescCount, pline.vert.attrDesc);
+
+    vkCmdBindDescriptorSets(cBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pline.plLayout, 0, pline.setCount, pline.descriptorSets, 0, NULL);
 }
 
 void bindComputePipeline(computePipeline pline, VkCommandBuffer cBuf)
@@ -1184,11 +1186,27 @@ void createPipelineLayout(VulkanCore_t core, graphicsPipeline *pl)
     plcInf.pNext = NULL;
 
     VkDescriptorSetLayout *setLayouts = malloc(sizeof(VkDescriptorSetLayout) * (pl->setLayoutCount + 1));
-    memcpy(setLayouts, pl->setLayouts, sizeof(VkDescriptorSetLayout) * (pl->setLayoutCount));
-    setLayouts[pl->setLayoutCount] = core.tdSetLayout;
+    setLayouts[0] = core.tdSetLayout;
+    if (pl->setLayoutCount >= 1)
+    {
+        memcpy(setLayouts + 1, pl->setLayouts, sizeof(VkDescriptorSetLayout) * (pl->setLayoutCount));
+    }
 
-    plcInf.setLayoutCount = 0;
-    plcInf.pSetLayouts = NULL;
+    plcInf.setLayoutCount = pl->setLayoutCount + 1;
+    plcInf.pSetLayouts = setLayouts;
+
+    VkDescriptorSet *sets = malloc(sizeof(VkDescriptorSet) * (pl->setCount + 1));
+    sets[0] = core.tdescriptorSet;
+    if (pl->setCount >= 1)
+    {
+        memcpy(sets + 1, pl->descriptorSets, sizeof(VkDescriptorSetLayout) * (pl->setCount));
+    }
+    if (pl->descriptorSets != NULL)
+    {
+        free(pl->descriptorSets);
+    }
+    pl->descriptorSets = sets;
+    pl->setCount += 1;
 
     plcInf.pPushConstantRanges = &pl->pcRange;
     plcInf.pushConstantRangeCount = pl->pcRangeCount;

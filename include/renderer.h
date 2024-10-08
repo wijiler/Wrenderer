@@ -128,6 +128,9 @@ extern "C"
         int setLayoutCount;
         VkDescriptorSetLayout *setLayouts;
 
+        int setCount;
+        VkDescriptorSet *descriptorSets;
+
         size_t uboSize;
         void *ubo;
 
@@ -149,11 +152,6 @@ extern "C"
         int setLayoutCount;
         VkDescriptorSetLayout *setLayouts;
     } computePipeline;
-
-    void bindGraphicsPipeline(graphicsPipeline pline, VkCommandBuffer cBuf);
-    void bindComputePipeline(computePipeline pline, VkCommandBuffer cBuf);
-    void unbindGraphicsPipeline(VkCommandBuffer cBuf);
-    void unbindComputePipeline(VkCommandBuffer cBuf);
 
     typedef enum
     {
@@ -326,7 +324,6 @@ extern "C"
 
     // ---------------------------- RGFUNBEG
 
-    void bindGraphicsPipeline(graphicsPipeline pline, VkCommandBuffer cBuf);
     void readShaderSPRV(const char *filePath, uint64_t *len, uint32_t **data);
     void setShaderGLSPRV(VulkanCore_t core, graphicsPipeline *pl, uint32_t *vFileContents, int vFileLen, uint32_t *fFileContents, int fFileLen);
     void setShaderSLSPRV(VulkanCore_t core, graphicsPipeline *pl, uint32_t *FileContents, int FileLen);
@@ -370,6 +367,10 @@ extern "C"
     void copyDataToTextureImage(VulkanCore_t core, Image *image, Buffer *buffer, uint32_t width, uint32_t height);
     // ----------------------------------------- IMGUTILEND
 
+    void bindGraphicsPipeline(graphicsPipeline pline, VkCommandBuffer cBuf);
+    void bindComputePipeline(computePipeline pline, VkCommandBuffer cBuf);
+    void unbindGraphicsPipeline(VkCommandBuffer cBuf);
+    void unbindComputePipeline(VkCommandBuffer cBuf);
 #ifdef __cplusplus
 }
 #endif
