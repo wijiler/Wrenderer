@@ -196,7 +196,8 @@ VkPhysicalDevice find_valid_device(int deviceCount, VkPhysicalDevice devices[], 
             shaderObjectFeatures.shaderObject == VK_TRUE && devFeat2.features.alphaToOne == VK_TRUE && depthClipEnable.depthClipEnable == VK_TRUE &&
             vertAttrDivFeats.vertexAttributeInstanceRateZeroDivisor == VK_TRUE && devFeat12.descriptorBindingPartiallyBound == VK_TRUE &&
             devFeat12.runtimeDescriptorArray == VK_TRUE && devFeat12.descriptorBindingSampledImageUpdateAfterBind == VK_TRUE && devFeat2.features.shaderInt64 &&
-            devFeat12.scalarBlockLayout == VK_TRUE && devFeat11.variablePointers == VK_TRUE && devFeat11.variablePointersStorageBuffer == VK_TRUE)
+            devFeat12.scalarBlockLayout == VK_TRUE && devFeat11.variablePointers == VK_TRUE && devFeat11.variablePointersStorageBuffer == VK_TRUE &&
+            devFeat2.features.samplerAnisotropy == VK_TRUE)
         {
             graphicsFamilyIndex = &gfami;
             computeFamilyIndex = &cfami;
@@ -296,6 +297,8 @@ void create_device(VulkanCore_t *core)
 
     devFeat11.variablePointers = VK_TRUE;
     devFeat11.variablePointersStorageBuffer = VK_TRUE;
+
+    devFeatures2.features.samplerAnisotropy = VK_TRUE;
 
     VkDeviceQueueCreateInfo queueCreateInfo = {0};
     queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
@@ -821,6 +824,36 @@ void write_textureDescriptorSet(VulkanCore_t core, VkImageView texture, VkSample
     vkUpdateDescriptorSets(core.lDev, 1, &dsWrite, 0, NULL);
 }
 
+void createSamplers(VulkanCore_t *core)
+{
+    VkSamplerCreateInfo samplerCI = {0};
+    samplerCI.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    samplerCI.pNext = NULL;
+
+    samplerCI.magFilter = VK_FILTER_LINEAR;
+    samplerCI.minFilter = VK_FILTER_LINEAR;
+
+    samplerCI.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    samplerCI.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    samplerCI.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+
+    VkPhysicalDeviceProperties props = {0};
+    vkGetPhysicalDeviceProperties(core->pDev, &props);
+
+    samplerCI.anisotropyEnable = VK_TRUE;
+    samplerCI.maxAnisotropy = props.limits.maxSamplerAnisotropy;
+    samplerCI.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
+
+    samplerCI.compareEnable = VK_FALSE;
+    samplerCI.compareOp = VK_COMPARE_OP_ALWAYS;
+    samplerCI.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    samplerCI.mipLodBias = 0.0f;
+    samplerCI.minLod = 0.0f;
+    samplerCI.maxLod = 0.0f;
+
+    vkCreateSampler(core->lDev, &samplerCI, NULL, &core->linearSampler);
+}
+
 void destroyRenderer(renderer_t *renderer)
 {
     vkDeviceWaitIdle(renderer->vkCore.lDev);
@@ -848,7 +881,7 @@ void destroyRenderer(renderer_t *renderer)
         vkDestroySemaphore(renderer->vkCore.lDev, renderer->vkCore.renderFinished[i], NULL);
         vkDestroySemaphore(renderer->vkCore.lDev, renderer->vkCore.computeFinished[i], NULL);
     }
-
+    vkDestroySampler(renderer->vkCore.lDev, renderer->vkCore.linearSampler, NULL);
     vkDestroySwapchainKHR(renderer->vkCore.lDev, renderer->vkCore.swapChain, NULL);
     vkDestroyDevice(renderer->vkCore.lDev, NULL);
     vkDestroySurfaceKHR(renderer->vkCore.instance, renderer->vkCore.surface, NULL);
@@ -874,6 +907,7 @@ void initRenderer(renderer_t *renderer)
     create_CommandBuffers(&renderer->vkCore);
     create_dsp(&renderer->vkCore);
     allocate_textureDescriptorSet(&renderer->vkCore);
+    createSamplers(&renderer->vkCore);
     renderer->meshHandler.instancedMeshes = NULL;
 
     BufferCreateInfo BCI = {0};

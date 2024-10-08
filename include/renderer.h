@@ -292,6 +292,8 @@ extern "C"
         VkDescriptorSetLayout tdSetLayout;
         VkDescriptorSet tdescriptorSet;
 
+        VkSampler linearSampler;
+
         GLFWwindow *window;
 
     } VulkanCore_t;
