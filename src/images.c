@@ -190,9 +190,9 @@ uint32_t packUnorm4x8(float t[4])
     return clamp(c, 0, 1) * 255;
 }
 
-void submitTexture(renderer_t *renderer, Texture tex, VkSampler sampler)
+void submitTexture(renderer_t *renderer, Texture *tex, VkSampler sampler)
 {
-    write_textureDescriptorSet(renderer->vkCore, tex.img.imgview, sampler, renderer->vkCore.textureCount);
-    tex.index = renderer->vkCore.textureCount;
+    write_textureDescriptorSet(renderer->vkCore, tex->img.imgview, sampler, renderer->vkCore.textureCount);
+    tex->index = renderer->vkCore.textureCount;
     renderer->vkCore.textureCount += 1;
 }

@@ -1,5 +1,5 @@
--xc 
--std=c99 
+-xc++
+-std=c++17 
 -Wextra 
 -Wall 
 -Iinclude/ 

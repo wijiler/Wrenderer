@@ -370,7 +370,7 @@ extern "C"
     Image createImage(VulkanCore_t core, VkImageUsageFlags usage, VkFormat format, VkImageType type, VkImageTiling tiling, uint32_t width, uint32_t height, MemoryAccess access, VkImageAspectFlags aspects);
     Texture createTexture(VulkanCore_t core, uint32_t width, uint32_t height);
     void copyDataToTextureImage(VulkanCore_t core, Image *image, Buffer *buffer, uint32_t width, uint32_t height);
-    void submitTexture(renderer_t *renderer, Texture tex, VkSampler sampler);
+    void submitTexture(renderer_t *renderer, Texture *tex, VkSampler sampler);
     // ----------------------------------------- IMGUTILEND
 
     void bindGraphicsPipeline(graphicsPipeline pline, VkCommandBuffer cBuf);
