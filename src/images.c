@@ -131,6 +131,8 @@ void transitionLayout(VulkanCore_t core, Image *img, VkImageLayout newLayout, Vk
         0,
         1,
     };
+
+    memBarrier.image = img->image;
     vkCmdPipelineBarrier(core.immediateSubmit, srcStage, dstStage, 0, 0, NULL, 0, NULL, 1, &memBarrier);
     img->CurrentLayout = newLayout;
     img->accessMask = dstAccess;
