@@ -1,6 +1,7 @@
 #include "vulkan/vulkan_core.h"
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
+#include <math.h>
 #include <renderer.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -197,7 +198,7 @@ VkPhysicalDevice find_valid_device(int deviceCount, VkPhysicalDevice devices[], 
             vertAttrDivFeats.vertexAttributeInstanceRateZeroDivisor == VK_TRUE && devFeat12.descriptorBindingPartiallyBound == VK_TRUE &&
             devFeat12.runtimeDescriptorArray == VK_TRUE && devFeat12.descriptorBindingSampledImageUpdateAfterBind == VK_TRUE && devFeat2.features.shaderInt64 &&
             devFeat12.scalarBlockLayout == VK_TRUE && devFeat11.variablePointers == VK_TRUE && devFeat11.variablePointersStorageBuffer == VK_TRUE &&
-            devFeat2.features.samplerAnisotropy == VK_TRUE)
+            devFeat2.features.samplerAnisotropy == VK_TRUE && devFeat2.features.shaderInt16)
         {
             graphicsFamilyIndex = &gfami;
             computeFamilyIndex = &cfami;
@@ -277,6 +278,7 @@ void create_device(VulkanCore_t *core)
 
     devFeatures2.features.alphaToOne = VK_TRUE;
     devFeatures2.features.shaderInt64 = VK_TRUE;
+    devFeatures2.features.shaderInt16 = VK_TRUE;
 
     devFeatures13.dynamicRendering = VK_TRUE;
 

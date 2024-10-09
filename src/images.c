@@ -136,9 +136,11 @@ void transitionLayout(VulkanCore_t core, Image *img, VkImageLayout newLayout, Vk
     img->accessMask = dstAccess;
 }
 
-Image createTextureImage(VulkanCore_t core, uint32_t width, uint32_t height)
+Texture createTexture(VulkanCore_t core, uint32_t width, uint32_t height)
 {
-    return createImage(core, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TYPE_2D, VK_IMAGE_TILING_OPTIMAL, width, height, DEVICE_ONLY, VK_IMAGE_ASPECT_COLOR_BIT);
+    Texture tex = {0};
+    tex.img = createImage(core, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TYPE_2D, VK_IMAGE_TILING_OPTIMAL, width, height, DEVICE_ONLY, VK_IMAGE_ASPECT_COLOR_BIT);
+    return tex;
 }
 
 void copyDataToTextureImage(VulkanCore_t core, Image *image, Buffer *buffer, uint32_t width, uint32_t height)
@@ -167,4 +169,28 @@ void copyDataToTextureImage(VulkanCore_t core, Image *image, Buffer *buffer, uin
     vkCmdCopyBufferToImage(core.immediateSubmit, buffer->buffer, image->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &bICopy);
     transitionLayout(core, image, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
     immediateSubmitEnd(core);
+}
+
+double clamp(double d, double min, double max)
+{
+    const double t = d < min ? min : d;
+    return t > max ? max : t;
+}
+uint32_t packUnorm4x8(float t[4])
+{
+    uint8_t v1 = t[0];
+    uint8_t v2 = t[1];
+    uint8_t v3 = t[2];
+    uint8_t v4 = t[3];
+
+    uint32_t c = v1 | (v2 << 8) | (v3 << 16) | (v4 << 24);
+
+    return clamp(c, 0, 1) * 255;
+}
+
+void submitTexture(renderer_t *renderer, Texture tex, VkSampler sampler)
+{
+    write_textureDescriptorSet(renderer->vkCore, tex.img.imgview, sampler, renderer->vkCore.textureCount);
+    tex.index = renderer->vkCore.textureCount;
+    renderer->vkCore.textureCount += 1;
 }

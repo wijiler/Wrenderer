@@ -93,7 +93,11 @@ extern "C"
         VkAccessFlags accessMask;
         VkDeviceMemory memory;
     } Image;
-
+    typedef struct
+    {
+        Image img;
+        uint64_t index;
+    } Texture;
     typedef struct
     {
         int VertexDescriptons; // max vertex descriptions is 256, why the fuck would you want more you sick fuck
@@ -290,6 +294,7 @@ extern "C"
         VkCommandBuffer immediateSubmit;
 
         VkDescriptorPool tdescPool;
+        int textureCount;
         VkDescriptorSetLayout tdSetLayout;
         VkDescriptorSet tdescriptorSet;
 
@@ -363,8 +368,9 @@ extern "C"
 
     // ----------------------------------------- IMGUTILBEG
     Image createImage(VulkanCore_t core, VkImageUsageFlags usage, VkFormat format, VkImageType type, VkImageTiling tiling, uint32_t width, uint32_t height, MemoryAccess access, VkImageAspectFlags aspects);
-    Image createTextureImage(VulkanCore_t core, uint32_t width, uint32_t height);
+    Texture createTexture(VulkanCore_t core, uint32_t width, uint32_t height);
     void copyDataToTextureImage(VulkanCore_t core, Image *image, Buffer *buffer, uint32_t width, uint32_t height);
+    void submitTexture(renderer_t *renderer, Texture tex, VkSampler sampler);
     // ----------------------------------------- IMGUTILEND
 
     void bindGraphicsPipeline(graphicsPipeline pline, VkCommandBuffer cBuf);
