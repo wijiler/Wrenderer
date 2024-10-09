@@ -1193,9 +1193,14 @@ void createPipelineLayout(VulkanCore_t core, graphicsPipeline *pl)
     {
         memcpy(setLayouts + 1, pl->setLayouts, sizeof(VkDescriptorSetLayout) * (pl->setLayoutCount));
     }
-
     plcInf.setLayoutCount = pl->setLayoutCount + 1;
     plcInf.pSetLayouts = setLayouts;
+    if (pl->setLayouts != NULL)
+    {
+        free(pl->setLayouts);
+    };
+    pl->setLayoutCount += 1;
+    pl->setLayouts = setLayouts;
 
     VkDescriptorSet *sets = malloc(sizeof(VkDescriptorSet) * (pl->setCount + 1));
     sets[0] = core.tdescriptorSet;

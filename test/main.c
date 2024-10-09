@@ -75,6 +75,10 @@ void init()
     pl.alphaToOneEnable = VK_TRUE;
     pl.sampleMask = UINT32_MAX;
 
+    setPushConstantRange(&pl, sizeof(pushConstants), SHADER_STAGE_VERTEX);
+
+    createPipelineLayout(renderer.vkCore, &pl);
+
     setShaderSLSPRV(renderer.vkCore, &pl, Shader, Len);
 
     uint32_t indices[3] = {0, 1, 2};
@@ -82,9 +86,6 @@ void init()
     Mesh triangle = createMesh(renderer, 3, verts, 3, indices, 1);
     submitMesh(triangle, &renderer);
 
-    setPushConstantRange(&pl, sizeof(pushConstants), SHADER_STAGE_VERTEX);
-
-    createPipelineLayout(renderer.vkCore, &pl);
     RenderPass scenePass = sceneDraw(&renderer);
     scenePass.gPl = pl;
     VkOffset2D offSet = {0, 0};
