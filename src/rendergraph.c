@@ -418,7 +418,7 @@ void executeGraph(RenderGraph *graph, renderer_t *renderer, uint32_t cBufIndex)
         passBarrierInfo cb = graph->barriers[i];
         if (graph->passes[i].type == PASS_TYPE_COMPUTE)
         {
-            vkCmdPipelineBarrier(renderer->vkCore.commandBuffers[cBufIndex], VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, 0, NULL, cb.bufPBCount, cb.bufMemBarriers, cb.imgPBCount, cb.imgMemBarriers);
+            vkCmdPipelineBarrier(renderer->vkCore.computeCommandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, NULL, cb.bufPBCount, cb.bufMemBarriers, cb.imgPBCount, cb.imgMemBarriers);
         }
         else
         {
