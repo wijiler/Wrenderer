@@ -352,6 +352,7 @@ extern "C"
     void addPass(GraphBuilder *builder, RenderPass *pass);
     RenderGraph buildGraph(GraphBuilder *builder, Image scImage);
     void destroyRenderGraph(RenderGraph *graph);
+    void removePass(GraphBuilder *builder, const char *name);
     // void executeGraph(VkExtent2D extent, RenderGraph *graph, VkCommandBuffer cBuf);
 
     uint64_t fnv_64a_str(char *str, uint64_t hval);
@@ -360,9 +361,9 @@ extern "C"
 
     // ----------------------------------------- MODELFUNBG
 
-    Mesh createMesh(renderer_t renderer, uint32_t vertCount, void *vertices, uint32_t indexCount, uint32_t indices[], uint32_t instanceCount,size_t vertexSize);
-    void submitMesh(Mesh mesh, renderer_t *renderer);
-    RenderPass sceneDraw(renderer_t *renderer);
+    Mesh createMesh(renderer_t renderer, uint32_t vertCount, void *vertices, uint32_t indexCount, uint32_t indices[], uint32_t instanceCount, size_t vertexSize);
+    void submitMesh(Mesh mesh, MeshHandler *handler);
+    RenderPass sceneDraw(renderer_t *renderer, MeshHandler *handler);
     // ----------------------------------------- MODELFUNEND
 
     // ----------------------------------------- IMGUTILBEG

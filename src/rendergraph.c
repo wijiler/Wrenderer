@@ -552,3 +552,29 @@ void drawRenderer(renderer_t *renderer, int cBufIndex)
 
     destroyRenderGraph(&rg);
 }
+
+void removePass(GraphBuilder *builder, const char *name)
+{
+    if (builder->passCount == 1)
+    {
+        builder->passes[0] = (RenderPass){0};
+        return;
+    }
+    bool removed = false;
+    for (int i = 0; i < builder->passCount; i++)
+    {
+        if (strcmp(builder->passes[i].name, name))
+        {
+            builder->passes[i] = (RenderPass){0}; // could be removed
+            removed = true;
+        }
+        if (removed)
+        {
+            if (i == builder->passCount - 1)
+                break;
+            builder->passes[i] = builder->passes[i + 1];
+        }
+    }
+    builder->passCount -= 1;
+    realloc(builder->passes, sizeof(RenderPass) * builder->passCount);
+}

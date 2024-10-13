@@ -1,6 +1,6 @@
 #include <renderer.h>
 // This should probably be moved to engine to avoid generalization limitations of the renderer
-Mesh createMesh(renderer_t renderer, uint32_t vertCount, void *vertices, uint32_t indexCount, uint32_t indices[], uint32_t instanceCount,size_t vertexSize)
+Mesh createMesh(renderer_t renderer, uint32_t vertCount, void *vertices, uint32_t indexCount, uint32_t indices[], uint32_t instanceCount, size_t vertexSize)
 {
     Mesh mesh = {0};
     mesh.instanceCount = instanceCount;
@@ -32,11 +32,11 @@ Mesh createMesh(renderer_t renderer, uint32_t vertCount, void *vertices, uint32_
     return mesh;
 }
 
-void submitMesh(Mesh mesh, renderer_t *renderer)
+void submitMesh(Mesh mesh, MeshHandler *handler)
 {
-    renderer->meshHandler.instancedMeshes = realloc(renderer->meshHandler.instancedMeshes, sizeof(mesh) * (renderer->meshHandler.instancedmeshCount + 1));
-    renderer->meshHandler.instancedMeshes[renderer->meshHandler.instancedmeshCount] = mesh;
-    renderer->meshHandler.instancedmeshCount += 1;
+    handler->instancedMeshes = realloc(handler->instancedMeshes, sizeof(mesh) * (handler->instancedmeshCount + 1));
+    handler->instancedMeshes[handler->instancedmeshCount] = mesh;
+    handler->instancedmeshCount += 1;
     return;
 }
 typedef struct
@@ -58,15 +58,15 @@ void sceneDrawCallBack(RenderPass pass, VkCommandBuffer cBuf)
     }
 }
 
-RenderPass sceneDraw(renderer_t *renderer)
+RenderPass sceneDraw(renderer_t *renderer, MeshHandler *handler)
 {
     RenderPass pass = newPass("SceneDraw", PASS_TYPE_GRAPHICS);
     addImageResource(&pass, renderer->vkCore.currentScImg, USAGE_COLORATTACHMENT);
-    for (uint32_t i = 0; i < renderer->meshHandler.instancedmeshCount; i++)
+    for (uint32_t i = 0; i < handler->instancedmeshCount; i++)
     {
-        addBufferResource(&pass, renderer->meshHandler.instancedMeshes[i].verticies, USAGE_UNDEFINED);
-        addBufferResource(&pass, renderer->meshHandler.instancedMeshes[i].indices, USAGE_UNDEFINED);
-        addArbitraryResource(&pass, &renderer->meshHandler.instancedMeshes[i].instanceCount);
+        addBufferResource(&pass, handler->instancedMeshes[i].verticies, USAGE_UNDEFINED);
+        addBufferResource(&pass, handler->instancedMeshes[i].indices, USAGE_UNDEFINED);
+        addArbitraryResource(&pass, &handler->instancedMeshes[i].instanceCount);
     }
 
     setExecutionCallBack(&pass, sceneDrawCallBack);
