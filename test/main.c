@@ -37,7 +37,6 @@ void loop()
 
 void init()
 {
-    renderer.meshHandler.vertexSize = sizeof(vertex);
     initRenderer(&renderer);
 
     uint64_t Len = 0;
@@ -83,7 +82,7 @@ void init()
 
     uint32_t indices[3] = {0, 1, 2};
 
-    Mesh triangle = createMesh(renderer, 3, verts, 3, indices, 1);
+    Mesh triangle = createMesh(renderer, 3, verts, 3, indices, 1,sizeof(vertex));
     submitMesh(triangle, &renderer);
 
     RenderPass scenePass = sceneDraw(&renderer);

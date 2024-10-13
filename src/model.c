@@ -1,13 +1,13 @@
 #include <renderer.h>
 // This should probably be moved to engine to avoid generalization limitations of the renderer
-Mesh createMesh(renderer_t renderer, uint32_t vertCount, void *vertices, uint32_t indexCount, uint32_t indices[], uint32_t instanceCount)
+Mesh createMesh(renderer_t renderer, uint32_t vertCount, void *vertices, uint32_t indexCount, uint32_t indices[], uint32_t instanceCount,size_t vertexSize)
 {
     Mesh mesh = {0};
     mesh.instanceCount = instanceCount;
 
     BufferCreateInfo bCI = {0};
     bCI.access = DEVICE_ONLY;
-    bCI.dataSize = vertCount * renderer.meshHandler.vertexSize;
+    bCI.dataSize = vertCount * vertexSize;
     bCI.usage = BUFFER_USAGE_TRANSFER_SRC | BUFFER_USAGE_TRANSFER_DST;
 
     Buffer stagingBuf = {0};
@@ -22,10 +22,10 @@ Mesh createMesh(renderer_t renderer, uint32_t vertCount, void *vertices, uint32_
     bCI.usage |= BUFFER_USAGE_INDEX;
     createBuffer(renderer.vkCore, bCI, &mesh.indices);
 
-    pushDataToBuffer(vertices, vertCount * renderer.meshHandler.vertexSize, stagingBuf, 0);
-    copyBuf(renderer.vkCore, stagingBuf, mesh.verticies, vertCount * renderer.meshHandler.vertexSize, 0, 0);
-    pushDataToBuffer(indices, indexCount * sizeof(uint32_t), stagingBuf, vertCount * renderer.meshHandler.vertexSize);
-    copyBuf(renderer.vkCore, stagingBuf, mesh.indices, indexCount * sizeof(uint32_t), vertCount * renderer.meshHandler.vertexSize, 0);
+    pushDataToBuffer(vertices, vertCount * vertexSize, stagingBuf, 0);
+    copyBuf(renderer.vkCore, stagingBuf, mesh.verticies, vertCount * vertexSize, 0, 0);
+    pushDataToBuffer(indices, indexCount * sizeof(uint32_t), stagingBuf, vertCount * vertexSize);
+    copyBuf(renderer.vkCore, stagingBuf, mesh.indices, indexCount * sizeof(uint32_t), vertCount * vertexSize, 0);
 
     destroyBuffer(stagingBuf, renderer.vkCore);
 

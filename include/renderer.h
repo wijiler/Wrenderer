@@ -79,7 +79,6 @@ extern "C"
 
     typedef struct
     {
-        size_t vertexSize;
         uint32_t instancedmeshCount;
         Mesh *instancedMeshes;
     } MeshHandler;
@@ -361,7 +360,7 @@ extern "C"
 
     // ----------------------------------------- MODELFUNBG
 
-    Mesh createMesh(renderer_t renderer, uint32_t vertCount, void *vertices, uint32_t indexCount, uint32_t indices[], uint32_t instanceCount);
+    Mesh createMesh(renderer_t renderer, uint32_t vertCount, void *vertices, uint32_t indexCount, uint32_t indices[], uint32_t instanceCount,size_t vertexSize);
     void submitMesh(Mesh mesh, renderer_t *renderer);
     RenderPass sceneDraw(renderer_t *renderer);
     // ----------------------------------------- MODELFUNEND
