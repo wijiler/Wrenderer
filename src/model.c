@@ -1,4 +1,5 @@
 #include <renderer.h>
+#include <stdbool.h>
 // This should probably be moved to engine to avoid generalization limitations of the renderer
 Mesh createMesh(renderer_t renderer, uint32_t vertCount, void *vertices, uint32_t indexCount, uint32_t indices[], uint32_t instanceCount, size_t vertexSize)
 {
@@ -39,6 +40,29 @@ void submitMesh(Mesh mesh, MeshHandler *handler)
     handler->instancedmeshCount += 1;
     return;
 }
+
+void removeMesh(Mesh mesh, MeshHandler *handler, renderer_t renderer)
+{
+    bool destroyed = false;
+    for (uint32_t i = 0; i < handler->instancedmeshCount; i++)
+    {
+        if (handler->instancedMeshes[i].verticies.gpuAddress == mesh.verticies.gpuAddress)
+        {
+            destroyBuffer(mesh.verticies, renderer.vkCore);
+            destroyBuffer(mesh.indices, renderer.vkCore);
+            destroyed = true;
+        }
+        if (destroyed)
+        {
+            if (i == handler->instancedmeshCount - 1)
+                break;
+            handler->instancedMeshes[i] = handler->instancedMeshes[i + 1];
+        }
+    }
+    handler->instancedmeshCount -= 1;
+    handler->instancedMeshes = realloc(handler->instancedMeshes, sizeof(Mesh) * handler->instancedmeshCount);
+}
+
 typedef struct
 {
     VkDeviceAddress address;
