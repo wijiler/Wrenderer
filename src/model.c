@@ -1,6 +1,5 @@
 #include <renderer.h>
 #include <stdbool.h>
-// This should probably be moved to engine to avoid generalization limitations of the renderer
 Mesh createMesh(renderer_t renderer, uint32_t vertCount, void *vertices, uint32_t indexCount, uint32_t indices[], uint32_t instanceCount, size_t vertexSize)
 {
     Mesh mesh = {0};
