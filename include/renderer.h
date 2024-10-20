@@ -364,7 +364,7 @@ extern "C"
     Mesh createMesh(renderer_t renderer, uint32_t vertCount, void *vertices, uint32_t indexCount, uint32_t indices[], uint32_t instanceCount, size_t vertexSize);
     void submitMesh(Mesh mesh, MeshHandler *handler);
     void removeMesh(Mesh mesh, MeshHandler *handler, renderer_t renderer);
-    RenderPass sceneDraw(renderer_t *renderer, MeshHandler *handler);
+    RenderPass sceneDraw(renderer_t *renderer, MeshHandler *handler, char *name);
     // ----------------------------------------- MODELFUNEND
 
     // ----------------------------------------- IMGUTILBEG

@@ -81,9 +81,9 @@ void sceneDrawCallBack(RenderPass pass, VkCommandBuffer cBuf)
     }
 }
 
-RenderPass sceneDraw(renderer_t *renderer, MeshHandler *handler)
+RenderPass sceneDraw(renderer_t *renderer, MeshHandler *handler, char *name)
 {
-    RenderPass pass = newPass("SceneDraw", PASS_TYPE_GRAPHICS);
+    RenderPass pass = newPass(name, PASS_TYPE_GRAPHICS);
     addImageResource(&pass, renderer->vkCore.currentScImg, USAGE_COLORATTACHMENT);
     for (uint32_t i = 0; i < handler->instancedmeshCount; i++)
     {

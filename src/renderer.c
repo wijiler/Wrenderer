@@ -674,7 +674,7 @@ void createBuffer(VulkanCore_t core, BufferCreateInfo createInfo, Buffer *buf)
         printf("Could not bind memory\n");
         exit(1);
     }
-    buf->mappedMemory = NULL;
+    buf->mappedMemory = malloc(buf->size);
     if ((createInfo.access & CPU_ONLY) != 0)
     {
         vkMapMemory(core.lDev, buf->associatedMemory, 0, buf->size, 0, &buf->mappedMemory);
@@ -703,7 +703,7 @@ void destroyBuffer(Buffer buf, VulkanCore_t core)
 
 void pushDataToBuffer(void *data, size_t dataSize, Buffer buf, int offSet)
 {
-    memcpy(buf.mappedMemory + offSet, data, dataSize);
+    memcpy((char*)buf.mappedMemory + offSet, data, dataSize);
 }
 
 void copyBuf(VulkanCore_t core, Buffer src, Buffer dest, size_t size, uint32_t srcOffset, uint32_t dstOffset)

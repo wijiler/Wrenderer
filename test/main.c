@@ -85,7 +85,7 @@ void init()
     Mesh triangle = createMesh(renderer, 3, verts, 3, indices, 1, sizeof(vertex));
     submitMesh(triangle, &renderer.meshHandler);
 
-    RenderPass scenePass = sceneDraw(&renderer, &renderer.meshHandler);
+    RenderPass scenePass = sceneDraw(&renderer, &renderer.meshHandler, "hi");
     scenePass.gPl = pl;
     VkOffset2D offSet = {0, 0};
     scenePass.drawArea = (drawArea){

@@ -575,6 +575,9 @@ void removePass(GraphBuilder *builder, const char *name)
             builder->passes[i] = builder->passes[i + 1];
         }
     }
-    builder->passCount -= 1;
-    realloc(builder->passes, sizeof(RenderPass) * builder->passCount);
+    if (builder->passCount > 0)
+    {
+        builder->passCount -= 1;
+        realloc(builder->passes, sizeof(RenderPass) * builder->passCount);
+    }
 }
