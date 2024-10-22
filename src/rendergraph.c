@@ -555,11 +555,11 @@ void drawRenderer(renderer_t *renderer, int cBufIndex)
 
 void removePass(GraphBuilder *builder, const char *name)
 {
-    if (builder->passCount == 1)
+    if (builder->passCount < 0)
     {
-        builder->passes[0] = (RenderPass){0};
         return;
     }
+
     bool removed = false;
     for (int i = 0; i < builder->passCount; i++)
     {
@@ -578,6 +578,9 @@ void removePass(GraphBuilder *builder, const char *name)
     if (builder->passCount > 0)
     {
         builder->passCount -= 1;
-        realloc(builder->passes, sizeof(RenderPass) * builder->passCount);
+        RenderPass *passes = realloc(builder->passes, sizeof(RenderPass) * builder->passCount);
+        builder->passes = passes;
+        if (passes == NULL)
+            free(passes);
     }
 }

@@ -660,7 +660,7 @@ void createBuffer(VulkanCore_t core, BufferCreateInfo createInfo, Buffer *buf)
     VkMemoryRequirements vkMemReq = {0};
     vkGetBufferMemoryRequirements(core.lDev, buf->buffer, &vkMemReq);
 
-    allocInfo.allocationSize = vkMemReq.size + createInfo.dataSize;
+    allocInfo.allocationSize = vkMemReq.size;
     allocInfo.memoryTypeIndex = index;
 
     if (vkAllocateMemory(core.lDev, &allocInfo, NULL, &buf->associatedMemory) != VK_SUCCESS)
@@ -668,16 +668,15 @@ void createBuffer(VulkanCore_t core, BufferCreateInfo createInfo, Buffer *buf)
         printf("Could not allocate memory\n");
         exit(1);
     }
-
+    buf->mappedMemory = malloc(vkMemReq.size);
+    if ((createInfo.access & CPU_ONLY) != 0)
+    {
+        vkMapMemory(core.lDev, buf->associatedMemory, 0, vkMemReq.size, 0, &buf->mappedMemory);
+    }
     if (vkBindBufferMemory(core.lDev, buf->buffer, buf->associatedMemory, 0) != VK_SUCCESS)
     {
         printf("Could not bind memory\n");
         exit(1);
-    }
-    buf->mappedMemory = malloc(buf->size);
-    if ((createInfo.access & CPU_ONLY) != 0)
-    {
-        vkMapMemory(core.lDev, buf->associatedMemory, 0, buf->size, 0, &buf->mappedMemory);
     }
 
     if ((createInfo.usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR) != 0)
@@ -703,7 +702,7 @@ void destroyBuffer(Buffer buf, VulkanCore_t core)
 
 void pushDataToBuffer(void *data, size_t dataSize, Buffer buf, int offSet)
 {
-    memcpy((char*)buf.mappedMemory + offSet, data, dataSize);
+    memcpy((char *)buf.mappedMemory + offSet, data, dataSize);
 }
 
 void copyBuf(VulkanCore_t core, Buffer src, Buffer dest, size_t size, uint32_t srcOffset, uint32_t dstOffset)

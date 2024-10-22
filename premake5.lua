@@ -7,7 +7,6 @@ project "Wrenderer"
     kind "StaticLib"
     outputdir = "%{cfg.system}-%{cfg.architecture}/%{cfg.buildcfg}"
 
-    toolset "msc"
     cdialect "C99"
 
     targetdir("%{wks.location}/Binaries/" .. outputdir .. "/%{prj.name}")
@@ -27,7 +26,6 @@ project "Wrenderer"
         optimize "On"
     filter ""
     filter "system:windows"
-        links { "user32", "msvcrt", "gdi32", "shell32", "libcmt" }
         defines { "VK_USE_PLATFORM_WIN32_KHR" }
     filter ""
     filter "system:linux"
@@ -51,7 +49,16 @@ project "Wrenderer"
             "{MKDIR} %[%{wks.location}/Binaries/" .. outputdir .. "]",
             "{MKDIR} %[%{wks.location}/Binaries/Intermediates/" .. outputdir .. "]",
         }
-    project "WrenTest"
+    filter ""
+    filter "action:gmake"
+    toolset "clang"
+    buildoptions {"-Wextra", "-Wall"}
+
+    filter "not action:gmake"
+    toolset "msc"
+    filter""
+
+project "WrenTest"
         architecture "x64"
         kind "ConsoleApp"  
         language "C"   
@@ -59,7 +66,6 @@ project "Wrenderer"
         files { "**.h", "test/**.c" }
         outputdir = "%{cfg.system}-%{cfg.architecture}/%{cfg.buildcfg}"
 
-        toolset "msc"
         cdialect "C99"
     
         targetdir("%{wks.location}/Binaries/" .. outputdir .. "/%{prj.name}")
@@ -80,11 +86,18 @@ project "Wrenderer"
             optimize "On"
         filter ""
         filter "system:windows"
-            links { "user32", "msvcrt", "gdi32", "shell32", "libcmt" }
             defines { "VK_USE_PLATFORM_WIN32_KHR" }
         filter ""
         filter "system:linux"
             defines { "VK_USE_PLATFORM_XLIB_KHR" }
+        filter ""
+
+        filter "action:gmake"
+        toolset "clang"
+        buildoptions {"-Wextra", "-Wall"}
+        links { "user32", "msvcrt", "gdi32", "shell32", "libcmt" }
+        filter "not action:gmake"
+        toolset "msc"
         filter ""
 newaction {
     trigger     = "clean",
