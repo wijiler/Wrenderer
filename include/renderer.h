@@ -181,12 +181,20 @@ extern "C"
         USAGE_TRANSFER_SRC,
         USAGE_TRANSFER_DST,
     } ResourceUsageFlags_t;
+    typedef enum
+    {
+        PASS_TYPE_GRAPHICS = 0,
+        PASS_TYPE_COMPUTE,
+        PASS_TYPE_BLIT,
+        PASS_TYPE_TRANSFER,
+    } passType;
     typedef struct
     {
         Resourcetype type;
         accessFlags access;
         ResourceUsageFlags_t usage;
         int cAttIndex; // only used if the image is a color attachment but very useful
+        passType stage;
         union resourceVal
         {
             Buffer buffer;
@@ -194,26 +202,13 @@ extern "C"
             void *arbitrary;
         } value;
     } Resource;
-    typedef enum
-    {
-        PASS_TYPE_GRAPHICS,
-        PASS_TYPE_COMPUTE,
-        PASS_TYPE_BLIT,
-    } passType;
+
     typedef struct
     {
         VkOffset2D *offSet;
         VkExtent2D *extent;
     } drawArea;
-    /*
-     * We are able to tell if another pass is dependent of the other by the resources it uses
-     * Ex.
-     *      Pass 1 has a write handle to ColorAttachmenta
-     *      Pass 2 needs to read from ColorAttachmenta
-     *      We should place a memory barrier before
-     *      pass 2 executes to stop it from reading
-     *      Old memory
-     */
+
     typedef struct RenderPass
     {
         char *name;
@@ -241,8 +236,8 @@ extern "C"
     {
         int imgPBCount;
         int bufPBCount;
-        VkImageMemoryBarrier *imgMemBarriers;
-        VkBufferMemoryBarrier *bufMemBarriers;
+        VkImageMemoryBarrier2 *imgMemBarriers;
+        VkBufferMemoryBarrier2 *bufMemBarriers;
     } passBarrierInfo;
     typedef struct
     {

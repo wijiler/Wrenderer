@@ -198,7 +198,7 @@ VkPhysicalDevice find_valid_device(int deviceCount, VkPhysicalDevice devices[], 
             vertAttrDivFeats.vertexAttributeInstanceRateZeroDivisor == VK_TRUE && devFeat12.descriptorBindingPartiallyBound == VK_TRUE &&
             devFeat12.runtimeDescriptorArray == VK_TRUE && devFeat12.descriptorBindingSampledImageUpdateAfterBind == VK_TRUE && devFeat2.features.shaderInt64 &&
             devFeat12.scalarBlockLayout == VK_TRUE && devFeat11.variablePointers == VK_TRUE && devFeat11.variablePointersStorageBuffer == VK_TRUE &&
-            devFeat2.features.samplerAnisotropy == VK_TRUE && devFeat2.features.shaderInt16)
+            devFeat2.features.samplerAnisotropy == VK_TRUE && devFeat2.features.shaderInt16 && devFeat13.synchronization2)
         {
             graphicsFamilyIndex = &gfami;
             computeFamilyIndex = &cfami;
@@ -301,6 +301,8 @@ void create_device(VulkanCore_t *core)
     devFeat11.variablePointersStorageBuffer = VK_TRUE;
 
     devFeatures2.features.samplerAnisotropy = VK_TRUE;
+
+    devFeatures13.synchronization2 = VK_TRUE;
 
     VkDeviceQueueCreateInfo queueCreateInfo = {0};
     queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;

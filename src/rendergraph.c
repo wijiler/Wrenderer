@@ -30,6 +30,17 @@ uint64_t fnv_64a_str(char *str, uint64_t hval)
     return hval;
 }
 
+uint64_t passTypeToVulkanStage(passType type)
+{
+    uint64_t stages[] = {
+        VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,   // PASS_TYPE_GRAPHICS
+        VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, // PASS_TYPE_COMPUTE
+        VK_PIPELINE_STAGE_2_BLIT_BIT,           // PASS_TYPE_BLIT
+        VK_PIPELINE_STAGE_2_TRANSFER_BIT,       // PASS_TYPE_TRANSFER
+    };
+    return stages[type];
+}
+
 void recordPass(RenderPass *pass, renderer_t *renderer, uint32_t cBufIndex)
 {
     if (pass->type == PASS_TYPE_COMPUTE)
@@ -122,8 +133,10 @@ const VkCommandBufferBeginInfo bInf = {
 
 void addResource(RenderPass *pass, Resource res)
 {
+    Resource t = res;
+    t.stage = pass->type;
     pass->resources = realloc(pass->resources, sizeof(Resource) * (pass->resourceCount + 1));
-    pass->resources[pass->resourceCount] = res;
+    pass->resources[pass->resourceCount] = t;
     pass->resourceCount += 1;
 }
 
@@ -287,6 +300,7 @@ void addPass(GraphBuilder *builder, RenderPass *pass)
     builder->passes[builder->passCount] = *pass;
     builder->passCount += 1;
 }
+
 void optimizePasses(RenderGraph *graph, Image swapChainImg)
 {
     int rootResourceCount = 0;
@@ -298,10 +312,10 @@ void optimizePasses(RenderGraph *graph, Image swapChainImg)
     for (int i = graph->passCount - 1; i >= 0; i--)
     {
         int imgBrrCount = 0;
-        VkImageMemoryBarrier *imgMemBarriers = NULL;
+        VkImageMemoryBarrier2 *imgMemBarriers = NULL;
 
         int bufBrrCount = 0;
-        VkBufferMemoryBarrier *bufMemBarriers = NULL;
+        VkBufferMemoryBarrier2 *bufMemBarriers = NULL;
         RenderPass curPass = graph->passes[i];
         for (int r = 0; r <= curPass.resourceCount - 1; r++)
         {
@@ -328,10 +342,12 @@ void optimizePasses(RenderGraph *graph, Image swapChainImg)
                         case RES_TYPE_Image:
                             Resource oldImg = rootResources[e];
 
-                            VkImageMemoryBarrier icBar;
-                            icBar.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+                            VkImageMemoryBarrier2 icBar;
+                            icBar.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
                             icBar.pNext = NULL;
+
                             icBar.image = cr.value.img->image;
+                            icBar.subresourceRange = imgSRR;
 
                             icBar.oldLayout = oldImg.value.img->CurrentLayout;
                             icBar.newLayout = cr.value.img->CurrentLayout;
@@ -339,18 +355,20 @@ void optimizePasses(RenderGraph *graph, Image swapChainImg)
                             icBar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
                             icBar.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 
+                            icBar.srcStageMask = passTypeToVulkanStage(oldImg.stage);
                             icBar.srcAccessMask = oldImg.access;
+                            icBar.dstStageMask = passTypeToVulkanStage(cr.stage);
                             icBar.dstAccessMask = cr.access;
 
-                            icBar.subresourceRange = imgSRR;
                             imgMemBarriers = realloc(imgMemBarriers, sizeof(VkImageMemoryBarrier) * (imgBrrCount + 1));
                             imgMemBarriers[imgBrrCount] = icBar;
                             imgBrrCount += 1;
+                            e = -1;
                             break;
                         case RES_TYPE_Buffer:
                             Resource oldBuf = rootResources[e];
-                            VkBufferMemoryBarrier bcBar;
-                            bcBar.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+                            VkBufferMemoryBarrier2 bcBar;
+                            bcBar.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
                             bcBar.pNext = NULL;
 
                             bcBar.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -359,29 +377,32 @@ void optimizePasses(RenderGraph *graph, Image swapChainImg)
                             bcBar.buffer = cr.value.buffer.buffer;
                             bcBar.offset = 0;
                             bcBar.size = VK_WHOLE_SIZE;
+                            icBar.srcStageMask = passTypeToVulkanStage(oldBuf.stage);
                             bcBar.srcAccessMask = oldBuf.access;
+                            icBar.dstStageMask = passTypeToVulkanStage(cr.stage);
                             bcBar.dstAccessMask = cr.access;
 
                             bufMemBarriers = realloc(bufMemBarriers, sizeof(VkImageMemoryBarrier) * (bufBrrCount + 1));
                             bufMemBarriers[bufBrrCount] = bcBar;
                             bufBrrCount += 1;
+                            e = -1;
                             break;
                         default:
                             break;
                         }
-                        if ((cr.usage & USAGE_COLORATTACHMENT) != 0 || (cr.usage & USAGE_TRANSFER_DST) != 0 || (cr.usage & USAGE_DEPTHSTENCILATTACHMENT) != 0)
-                        {
-                            rootResources = realloc(rootResources, sizeof(Resource) * (rootResourceCount + curPass.resourceCount));
-                            memcpy(rootResources + rootResourceCount, curPass.resources, sizeof(Resource) * (curPass.resourceCount));
-                            rootResourceCount += curPass.resourceCount;
-
-                            newPasses[graph->passCount - newPassCount - 1] = curPass;
-                            newPassCount += 1;
-
-                            r = curPass.resourceCount + 1;
-                        }
                         break;
                     }
+                }
+                if ((cr.usage & USAGE_COLORATTACHMENT) != 0 || (cr.usage & USAGE_TRANSFER_DST) != 0 || (cr.usage & USAGE_DEPTHSTENCILATTACHMENT) != 0)
+                {
+                    rootResources = realloc(rootResources, sizeof(Resource) * (rootResourceCount + curPass.resourceCount));
+                    memcpy(rootResources + rootResourceCount, curPass.resources, sizeof(Resource) * (curPass.resourceCount));
+                    rootResourceCount += curPass.resourceCount;
+
+                    newPasses[graph->passCount - newPassCount - 1] = curPass;
+                    newPassCount += 1;
+
+                    r = curPass.resourceCount + 1;
                 }
             }
         }
@@ -416,13 +437,21 @@ void executeGraph(RenderGraph *graph, renderer_t *renderer, uint32_t cBufIndex)
     for (int i = 0; i <= graph->passCount - 1; i++)
     {
         passBarrierInfo cb = graph->barriers[i];
-        if (graph->passes[i].type == PASS_TYPE_COMPUTE)
+        VkCommandBuffer cbuffer = graph->passes[i].type == PASS_TYPE_COMPUTE ? renderer->vkCore.computeCommandBuffer : renderer->vkCore.commandBuffers[i];
+        if (i > 0)
         {
-            vkCmdPipelineBarrier(renderer->vkCore.computeCommandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, NULL, cb.bufPBCount, cb.bufMemBarriers, cb.imgPBCount, cb.imgMemBarriers);
-        }
-        else
-        {
-            vkCmdPipelineBarrier(renderer->vkCore.commandBuffers[cBufIndex], VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, 0, NULL, cb.bufPBCount, cb.bufMemBarriers, cb.imgPBCount, cb.imgMemBarriers);
+            VkDependencyInfo depInfo = {
+                VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+                NULL,
+                0,
+                0,
+                NULL,
+                cb.bufPBCount,
+                cb.bufMemBarriers,
+                cb.imgPBCount,
+                cb.imgMemBarriers,
+            };
+            vkCmdPipelineBarrier2(cbuffer, &depInfo);
         }
         recordPass(&graph->passes[i], renderer, cBufIndex);
     }
