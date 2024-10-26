@@ -68,7 +68,7 @@ void recordPass(RenderPass *pass, renderer_t *renderer, uint32_t cBufIndex)
     }
     if (pass->stencilAttachment)
     {
-        renInf.pDepthAttachment = pass->depthAttachment;
+        renInf.pDepthAttachment = pass->stencilAttachment;
     }
 
     vkCmdBeginRendering(renderer->vkCore.commandBuffers[cBufIndex], &renInf);
