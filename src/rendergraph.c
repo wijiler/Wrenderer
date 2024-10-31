@@ -164,7 +164,6 @@ RenderPass newPass(char *name, passType type)
     return p;
 }
 
-// attachments are always read | write
 void addColorAttachment(Image *img, RenderPass *pass, VkClearValue *clear)
 {
     VkRenderingAttachmentInfo rAttInfo = {0};
@@ -460,6 +459,13 @@ void executeGraph(RenderGraph *graph, renderer_t *renderer, uint32_t cBufIndex)
 void destroyRenderGraph(RenderGraph *graph)
 {
     free(graph->barriers);
+    for (int i = 0; i < graph->passCount; i++)
+    {
+        graph->passes[i].resourceCount = 0;
+        graph->passes[i].cAttCount = 0;
+        free(graph->passes[i].resources);
+        free(graph->passes[i].colorAttachments);
+    }
     free(graph->passes);
 }
 const VkClearColorValue clearValue = {{0.0f, 0.0f, 0.0f, 0.0f}};
@@ -594,6 +600,8 @@ void removePass(GraphBuilder *builder, const char *name)
     {
         if (strcmp(builder->passes[i].name, name))
         {
+            free(builder->passes[i].resources);
+            free(builder->passes[i].colorAttachments);
             builder->passes[i] = (RenderPass){0}; // could be removed
             removed = true;
         }
@@ -607,9 +615,6 @@ void removePass(GraphBuilder *builder, const char *name)
     if (builder->passCount > 0)
     {
         builder->passCount -= 1;
-        RenderPass *passes = realloc(builder->passes, sizeof(RenderPass) * builder->passCount);
-        builder->passes = passes;
-        if (passes == NULL)
-            free(passes);
+        builder->passes = realloc(builder->passes, sizeof(RenderPass) * builder->passCount);
     }
 }

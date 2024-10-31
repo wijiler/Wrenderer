@@ -106,12 +106,12 @@ newaction {
        print("Cleaning")
        os.rmdir("./Binaries")
        os.remove("./Lib/*.lib")
-       os.remove("*.make")
+       os.remove("**.make")
        os.remove("Makefile")
-       os.remove("*.vcxproj")
-       os.remove("*.vcxproj.filters")
-       os.remove("*.vcxproj.user")
-       os.remove("*.sln")
+       os.remove("**.vcxproj")
+       os.remove("**.vcxproj.filters")
+       os.remove("**.vcxproj.user")
+       os.remove("**.sln")
        print("done.")
     end
 }
