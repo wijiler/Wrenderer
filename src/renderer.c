@@ -870,13 +870,18 @@ void destroyRenderer(renderer_t *renderer)
     }
     vkDestroyFence(renderer->vkCore.lDev, renderer->vkCore.immediateFence, NULL);
     vkDestroyCommandPool(renderer->vkCore.lDev, (VkCommandPool)renderer->vkCore.commandPool, NULL);
-    for (uint32_t i = 0; i <= bufferCount; i++)
+    for (uint32_t i = 0; i < bufferCount; i++)
     {
         if (!bufferInfo[i].active)
             continue;
+        if (bufferInfo[i].buf.mappedMemory != NULL)
+        {
+            vkUnmapMemory(renderer->vkCore.lDev, bufferInfo[i].buf.associatedMemory);
+            free(bufferInfo[i].buf.mappedMemory);
+        }
         vkDestroyBuffer(renderer->vkCore.lDev, bufferInfo[i].buf.buffer, NULL);
         vkFreeMemory(renderer->vkCore.lDev, bufferInfo[i].buf.associatedMemory, NULL);
-        free(bufferInfo[i].buf.mappedMemory);
+ 
     }
     for (uint32_t i = 0; i < renderer->vkCore.imgCount; i++)
     {

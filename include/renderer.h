@@ -227,8 +227,6 @@ extern "C"
         int resourceCount;
         Resource *resources;
 
-        drawArea drawArea;
-
         void (*callBack)(struct RenderPass pass, VkCommandBuffer cBuf);
     } RenderPass;
 
@@ -373,6 +371,11 @@ extern "C"
     void bindComputePipeline(computePipeline pline, VkCommandBuffer cBuf);
     void unbindGraphicsPipeline(VkCommandBuffer cBuf);
     void unbindComputePipeline(VkCommandBuffer cBuf);
+
+    //
+    void immediateSubmitBegin(VulkanCore_t core);
+    void immediateSubmitEnd(VulkanCore_t core);
+
 #ifdef __cplusplus
 }
 #endif

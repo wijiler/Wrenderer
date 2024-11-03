@@ -71,6 +71,9 @@ project "WrenTest"
         targetdir("%{wks.location}/Binaries/" .. outputdir .. "/%{prj.name}")
         objdir("%{wks.location}/Binaries/Intermediates/" .. outputdir .. "/%{prj.name}")
 
+        prebuildcommands {
+            "compileShaders.bat"
+        }
         libdirs { "./libs/" }
         includedirs { "./include/" }
         includedirs { "./include/libs/" }

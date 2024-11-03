@@ -56,8 +56,8 @@ void recordPass(RenderPass *pass, renderer_t *renderer, uint32_t cBufIndex)
 
     renInf.layerCount = 1;
     renInf.renderArea = (VkRect2D){
-        *pass->drawArea.offSet,
-        *pass->drawArea.extent,
+        {0, 0},
+        renderer->vkCore.extent,
     };
 
     renInf.colorAttachmentCount = pass->cAttCount;
@@ -296,7 +296,8 @@ void setExecutionCallBack(RenderPass *pass, void (*callBack)(struct RenderPass, 
 void addPass(GraphBuilder *builder, RenderPass *pass)
 {
     builder->passes = realloc(builder->passes, sizeof(RenderPass) * (builder->passCount + 1));
-    builder->passes[builder->passCount] = *pass;
+    /*builder->passes[builder->passCount] = *pass;*/
+    memcpy(builder->passes + builder->passCount, pass, sizeof(RenderPass));
     builder->passCount += 1;
 }
 
@@ -459,13 +460,6 @@ void executeGraph(RenderGraph *graph, renderer_t *renderer, uint32_t cBufIndex)
 void destroyRenderGraph(RenderGraph *graph)
 {
     free(graph->barriers);
-    for (int i = 0; i < graph->passCount; i++)
-    {
-        graph->passes[i].resourceCount = 0;
-        graph->passes[i].cAttCount = 0;
-        free(graph->passes[i].resources);
-        free(graph->passes[i].colorAttachments);
-    }
     free(graph->passes);
 }
 const VkClearColorValue clearValue = {{0.0f, 0.0f, 0.0f, 0.0f}};
