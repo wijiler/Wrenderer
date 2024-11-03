@@ -291,6 +291,7 @@ extern "C"
         VkDescriptorSet tdescriptorSet;
 
         VkSampler linearSampler;
+        VkSampler nearestSampler;
 
         GLFWwindow *window;
 
@@ -326,7 +327,7 @@ extern "C"
     void setShaderSLSPRV(VulkanCore_t core, graphicsPipeline *pl, uint32_t *FileContents, int FileLen);
     void setCompShaderSPRV(VulkanCore_t core, computePipeline *pl, uint32_t *contents, int fileLen);
     void addVertexInput(graphicsPipeline *pl, int binding, int location, int stride, int offSet, VkVertexInputRate inputRate, VkFormat format);
-    void setPushConstantRange(graphicsPipeline *pl, size_t size, shaderStage stage);
+    void setPushConstantRange(graphicsPipeline *pl, size_t size, shaderStage stage, uint32_t offset);
     void setComputePushConstantRange(computePipeline *pl, size_t size);
     void createPipelineLayout(VulkanCore_t core, graphicsPipeline *pl);
     void createComputePipelineLayout(VulkanCore_t core, computePipeline *pl);

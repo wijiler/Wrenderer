@@ -47,13 +47,20 @@ typedef struct
     uint32_t id;
 } spriteInstance;
 
+typedef struct
+{
+    Vector3 pos;
+    Vector3 color;
+} Light;
+
+extern graphicsPipeline spritePipeline;
 void initializePipelines(renderer_t renderer);
 
-Sprite createSprite(char *path, renderer_t *renderer);
+Sprite createSprite(char *path, VkSampler sampler, renderer_t *renderer);
 spriteInstance createNewSpriteInstance(Sprite *sprite, renderer_t renderer);
 void updateSpriteInstance(spriteInstance *sprite, transform2D transform);
 void removeSpriteInstance(spriteInstance *sprite);
 void deleteSprite(Sprite *sprite);
 RenderPass spritePass(renderer_t renderer);
-
+void addNewLight(Light light, renderer_t renderer);
 #endif

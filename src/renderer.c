@@ -33,7 +33,7 @@ PFN_vkDestroyShaderEXT vkDestroyShaderEXT_ = NULL;
 #define instLAYERCOUNT 0
 #endif
 
-char *instanceExtensions[instEXTENSIONCOUNT] = {
+const char *instanceExtensions[instEXTENSIONCOUNT] = {
     VK_KHR_SURFACE_EXTENSION_NAME,
 #ifdef VK_USE_PLATFORM_WIN32_KHR
     VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
@@ -45,7 +45,7 @@ char *instanceExtensions[instEXTENSIONCOUNT] = {
     VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
 };
 #ifdef DEBUG
-char *instanceLayerNames[instLAYERCOUNT] = {"VK_LAYER_KHRONOS_validation"};
+const char *instanceLayerNames[instLAYERCOUNT] = {"VK_LAYER_KHRONOS_validation"};
 #endif
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
@@ -855,6 +855,9 @@ void createSamplers(VulkanCore_t *core)
     samplerCI.maxLod = 0.0f;
 
     vkCreateSampler(core->lDev, &samplerCI, NULL, &core->linearSampler);
+    samplerCI.magFilter = VK_FILTER_NEAREST;
+    samplerCI.minFilter = VK_FILTER_NEAREST;
+    vkCreateSampler(core->lDev, &samplerCI, NULL, &core->nearestSampler);
 }
 
 void destroyRenderer(renderer_t *renderer)
@@ -877,11 +880,9 @@ void destroyRenderer(renderer_t *renderer)
         if (bufferInfo[i].buf.mappedMemory != NULL)
         {
             vkUnmapMemory(renderer->vkCore.lDev, bufferInfo[i].buf.associatedMemory);
-            free(bufferInfo[i].buf.mappedMemory);
         }
         vkDestroyBuffer(renderer->vkCore.lDev, bufferInfo[i].buf.buffer, NULL);
         vkFreeMemory(renderer->vkCore.lDev, bufferInfo[i].buf.associatedMemory, NULL);
- 
     }
     for (uint32_t i = 0; i < renderer->vkCore.imgCount; i++)
     {
@@ -1165,15 +1166,15 @@ void addVertexInput(graphicsPipeline *pl, int binding, int location, int stride,
     pl->vert.VertexDescriptons += 1;
 }
 
-void setPushConstantRange(graphicsPipeline *pl, size_t size, shaderStage stage)
+void setPushConstantRange(graphicsPipeline *pl, size_t size, shaderStage stage, uint32_t offset)
 {
     VkPushConstantRange pcRange = {0};
-    pcRange.offset = 0;
+    pcRange.offset = offset;
     pcRange.size = size;
     pcRange.stageFlags = stage;
 
     pl->pcRange = pcRange;
-    pl->pcRangeCount = 1;
+    pl->pcRangeCount += 1;
 }
 
 void setComputePushConstantRange(computePipeline *pl, size_t size)
@@ -1201,10 +1202,7 @@ void createPipelineLayout(VulkanCore_t core, graphicsPipeline *pl)
     }
     plcInf.setLayoutCount = pl->setLayoutCount + 1;
     plcInf.pSetLayouts = setLayouts;
-    if (pl->setLayouts != NULL)
-    {
-        free(pl->setLayouts);
-    };
+
     pl->setLayoutCount += 1;
     pl->setLayouts = setLayouts;
 
@@ -1212,12 +1210,9 @@ void createPipelineLayout(VulkanCore_t core, graphicsPipeline *pl)
     sets[0] = core.tdescriptorSet;
     if (pl->setCount >= 1)
     {
-        memcpy(sets + 1, pl->descriptorSets, sizeof(VkDescriptorSetLayout) * (pl->setCount));
+        memcpy(sets + 1, pl->descriptorSets, sizeof(VkDescriptorSet) * (pl->setCount));
     }
-    if (pl->descriptorSets != NULL)
-    {
-        free(pl->descriptorSets);
-    }
+
     pl->descriptorSets = sets;
     pl->setCount += 1;
 
