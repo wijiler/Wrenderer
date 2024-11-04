@@ -76,7 +76,7 @@ float3 scale(float3 p, float3 o, float sf)
 
 float3 transform(Transform vert, uint32_t id)
 {
-    float3 rPos = float3(vpositions[id].xyz) + vert.position;
+    float3 rPos = (float3(vpositions[id].xyz) + vert.position) / scaleFactor;
     rPos = rot(rPos, vert.position, vert.rotation);
     rPos.x *= vert.scale.x;
     rPos.y *= vert.scale.y;
@@ -87,7 +87,7 @@ float3 transform(Transform vert, uint32_t id)
 
 float3 transformNormals(Transform vert, uint32_t id)
 {
-    float3 rPos = float3(normals[id].xyz) + vert.position;
+    float3 rPos = (float3(normals[id].xyz) + vert.position) / scaleFactor;
     rPos = rot(rPos, vert.position, vert.rotation);
     rPos.x *= vert.scale.x;
     rPos.y *= vert.scale.y;
@@ -118,14 +118,14 @@ float4 fragMain(VertOutput input)
 
     float4 albedo = textures.Sample(float3(input.uv, input.texID)) * float4(input.color, 1.0);
 
-    float3 ambient = light.color * 0.1f;
+    // float3 ambient = light.color * 0.1f;
 
-    float3 normal = normalize(input.normal);
-    float3 lightDir = light.position - float3(input.sv_pos.xyz);
-    float diff = max(dot(normal, lightDir), 0.0f);
-    float3 diffuse = diff * light.color;
-    float4 color = float4((ambient + diffuse), 1.0f) / 100 * albedo;
+    // float3 normal = normalize(input.normal);
+    // float3 lightDir = light.position - float3(input.sv_pos.xyz);
+    // float diff = max(dot(normal, lightDir), 0.0f);
+    // float3 diffuse = diff * light.color;
+    // float4 color = float4((ambient + diffuse), 1.0f) / 100 * albedo;
 
-    return color;
+    return albedo;
 }
 

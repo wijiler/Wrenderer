@@ -7,6 +7,7 @@ renderer_t renderer;
 winf_t wininfo = {0};
 GraphBuilder builder = {0};
 spriteInstance birby1 = {0};
+spriteInstance birby2 = {0};
 int ImageIndex = 0;
 int FrameIndex = 0;
 int Index = 0;
@@ -33,10 +34,11 @@ void init()
 
     Sprite birb = createSprite("assets/birb.png", renderer.vkCore.nearestSampler, &renderer);
     birby1 = createNewSpriteInstance(&birb, renderer);
-    updateSpriteInstance(&birby1, (transform2D){
-                                      .origin = {0, 0, 0},
-                                      .scale = {1, 1},
-                                      .rotation = 0,
+    birby2 = createNewSpriteInstance(&birb, renderer);
+    updateSpriteInstance(&birby2, (transform2D){
+                                      {0, 0, 1},
+                                      {1, 1},
+                                      0,
                                   });
     Light light = {
         {1, 0.5, 0},

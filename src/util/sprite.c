@@ -19,7 +19,6 @@ Sprite createSprite(char *path, VkSampler sampler, renderer_t *renderer)
     Sprite sp = {0};
     sp.id = spriteCount;
     int texWidth, texHeight, texChannels;
-    stbi_set_flip_vertically_on_load(true);
     stbi_uc *img = stbi_load(path, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
     Texture tex = createTexture(renderer->vkCore, texWidth, texHeight);
     {
@@ -37,7 +36,6 @@ Sprite createSprite(char *path, VkSampler sampler, renderer_t *renderer)
 
         destroyBuffer(buf, renderer->vkCore);
         stbi_image_free(img);
-        stbi_set_flip_vertically_on_load(false);
     }
     submitTexture(renderer, &tex, sampler);
     sp.image = tex;
@@ -91,6 +89,7 @@ spriteInstance createNewSpriteInstance(Sprite *sprite, renderer_t renderer)
             }
         }
     }
+    textureIDs[spriteInstanceCount] = sprite->image.index;
     instance.id = spriteInstanceCount;
     instance.transform = (transform2D){
         (Vector3){0, 0, 0},
@@ -98,6 +97,7 @@ spriteInstance createNewSpriteInstance(Sprite *sprite, renderer_t renderer)
         0,
     };
     spriteInstances[spriteInstanceCount] = instance;
+    spriteInstanceDataCPU[spriteInstanceCount] = instance.transform;
     spriteInstanceCount += 1;
 
     return instance;
