@@ -8,6 +8,7 @@ winf_t wininfo = {0};
 GraphBuilder builder = {0};
 spriteInstance birby1 = {0};
 spriteInstance birby2 = {0};
+spriteInstance birby3 = {0};
 int ImageIndex = 0;
 int FrameIndex = 0;
 int Index = 0;
@@ -20,7 +21,7 @@ void loop()
     if (thing >= 6.28319)
         thing = 0;
     updateSpriteInstance(&birby1, (transform2D){
-                                      {0, 0, 0},
+                                      {0, 0, 1},
                                       {1, 1},
                                       thing,
                                   });
@@ -33,16 +34,23 @@ void init()
     initializePipelines(renderer);
 
     Sprite birb = createSprite("assets/birb.png", renderer.vkCore.nearestSampler, &renderer);
+    Sprite birb2 = createSprite("assets/Wrenderer.png", renderer.vkCore.nearestSampler, &renderer);
     birby1 = createNewSpriteInstance(&birb, renderer);
-    birby2 = createNewSpriteInstance(&birb, renderer);
+    birby2 = createNewSpriteInstance(&birb2, renderer);
+    birby3 = createNewSpriteInstance(&birb2, renderer);
     updateSpriteInstance(&birby2, (transform2D){
-                                      {0, 0, 1},
+                                      {0, -10, 1},
                                       {1, 1},
                                       0,
                                   });
-    Light light = {
-        {1, 0.5, 0},
-        {1, 1, 1},
+    updateSpriteInstance(&birby3, (transform2D){
+                                      {0, -5, 1},
+                                      {1, 1},
+                                      0,
+                                  });
+    pointLight2D light = {
+        {0.5, 0.5, 1},
+        {1, 1, 1, 1},
     };
     addNewLight(light, renderer);
     RenderPass spPass = spritePass(renderer);

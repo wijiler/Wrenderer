@@ -23,7 +23,7 @@ struct Mesh
 }
 
 [vk_binding(0)]
-Sampler2DArray textures;
+Sampler2D textures[];
 
 [vk_push_constant]
 Mesh *meshes;

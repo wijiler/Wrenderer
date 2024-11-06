@@ -8,7 +8,7 @@ uint32_t lightCount = 0;
 uint64_t *textureIDs;
 spriteInstance *spriteInstances;
 transform2D *spriteInstanceDataCPU;
-Light *lights;
+pointLight2D *lights;
 Buffer spriteInstanceData = {0};
 Buffer spriteTextureIDs = {0};
 Buffer lightBuffer = {0};
@@ -148,8 +148,8 @@ void spritePassCallback(RenderPass self, VkCommandBuffer cBuf)
     vkCmdDraw(cBuf, 6, spriteInstanceCount, 0, 0);
 
     pushDataToBuffer(spriteInstanceDataCPU, sizeof(transform2D) * spriteInstanceCount, spriteInstanceData, 0);
-    pushDataToBuffer(textureIDs, sizeof(uint64_t) * spriteCount, spriteTextureIDs, 0);
-    pushDataToBuffer(lights, sizeof(Light) * lightCount, lightBuffer, 0);
+    pushDataToBuffer(textureIDs, sizeof(uint64_t) * spriteInstanceCount, spriteTextureIDs, 0);
+    pushDataToBuffer(lights, sizeof(pointLight2D) * lightCount, lightBuffer, 0);
 }
 
 RenderPass spritePass(renderer_t renderer)
@@ -161,9 +161,9 @@ RenderPass spritePass(renderer_t renderer)
     return sPass;
 }
 
-void addNewLight(Light light, renderer_t renderer)
+void addNewLight(pointLight2D light, renderer_t renderer)
 {
-    lights = realloc(lights, sizeof(light) * (lightCount + 1));
+    lights = realloc(lights, sizeof(pointLight2D) * (lightCount + 1));
     if (lightCount == 0)
     {
         BufferCreateInfo bci = {

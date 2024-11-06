@@ -1,4 +1,4 @@
-static const int scaleFactor = 100;
+static const int scaleFactor = 10;
 
 struct Transform
 {
@@ -10,7 +10,7 @@ struct Transform
 struct Light
 {
     float3 position;
-    float3 color;
+    float4 color;
 }
 
 struct pushConstants
@@ -24,7 +24,7 @@ struct pushConstants
 const pushConstants ptrs;
 
 [vk_binding(0)]
-Sampler2DArray textures;
+Sampler2D textures[];
 
 struct VertOutput
 {
@@ -116,16 +116,18 @@ float4 fragMain(VertOutput input)
 {
     Light light = ptrs.lights[0];
 
-    float4 albedo = textures.Sample(float3(input.uv, input.texID)) * float4(input.color, 1.0);
+    float4 albedo = textures[NonUniformResourceIndex(int(input.texID))].Sample(input.uv) * float4(input.color, 1.0);
 
-    // float3 ambient = light.color * 0.1f;
+    float3 ambient = light.color.xyz * 0.1f;
 
-    // float3 normal = normalize(input.normal);
-    // float3 lightDir = light.position - float3(input.sv_pos.xyz);
-    // float diff = max(dot(normal, lightDir), 0.0f);
-    // float3 diffuse = diff * light.color;
-    // float4 color = float4((ambient + diffuse), 1.0f) / 100 * albedo;
+    float3 lightDir = light.position - float3(input.sv_pos.xyz);
+    float atten = float3(1.0 / pow(lightDir, 2)).z;
+    float3 lightColor = light.color.xyz * light.color.w * atten;
+    float3 normal = normalize(input.normal);
+    float3 diffuse = lightColor * max(dot(normal, normalize(lightDir)), 0.0f);
 
-    return albedo;
+    float4 color = float4((ambient + diffuse), 1.0f) * albedo;
+
+    return color;
 }
 

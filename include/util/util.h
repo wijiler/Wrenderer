@@ -50,8 +50,8 @@ typedef struct
 typedef struct
 {
     Vector3 pos;
-    Vector3 color;
-} Light;
+    Vector4 color;
+} pointLight2D;
 
 extern graphicsPipeline spritePipeline;
 void initializePipelines(renderer_t renderer);
@@ -62,5 +62,5 @@ void updateSpriteInstance(spriteInstance *sprite, transform2D transform);
 void removeSpriteInstance(spriteInstance *sprite);
 void deleteSprite(Sprite *sprite);
 RenderPass spritePass(renderer_t renderer);
-void addNewLight(Light light, renderer_t renderer);
+void addNewLight(pointLight2D light, renderer_t renderer);
 #endif
