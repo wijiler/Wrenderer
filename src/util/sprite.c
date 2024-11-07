@@ -1,7 +1,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
 #include <stdbool.h>
-#include <util/util.h>
+#include <util/sprite.h>
 uint32_t spriteInstanceCount = 0;
 uint32_t spriteCount = 0;
 uint32_t lightCount = 0;
@@ -19,6 +19,7 @@ Sprite createSprite(char *path, VkSampler sampler, renderer_t *renderer)
     Sprite sp = {0};
     sp.id = spriteCount;
     int texWidth, texHeight, texChannels;
+    stbi_set_flip_vertically_on_load(true);
     stbi_uc *img = stbi_load(path, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
     Texture tex = createTexture(renderer->vkCore, texWidth, texHeight);
     {
@@ -38,6 +39,7 @@ Sprite createSprite(char *path, VkSampler sampler, renderer_t *renderer)
         stbi_image_free(img);
     }
     submitTexture(renderer, &tex, sampler);
+    stbi_set_flip_vertically_on_load(false);
     sp.image = tex;
     spriteCount += 1;
     return sp;
@@ -99,6 +101,8 @@ spriteInstance createNewSpriteInstance(Sprite *sprite, renderer_t renderer)
     spriteInstances[spriteInstanceCount] = instance;
     spriteInstanceDataCPU[spriteInstanceCount] = instance.transform;
     spriteInstanceCount += 1;
+    pushDataToBuffer(spriteInstanceDataCPU, sizeof(transform2D) * spriteInstanceCount, spriteInstanceData, 0);
+    pushDataToBuffer(textureIDs, sizeof(uint64_t) * spriteInstanceCount, spriteTextureIDs, 0);
 
     return instance;
 }
@@ -107,6 +111,7 @@ void updateSpriteInstance(spriteInstance *sprite, transform2D transform)
     spriteInstances[sprite->id].transform = transform;
     spriteInstanceDataCPU[sprite->id] = transform;
     *sprite = spriteInstances[sprite->id];
+    pushDataToBuffer(spriteInstanceDataCPU, sizeof(transform2D) * spriteInstanceCount, spriteInstanceData, 0);
 }
 void removeSpriteInstance(spriteInstance *sprite)
 {
@@ -116,6 +121,7 @@ void removeSpriteInstance(spriteInstance *sprite)
     {
         spriteInstances[i].id -= 1;
     }
+    pushDataToBuffer(spriteInstanceDataCPU, sizeof(transform2D) * spriteInstanceCount, spriteInstanceData, 0);
 }
 
 void deleteSprite(Sprite *sprite)
@@ -146,10 +152,6 @@ void spritePassCallback(RenderPass self, VkCommandBuffer cBuf)
     vkCmdPushConstants(cBuf, self.gPl.plLayout, SHADER_STAGE_ALL, 0, sizeof(pc), &data);
 
     vkCmdDraw(cBuf, 6, spriteInstanceCount, 0, 0);
-
-    pushDataToBuffer(spriteInstanceDataCPU, sizeof(transform2D) * spriteInstanceCount, spriteInstanceData, 0);
-    pushDataToBuffer(textureIDs, sizeof(uint64_t) * spriteInstanceCount, spriteTextureIDs, 0);
-    pushDataToBuffer(lights, sizeof(pointLight2D) * lightCount, lightBuffer, 0);
 }
 
 RenderPass spritePass(renderer_t renderer)
@@ -175,4 +177,5 @@ void addNewLight(pointLight2D light, renderer_t renderer)
     }
     lights[lightCount] = light;
     lightCount += 1;
+    pushDataToBuffer(lights, sizeof(pointLight2D) * lightCount, lightBuffer, 0);
 }

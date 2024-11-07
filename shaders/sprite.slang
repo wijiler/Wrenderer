@@ -45,23 +45,22 @@ static const float2 uvs[6] =
         float2(1.0f, 0.0f),
     };
 
-static const float3 normals[6] = {
-    float3(1, 0, 0),
-    float3(1, 0, 0),
-    float3(0, 1, 0),
-    float3(-1, 0, 0),
-    float3(0, -1, 0),
-    float3(0, -1, 0),
+static const float3 normals[4] = {
+    float3(0, 1, 1),
+    float3(1, 0, 1),
+    float3(0, -1, 1),
+    float3(-1, 0, 1),
+
 };
 
 static const float4 vpositions[6] =
     {
-        float4(1.0f, -1.0f, 0.0f, 1.0f),
         float4(1.0f, 1.0f, 0.0f, 1.0f),
-        float4(-1.0f, 1.0f, 0.0f, 1.0f),
-        float4(-1.0f, 1.0f, 0.0f, 1.0f),
-        float4(-1.0f, -1.0f, 0.0f, 1.0f),
         float4(1.0f, -1.0f, 0.0f, 1.0f),
+        float4(-1.0f, -1.0f, 0.0f, 1.0f),
+        float4(-1.0f, -1.0f, 0.0f, 1.0f),
+        float4(-1.0f, 1.0f, 0.0f, 1.0f),
+        float4(1.0f, 1.0f, 0.0f, 1.0f),
     };
 
 float3 rot(float3 p, float3 o, float a)
@@ -81,18 +80,16 @@ float3 transform(Transform vert, uint32_t id)
     rPos.x *= vert.scale.x;
     rPos.y *= vert.scale.y;
 
-    // rPos = scale(rPos, vert.position, scaleFactor);
     return rPos;
 }
 
 float3 transformNormals(Transform vert, uint32_t id)
 {
-    float3 rPos = (float3(normals[id].xyz) + vert.position) / scaleFactor;
+    float3 rPos = (float3(normals[id / 2].xyz) + vert.position) / scaleFactor;
     rPos = rot(rPos, vert.position, vert.rotation);
     rPos.x *= vert.scale.x;
     rPos.y *= vert.scale.y;
 
-    // rPos = scale(rPos, vert.position, scaleFactor);
     return rPos;
 }
 
@@ -127,6 +124,8 @@ float4 fragMain(VertOutput input)
     float3 diffuse = lightColor * max(dot(normal, normalize(lightDir)), 0.0f);
 
     float4 color = float4((ambient + diffuse), 1.0f) * albedo;
+
+    // float4 color = float4(input.normal, 1.0f);
 
     return color;
 }
