@@ -94,8 +94,8 @@ spriteInstance createNewSpriteInstance(Sprite *sprite, renderer_t renderer)
     textureIDs[spriteInstanceCount] = sprite->image.index;
     instance.id = spriteInstanceCount;
     instance.transform = (transform2D){
-        (Vector3){0, 0, 0},
-        (Vector2){1, 1},
+        {0, 0, 0},
+        {1, 1},
         0,
     };
     spriteInstances[spriteInstanceCount] = instance;
@@ -141,12 +141,10 @@ void spritePassCallback(RenderPass self, VkCommandBuffer cBuf)
     {
         VkDeviceAddress SpriteBuffer;
         VkDeviceAddress InstanceBuffer;
-        VkDeviceAddress LightBuffer;
     } pc;
     pc data = {
         spriteTextureIDs.gpuAddress,
         spriteInstanceData.gpuAddress,
-        lightBuffer.gpuAddress,
     };
     bindGraphicsPipeline(self.gPl, cBuf);
     vkCmdPushConstants(cBuf, self.gPl.plLayout, SHADER_STAGE_ALL, 0, sizeof(pc), &data);
@@ -157,7 +155,7 @@ void spritePassCallback(RenderPass self, VkCommandBuffer cBuf)
 RenderPass spritePass(renderer_t renderer)
 {
     RenderPass sPass = newPass("SpritePass", PASS_TYPE_GRAPHICS);
-    sPass.gPl = spritePipeline;
+    sPass.gPl = spritePipeline.gbufferPass;
     addImageResource(&sPass, renderer.vkCore.currentScImg, USAGE_COLORATTACHMENT);
     setExecutionCallBack(&sPass, spritePassCallback);
     return sPass;

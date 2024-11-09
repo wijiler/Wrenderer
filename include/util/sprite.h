@@ -18,11 +18,18 @@ typedef struct
 
 typedef struct
 {
-    Vector3 pos;
-    Vector4 color;
+    vec3 pos;
+    vec4 color;
+    float radius;
 } pointLight2D;
 
-extern graphicsPipeline spritePipeline;
+typedef struct
+{
+    graphicsPipeline gbufferPass;
+    computePipeline lightPass;
+} SpritePipeline;
+
+extern SpritePipeline spritePipeline;
 
 Sprite createSprite(char *path, VkSampler sampler, renderer_t *renderer);
 spriteInstance createNewSpriteInstance(Sprite *sprite, renderer_t renderer);

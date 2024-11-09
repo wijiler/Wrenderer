@@ -154,6 +154,9 @@ extern "C"
 
         int setLayoutCount;
         VkDescriptorSetLayout *setLayouts;
+
+        int setCount;
+        VkDescriptorSet *descriptorSets;
     } computePipeline;
 
     typedef enum
@@ -278,6 +281,7 @@ extern "C"
         VkSemaphore imageAvailable[FRAMECOUNT];
         VkSemaphore *renderFinished;
         VkFence computeFences[FRAMECOUNT];
+        VkSemaphore computeAvailable[FRAMECOUNT];
         VkSemaphore *computeFinished;
 
         VkCommandPool *commandPool;
@@ -313,8 +317,6 @@ extern "C"
     void pushDataToBuffer(void *data, size_t dataSize, Buffer buf, int offSet);
     void copyBuf(VulkanCore_t core, Buffer src, Buffer dest, size_t size, uint32_t srcOffset, uint32_t dstOffset);
 
-    void write_textureDescriptorSet(VulkanCore_t core, VkImageView texture, VkSampler sampler, uint64_t textureIndex);
-
     void destroyBuffer(Buffer buf, VulkanCore_t core);
     void destroyRenderer(renderer_t *renderer);
 
@@ -331,6 +333,10 @@ extern "C"
     void setComputePushConstantRange(computePipeline *pl, size_t size);
     void createPipelineLayout(VulkanCore_t core, graphicsPipeline *pl);
     void createComputePipelineLayout(VulkanCore_t core, computePipeline *pl);
+    void addDescriptorSetToCPL(VkDescriptorSet *set, computePipeline *pl);
+    void addDescriptorSetToGPL(VkDescriptorSet *set, graphicsPipeline *pl);
+    void addSetLayoutToCPL(VkDescriptorSetLayout *layout, computePipeline *pl);
+    void addSetLayoutToGPL(VkDescriptorSetLayout *layout, graphicsPipeline *pl);
 
     RenderPass newPass(char *name, passType type);
 
@@ -366,6 +372,8 @@ extern "C"
     Texture createTexture(VulkanCore_t core, uint32_t width, uint32_t height);
     void copyDataToTextureImage(VulkanCore_t core, Image *image, Buffer *buffer, uint32_t width, uint32_t height);
     void submitTexture(renderer_t *renderer, Texture *tex, VkSampler sampler);
+    void write_textureDescriptorSet(VulkanCore_t core, VkImageView texture, VkSampler sampler, uint64_t textureIndex);
+    void submitNormalMap(VulkanCore_t core, VkImageView texture);
     // ----------------------------------------- IMGUTILEND
 
     void bindGraphicsPipeline(graphicsPipeline pline, VkCommandBuffer cBuf);

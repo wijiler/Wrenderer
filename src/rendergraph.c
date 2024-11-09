@@ -41,15 +41,8 @@ uint64_t passTypeToVulkanStage(passType type)
     return stages[type];
 }
 
-void recordPass(RenderPass *pass, renderer_t *renderer, uint32_t cBufIndex)
+void recordPass(RenderPass *pass, renderer_t *renderer, VkCommandBuffer cBuf)
 {
-    if (pass->type == PASS_TYPE_COMPUTE)
-    {
-        vkWaitForFences(renderer->vkCore.lDev, 1, &renderer->vkCore.computeFences[cBufIndex], VK_TRUE, UINT64_MAX);
-        vkResetFences(renderer->vkCore.lDev, 1, &renderer->vkCore.computeFences[cBufIndex]);
-        vkBeginCommandBuffer(renderer->vkCore.computeCommandBuffer, &cBufBeginInf);
-    }
-
     VkRenderingInfo renInf = {0};
     renInf.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
     renInf.pNext = NULL;
@@ -71,34 +64,11 @@ void recordPass(RenderPass *pass, renderer_t *renderer, uint32_t cBufIndex)
         renInf.pDepthAttachment = pass->stencilAttachment;
     }
 
-    vkCmdBeginRendering(renderer->vkCore.commandBuffers[cBufIndex], &renInf);
+    vkCmdBeginRendering(cBuf, &renInf);
 
-    if (pass->type == PASS_TYPE_COMPUTE)
-    {
-        pass->callBack(*pass, renderer->vkCore.computeCommandBuffer);
-    }
-    else
-    {
-        pass->callBack(*pass, renderer->vkCore.commandBuffers[cBufIndex]);
-    }
+    pass->callBack(*pass, cBuf);
 
-    vkCmdEndRendering(renderer->vkCore.commandBuffers[cBufIndex]);
-
-    if (pass->type == PASS_TYPE_COMPUTE)
-    {
-        VkSubmitInfo submitInfo = {0};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submitInfo.pNext = NULL;
-
-        submitInfo.waitSemaphoreCount = 0;
-        submitInfo.signalSemaphoreCount = 1;
-        submitInfo.pSignalSemaphores = &renderer->vkCore.computeFinished[renderer->vkCore.currentImageIndex];
-
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &renderer->vkCore.commandBuffers[cBufIndex];
-        vkQueueSubmit(renderer->vkCore.compQueue, 1, &submitInfo, renderer->vkCore.computeFences[cBufIndex]);
-        vkResetCommandBuffer(renderer->vkCore.computeCommandBuffer, 0);
-    }
+    vkCmdEndRendering(cBuf);
 }
 
 bool resEq(Resource rhs, Resource lhs)
@@ -437,7 +407,7 @@ void executeGraph(RenderGraph *graph, renderer_t *renderer, uint32_t cBufIndex)
     for (int i = 0; i <= graph->passCount - 1; i++)
     {
         passBarrierInfo cb = graph->barriers[i];
-        VkCommandBuffer cbuffer = graph->passes[i].type == PASS_TYPE_COMPUTE ? renderer->vkCore.computeCommandBuffer : renderer->vkCore.commandBuffers[i];
+        VkCommandBuffer cbuffer = graph->passes[i].type == PASS_TYPE_COMPUTE ? renderer->vkCore.computeCommandBuffer : renderer->vkCore.commandBuffers[cBufIndex];
         if (i > 0)
         {
             VkDependencyInfo depInfo = {
@@ -453,7 +423,7 @@ void executeGraph(RenderGraph *graph, renderer_t *renderer, uint32_t cBufIndex)
             };
             vkCmdPipelineBarrier2(cbuffer, &depInfo);
         }
-        recordPass(&graph->passes[i], renderer, cBufIndex);
+        recordPass(&graph->passes[i], renderer, cbuffer);
     }
 }
 
@@ -470,7 +440,9 @@ void drawRenderer(renderer_t *renderer, int cBufIndex)
     VkCommandBuffer cbuf = renderer->vkCore.commandBuffers[cBufIndex];
 
     vkWaitForFences(renderer->vkCore.lDev, 1, &renderer->vkCore.fences[cBufIndex], VK_TRUE, UINT64_MAX);
+    // vkWaitForFences(renderer->vkCore.lDev, 1, &renderer->vkCore.computeFences[cBufIndex], VK_TRUE, UINT64_MAX);
     vkResetFences(renderer->vkCore.lDev, 1, &renderer->vkCore.fences[cBufIndex]);
+    // vkResetFences(renderer->vkCore.lDev, 1, &renderer->vkCore.computeFences[cBufIndex]);
 
     if (resize)
     {
@@ -493,11 +465,12 @@ void drawRenderer(renderer_t *renderer, int cBufIndex)
     };
 
     vkResetCommandBuffer(cbuf, 0);
+    // vkResetCommandBuffer(renderer->vkCore.computeCommandBuffer, 0);
     vkBeginCommandBuffer(cbuf, &cBufBeginInf);
+    // vkBeginCommandBuffer(renderer->vkCore.computeCommandBuffer, &cBufBeginInf);
 
     RenderGraph rg = buildGraph(renderer->rg, *renderer->vkCore.currentScImg);
 
-    // Change layout of image to be optimal for clearing
     VkImageMemoryBarrier imgMemoryBarrier = {
         VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
         NULL,
@@ -546,37 +519,53 @@ void drawRenderer(renderer_t *renderer, int cBufIndex)
     renderer->vkCore.currentScImg->accessMask = VK_ACCESS_MEMORY_READ_BIT;
 
     vkEndCommandBuffer(cbuf);
+    // vkEndCommandBuffer(renderer->vkCore.computeCommandBuffer);
+    // {
+    //     VkSubmitInfo submitInfo = {0};
+    //     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    //     submitInfo.pNext = NULL;
 
-    VkSubmitInfo submitInfo = {0};
-    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submitInfo.pNext = NULL;
+    //     submitInfo.waitSemaphoreCount = 1;
+    //     submitInfo.pWaitSemaphores = &renderer->vkCore.computeAvailable[cBufIndex];
+    //     submitInfo.pWaitDstStageMask = (VkPipelineStageFlags[1]){VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT};
+    //     submitInfo.signalSemaphoreCount = 1;
+    //     submitInfo.pSignalSemaphores = &renderer->vkCore.computeFinished[renderer->vkCore.currentImageIndex];
 
-    submitInfo.waitSemaphoreCount = 1;
-    submitInfo.pWaitSemaphores = &renderer->vkCore.imageAvailable[cBufIndex];
-    submitInfo.pWaitDstStageMask = (VkPipelineStageFlags[1]){VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-    submitInfo.signalSemaphoreCount = 1;
-    submitInfo.pSignalSemaphores = &renderer->vkCore.renderFinished[renderer->vkCore.currentImageIndex];
-
-    submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &cbuf;
-
-    vkQueueSubmit(renderer->vkCore.gQueue, 1, &submitInfo, renderer->vkCore.fences[cBufIndex]);
-
-    VkPresentInfoKHR presentInfo = {0};
-    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-    presentInfo.pNext = NULL;
-
-    presentInfo.waitSemaphoreCount = 1;
-    presentInfo.pWaitSemaphores = &renderer->vkCore.renderFinished[renderer->vkCore.currentImageIndex];
-
-    presentInfo.swapchainCount = 1;
-    presentInfo.pSwapchains = &renderer->vkCore.swapChain;
-    presentInfo.pImageIndices = &renderer->vkCore.currentImageIndex;
-
-    result = 0;
-    if ((result = vkQueuePresentKHR(renderer->vkCore.pQueue, &presentInfo)) == VK_ERROR_OUT_OF_DATE_KHR)
+    //     submitInfo.commandBufferCount = 1;
+    //     submitInfo.pCommandBuffers = &renderer->vkCore.computeCommandBuffer;
+    //     vkQueueSubmit(renderer->vkCore.compQueue, 1, &submitInfo, renderer->vkCore.computeFences[cBufIndex]);
+    // }
     {
-        resize = true;
+        VkSubmitInfo submitInfo = {0};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.pNext = NULL;
+
+        submitInfo.waitSemaphoreCount = 1;
+        submitInfo.pWaitSemaphores = &renderer->vkCore.imageAvailable[cBufIndex];
+        submitInfo.pWaitDstStageMask = (VkPipelineStageFlags[1]){VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+        submitInfo.signalSemaphoreCount = 1;
+        submitInfo.pSignalSemaphores = &renderer->vkCore.renderFinished[renderer->vkCore.currentImageIndex];
+
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &cbuf;
+
+        vkQueueSubmit(renderer->vkCore.gQueue, 1, &submitInfo, renderer->vkCore.fences[cBufIndex]);
+        VkPresentInfoKHR presentInfo = {0};
+        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+        presentInfo.pNext = NULL;
+
+        presentInfo.waitSemaphoreCount = 1;
+        presentInfo.pWaitSemaphores = &renderer->vkCore.renderFinished[renderer->vkCore.currentImageIndex];
+
+        presentInfo.swapchainCount = 1;
+        presentInfo.pSwapchains = &renderer->vkCore.swapChain;
+        presentInfo.pImageIndices = &renderer->vkCore.currentImageIndex;
+
+        result = 0;
+        if ((result = vkQueuePresentKHR(renderer->vkCore.pQueue, &presentInfo)) == VK_ERROR_OUT_OF_DATE_KHR)
+        {
+            resize = true;
+        }
     }
 
     destroyRenderGraph(&rg);

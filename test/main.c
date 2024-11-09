@@ -20,12 +20,12 @@ void loop()
     thing += 0.001;
     if (thing >= 6.28319)
         thing = 0;
+    drawRenderer(&renderer, Index);
     updateSpriteInstance(&birby1, (transform2D){
                                       {0, 0, 1},
                                       {1, 1},
                                       thing,
                                   });
-    drawRenderer(&renderer, Index);
 }
 
 void init()
@@ -49,8 +49,9 @@ void init()
                                       0,
                                   });
     pointLight2D light = {
-        {0, -0, 1},
-        {1, 1, 1, 1},
+        {0.f, -2.f, 1.f},
+        {1.f, 1.f, 1.f, .2f},
+        1.0f,
     };
     addNewLight(light, renderer);
     RenderPass spPass = spritePass(renderer);

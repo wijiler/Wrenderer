@@ -530,6 +530,12 @@ void create_CommandBuffers(VulkanCore_t *core)
             exit(1);
         }
 
+        if (vkCreateSemaphore(core->lDev, &semaphoreCI, NULL, &core->computeAvailable[i]) != VK_SUCCESS)
+        {
+            printf("Could not create semaphore\n");
+            exit(1);
+        }
+
         VkFenceCreateInfo fenceCI = {0};
         fenceCI.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
         fenceCI.pNext = NULL;
@@ -747,7 +753,7 @@ void create_dsp(VulkanCore_t *core)
     dspCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     dspCI.pNext = 0;
 
-    dspCI.maxSets = MAXTEXTURES;
+    dspCI.maxSets = 1;
     dspCI.flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT;
     dspCI.poolSizeCount = 1;
     dspCI.pPoolSizes = &poolSize;
@@ -918,16 +924,6 @@ void initRenderer(renderer_t *renderer)
     allocate_textureDescriptorSet(&renderer->vkCore);
     createSamplers(&renderer->vkCore);
     renderer->meshHandler.instancedMeshes = NULL;
-
-    // BufferCreateInfo BCI = {0};
-    // BCI.access = DEVICE_ONLY;
-    // BCI.dataSize = maxVerts * sizeof(renderer->meshHandler.vertexSize);
-    // BCI.usage = BUFFER_USAGE_VERTEX | BUFFER_USAGE_TRANSFER_DST | BUFFER_USAGE_TRANSFER_SRC;
-    // createBuffer(renderer->vkCore, BCI, &renderer->meshHandler.unifiedVerts);
-    // BCI.usage = BUFFER_USAGE_INDEX | VK_BUFFER_USAGE_TRANSFER_DST_BIT | BUFFER_USAGE_TRANSFER_SRC;
-    // createBuffer(renderer->vkCore, BCI, &renderer->meshHandler.unifiedIndices);
-    // renderer->meshHandler.unifiedVertexCapacity = maxVerts * sizeof(renderer->meshHandler.vertexSize);
-    // renderer->meshHandler.unifiedIndexCapacity = maxVerts * sizeof(uint32_t);
 }
 
 void bindGraphicsPipeline(graphicsPipeline pline, VkCommandBuffer cBuf)
@@ -1019,102 +1015,99 @@ void readShaderSPRV(const char *filePath, uint64_t *len, uint32_t **data)
 
 void setShaderGLSPRV(VulkanCore_t core, graphicsPipeline *pl, uint32_t *vFileContents, int vFileLen, uint32_t *fFileContents, int fFileLen)
 {
-    VkShaderCreateInfoEXT vCI = {0};
+    {
+        VkShaderCreateInfoEXT vCI = {0};
 
-    vCI.sType = VK_STRUCTURE_TYPE_SHADER_CREATE_INFO_EXT;
-    vCI.pNext = NULL;
+        vCI.sType = VK_STRUCTURE_TYPE_SHADER_CREATE_INFO_EXT;
+        vCI.pNext = NULL;
 
-    vCI.flags = 0;
+        vCI.flags = 0;
 
-    vCI.setLayoutCount = pl->setLayoutCount;
-    vCI.pSetLayouts = pl->setLayouts;
-    vCI.pushConstantRangeCount = pl->pcRangeCount;
-    vCI.pPushConstantRanges = &pl->pcRange;
+        vCI.setLayoutCount = pl->setLayoutCount;
+        vCI.pSetLayouts = pl->setLayouts;
+        vCI.pushConstantRangeCount = pl->pcRangeCount;
+        vCI.pPushConstantRanges = &pl->pcRange;
 
-    vCI.codeType = VK_SHADER_CODE_TYPE_SPIRV_EXT;
-    vCI.codeSize = vFileLen;
-    vCI.pCode = vFileContents;
-    vCI.pName = "main";
-    vCI.stage = VK_SHADER_STAGE_VERTEX_BIT;
-    vCI.nextStage = VK_SHADER_STAGE_FRAGMENT_BIT;
-    vCI.pSpecializationInfo = NULL;
+        vCI.codeType = VK_SHADER_CODE_TYPE_SPIRV_EXT;
+        vCI.codeSize = vFileLen;
+        vCI.pCode = vFileContents;
+        vCI.pName = "main";
+        vCI.stage = VK_SHADER_STAGE_VERTEX_BIT;
+        vCI.nextStage = VK_SHADER_STAGE_FRAGMENT_BIT;
+        vCI.pSpecializationInfo = NULL;
+        vkCreateShadersEXT_(core.lDev, 1, &vCI, NULL, &pl->vert.shader);
+    }
+    {
+        VkShaderCreateInfoEXT fCI = {0};
 
-    VkShaderCreateInfoEXT fCI = {0};
+        fCI.sType = VK_STRUCTURE_TYPE_SHADER_CREATE_INFO_EXT;
+        fCI.pNext = NULL;
 
-    fCI.sType = VK_STRUCTURE_TYPE_SHADER_CREATE_INFO_EXT;
-    fCI.pNext = NULL;
+        fCI.flags = 0;
 
-    fCI.flags = 0;
+        fCI.setLayoutCount = pl->setLayoutCount;
+        fCI.pSetLayouts = pl->setLayouts;
+        fCI.pushConstantRangeCount = pl->pcRangeCount;
+        fCI.pPushConstantRanges = &pl->pcRange;
 
-    fCI.setLayoutCount = pl->setLayoutCount;
-    fCI.pSetLayouts = pl->setLayouts;
-    fCI.pushConstantRangeCount = pl->pcRangeCount;
-    fCI.pPushConstantRanges = &pl->pcRange;
-
-    fCI.codeType = VK_SHADER_CODE_TYPE_SPIRV_EXT;
-    fCI.codeSize = fFileLen;
-    fCI.pCode = fFileContents;
-    fCI.pName = "main";
-    fCI.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-    fCI.nextStage = 0;
-    fCI.pSpecializationInfo = NULL;
-
-    VkShaderCreateInfoEXT sCi[2] = {
-        vCI,
-        fCI,
-    };
-    vkCreateShadersEXT_(core.lDev, 1, &sCi[0], NULL, &pl->vert.shader);
-    vkCreateShadersEXT_(core.lDev, 1, &sCi[1], NULL, &pl->frag.shader);
+        fCI.codeType = VK_SHADER_CODE_TYPE_SPIRV_EXT;
+        fCI.codeSize = fFileLen;
+        fCI.pCode = fFileContents;
+        fCI.pName = "main";
+        fCI.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+        fCI.nextStage = 0;
+        fCI.pSpecializationInfo = NULL;
+        vkCreateShadersEXT_(core.lDev, 1, &fCI, NULL, &pl->frag.shader);
+    }
 }
 
 void setShaderSLSPRV(VulkanCore_t core, graphicsPipeline *pl, uint32_t *FileContents, int FileLen)
 {
-    VkShaderCreateInfoEXT vCI = {0};
+    {
+        VkShaderCreateInfoEXT vCI = {0};
 
-    vCI.sType = VK_STRUCTURE_TYPE_SHADER_CREATE_INFO_EXT;
-    vCI.pNext = NULL;
+        vCI.sType = VK_STRUCTURE_TYPE_SHADER_CREATE_INFO_EXT;
+        vCI.pNext = NULL;
 
-    vCI.flags = 0;
+        vCI.flags = 0;
 
-    vCI.setLayoutCount = pl->setLayoutCount;
-    vCI.pSetLayouts = pl->setLayouts;
-    vCI.pushConstantRangeCount = pl->pcRangeCount;
-    vCI.pPushConstantRanges = &pl->pcRange;
+        vCI.setLayoutCount = pl->setLayoutCount;
+        vCI.pSetLayouts = pl->setLayouts;
+        vCI.pushConstantRangeCount = pl->pcRangeCount;
+        vCI.pPushConstantRanges = &pl->pcRange;
 
-    vCI.codeType = VK_SHADER_CODE_TYPE_SPIRV_EXT;
-    vCI.codeSize = FileLen;
-    vCI.pCode = FileContents;
-    vCI.pName = "vertMain";
-    vCI.stage = VK_SHADER_STAGE_VERTEX_BIT;
-    vCI.nextStage = VK_SHADER_STAGE_FRAGMENT_BIT;
-    vCI.pSpecializationInfo = NULL;
+        vCI.codeType = VK_SHADER_CODE_TYPE_SPIRV_EXT;
+        vCI.codeSize = FileLen;
+        vCI.pCode = FileContents;
+        vCI.pName = "vertMain";
+        vCI.stage = VK_SHADER_STAGE_VERTEX_BIT;
+        vCI.nextStage = VK_SHADER_STAGE_FRAGMENT_BIT;
+        vCI.pSpecializationInfo = NULL;
+        vkCreateShadersEXT_(core.lDev, 1, &vCI, NULL, &pl->vert.shader);
+    }
+    {
+        VkShaderCreateInfoEXT fCI = {0};
 
-    VkShaderCreateInfoEXT fCI = {0};
+        fCI.sType = VK_STRUCTURE_TYPE_SHADER_CREATE_INFO_EXT;
+        fCI.pNext = NULL;
 
-    fCI.sType = VK_STRUCTURE_TYPE_SHADER_CREATE_INFO_EXT;
-    fCI.pNext = NULL;
+        fCI.flags = 0;
 
-    fCI.flags = 0;
+        fCI.setLayoutCount = pl->setLayoutCount;
+        fCI.pSetLayouts = pl->setLayouts;
+        fCI.pushConstantRangeCount = pl->pcRangeCount;
+        fCI.pPushConstantRanges = &pl->pcRange;
 
-    fCI.setLayoutCount = pl->setLayoutCount;
-    fCI.pSetLayouts = pl->setLayouts;
-    fCI.pushConstantRangeCount = pl->pcRangeCount;
-    fCI.pPushConstantRanges = &pl->pcRange;
+        fCI.codeType = VK_SHADER_CODE_TYPE_SPIRV_EXT;
+        fCI.codeSize = FileLen;
+        fCI.pCode = FileContents;
+        fCI.pName = "fragMain";
+        fCI.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+        fCI.nextStage = 0;
+        fCI.pSpecializationInfo = NULL;
 
-    fCI.codeType = VK_SHADER_CODE_TYPE_SPIRV_EXT;
-    fCI.codeSize = FileLen;
-    fCI.pCode = FileContents;
-    fCI.pName = "fragMain";
-    fCI.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-    fCI.nextStage = 0;
-    fCI.pSpecializationInfo = NULL;
-
-    VkShaderCreateInfoEXT sCi[2] = {
-        vCI,
-        fCI,
-    };
-    vkCreateShadersEXT_(core.lDev, 1, &sCi[0], NULL, &pl->vert.shader);
-    vkCreateShadersEXT_(core.lDev, 1, &sCi[1], NULL, &pl->frag.shader);
+        vkCreateShadersEXT_(core.lDev, 1, &fCI, NULL, &pl->frag.shader);
+    }
 }
 
 void setCompShaderSPRV(VulkanCore_t core, computePipeline *pl, uint32_t *contents, int fileLen)
@@ -1188,36 +1181,43 @@ void setComputePushConstantRange(computePipeline *pl, size_t size)
     pl->pcRangeCount = 1;
 }
 
+void addSetLayoutToGPL(VkDescriptorSetLayout *layout, graphicsPipeline *pl)
+{
+    pl->setLayouts = realloc(pl->setLayouts, sizeof(VkDescriptorSetLayout) * (pl->setLayoutCount + 1));
+    pl->setLayouts[pl->setLayoutCount] = *layout;
+    pl->setLayoutCount += 1;
+}
+void addSetLayoutToCPL(VkDescriptorSetLayout *layout, computePipeline *pl)
+{
+    pl->setLayouts = realloc(pl->setLayouts, sizeof(VkDescriptorSetLayout) * (pl->setLayoutCount + 1));
+    pl->setLayouts[pl->setLayoutCount] = *layout;
+    pl->setLayoutCount += 1;
+}
+
+void addDescriptorSetToGPL(VkDescriptorSet *set, graphicsPipeline *pl)
+{
+    pl->descriptorSets = realloc(pl->descriptorSets, sizeof(VkDescriptorSet) * (pl->setCount + 1));
+    pl->descriptorSets[pl->setCount] = *set;
+    pl->setCount += 1;
+}
+void addDescriptorSetToCPL(VkDescriptorSet *set, computePipeline *pl)
+{
+    pl->descriptorSets = realloc(pl->descriptorSets, sizeof(VkDescriptorSet) * (pl->setCount + 1));
+    pl->descriptorSets[pl->setCount] = *set;
+    pl->setCount += 1;
+}
+
 void createPipelineLayout(VulkanCore_t core, graphicsPipeline *pl)
 {
     VkPipelineLayoutCreateInfo plcInf = {0};
     plcInf.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     plcInf.pNext = NULL;
 
-    VkDescriptorSetLayout *setLayouts = malloc(sizeof(VkDescriptorSetLayout) * (pl->setLayoutCount + 1));
-    setLayouts[0] = core.tdSetLayout;
-    if (pl->setLayoutCount >= 1)
-    {
-        memcpy(setLayouts + 1, pl->setLayouts, sizeof(VkDescriptorSetLayout) * (pl->setLayoutCount));
-    }
-    plcInf.setLayoutCount = pl->setLayoutCount + 1;
-    plcInf.pSetLayouts = setLayouts;
-
-    pl->setLayoutCount += 1;
-    pl->setLayouts = setLayouts;
-
-    VkDescriptorSet *sets = malloc(sizeof(VkDescriptorSet) * (pl->setCount + 1));
-    sets[0] = core.tdescriptorSet;
-    if (pl->setCount >= 1)
-    {
-        memcpy(sets + 1, pl->descriptorSets, sizeof(VkDescriptorSet) * (pl->setCount));
-    }
-
-    pl->descriptorSets = sets;
-    pl->setCount += 1;
-
     plcInf.pPushConstantRanges = &pl->pcRange;
     plcInf.pushConstantRangeCount = pl->pcRangeCount;
+
+    plcInf.setLayoutCount = pl->setLayoutCount;
+    plcInf.pSetLayouts = pl->setLayouts;
     vkCreatePipelineLayout(core.lDev, &plcInf, NULL, &pl->plLayout);
 }
 

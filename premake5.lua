@@ -75,8 +75,7 @@ project "WrenTest"
             "compileShaders.bat"
         }
         libdirs { "./libs/" }
-        includedirs { "./include/" }
-        includedirs { "./include/libs/" }
+        includedirs { "./include/", "./include/libs/" }
         includedirs { os.getenv("VULKAN_SDK") .. "/Include" }
         links { "Wrenderer" }
         links { "vulkan-1", "glfw3" }
