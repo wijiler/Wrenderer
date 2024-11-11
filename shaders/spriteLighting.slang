@@ -1,4 +1,4 @@
-static const int scaleFactor = 10;
+import constants;
 
 struct Light
 {
@@ -15,12 +15,12 @@ struct Transform
 }
 static const float4 vpositions[6] =
     {
-        float4(1.0f, 1.0f, 0.0f, 1.0f),
-        float4(1.0f, -1.0f, 0.0f, 1.0f),
-        float4(-1.0f, -1.0f, 0.0f, 1.0f),
-        float4(-1.0f, -1.0f, 0.0f, 1.0f),
-        float4(-1.0f, 1.0f, 0.0f, 1.0f),
-        float4(1.0f, 1.0f, 0.0f, 1.0f),
+        float4(.1f, .1f, 0.0f, 1.0f),
+        float4(.1f, -.1f, 0.0f, 1.0f),
+        float4(-.1f, -.1f, 0.0f, 1.0f),
+        float4(-.1f, -.1f, 0.0f, 1.0f),
+        float4(-.1f, .1f, 0.0f, 1.0f),
+        float4(.1f, .1f, 0.0f, 1.0f),
     };
 
 float3 rot(float3 p, float3 o, float a)
@@ -35,7 +35,7 @@ float3 scale(float3 p, float3 o, float sf)
 
 float3 transform(Transform vert, uint32_t id)
 {
-    float3 rPos = (float3(vpositions[id].xyz) + vert.position) / scaleFactor;
+    float3 rPos = (float3(spriteVPositions[id].xyz) + (vert.position / spriteScaleFactor));
     rPos = rot(rPos, vert.position, vert.rotation);
     rPos.x *= vert.scale.x;
     rPos.y *= vert.scale.y;
@@ -53,6 +53,7 @@ struct pushConstants
 struct VertOutput
 {
     float4 pos : SV_Position;
+    float3 realPos : REAL_POS;
 }
 
 [vk_binding(0, 0)]
@@ -67,24 +68,27 @@ VertOutput vertMain(uint vertID: SV_VertexID, uint instID: SV_InstanceID)
 {
     VertOutput output;
     output.pos = float4(transform(pc.instances[instID], vertID), 1.0f);
+    output.realPos = transform(pc.instances[instID], vertID);
     return output;
 }
 
 [shader("fragment")]
-float4 fragMain(VertOutput input, uint2 fragPos: SV_Position)
+float4 fragMain(VertOutput input)
     : SV_Target
 {
-    float4 color = albedo[fragPos];
+    float4 color = albedo[uint2(input.pos.xy)];
     float3 diffuse = float3(0, 0, 0);
     for (uint i = 0; i < pc.lightCount; i++)
     {
         Light light = pc.lights[i];
+        float3 lightPos = light.position / spriteScaleFactor;
         float3 ambient = light.color.xyz * 0.1f;
 
-        float3 lightDir = light.position - input.pos.xyz;
-        float atten = 1.0 / dot(lightDir, lightDir);
+        float3 lightDir = lightPos - input.realPos;
+        float lightDist = length(lightDir);
+        float atten = 1.0 / (lightDist * lightDist);
         float3 lightColor = light.color.xyz * (light.color.w * atten);
         diffuse = lightColor;
     }
-    return float4(1.0f);
+    return float4(diffuse, 1.0f) * color;
 }

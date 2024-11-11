@@ -34,10 +34,9 @@ void init()
     initializePipelines(renderer);
 
     Sprite birb = createSprite("assets/birb.png", renderer.vkCore.nearestSampler, &renderer);
-    Sprite birb2 = createSprite("assets/Wrenderer.png", renderer.vkCore.nearestSampler, &renderer);
     birby1 = createNewSpriteInstance(&birb, renderer);
-    birby2 = createNewSpriteInstance(&birb2, renderer);
-    birby3 = createNewSpriteInstance(&birb2, renderer);
+    birby2 = createNewSpriteInstance(&birb, renderer);
+    birby3 = createNewSpriteInstance(&birb, renderer);
     updateSpriteInstance(&birby2, (transform2D){
                                       {0, -10, 1},
                                       {1, 1},
@@ -49,7 +48,7 @@ void init()
                                       0,
                                   });
     pointLight2D light = {
-        {0.f, 0.f, 1.f},
+        {0.f, -10.f, 1.f},
         {1.f, 1.f, 1.f, 1.f},
         1.0f,
     };

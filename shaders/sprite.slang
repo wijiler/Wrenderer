@@ -1,4 +1,4 @@
-static const int scaleFactor = 10;
+import constants;
 
 struct Transform
 {
@@ -37,16 +37,6 @@ static const float2 uvs[6] =
         float2(1.0f, 0.0f),
     };
 
-static const float4 vpositions[6] =
-    {
-        float4(1.0f, 1.0f, 0.0f, 1.0f),
-        float4(1.0f, -1.0f, 0.0f, 1.0f),
-        float4(-1.0f, -1.0f, 0.0f, 1.0f),
-        float4(-1.0f, -1.0f, 0.0f, 1.0f),
-        float4(-1.0f, 1.0f, 0.0f, 1.0f),
-        float4(1.0f, 1.0f, 0.0f, 1.0f),
-    };
-
 float3 rot(float3 p, float3 o, float a)
 {
     return float3((p.x - o.x) * cos(a) - (p.y - o.y) * sin(a) + o.x, (p.x - o.x) * sin(a) + (p.y - o.y) * cos(a) + o.y, p.z);
@@ -59,7 +49,7 @@ float3 scale(float3 p, float3 o, float sf)
 
 float3 transform(Transform vert, uint32_t id)
 {
-    float3 rPos = (float3(vpositions[id].xyz) + vert.position) / scaleFactor;
+    float3 rPos = (float3(spriteVPositions[id].xyz) + (vert.position / spriteScaleFactor));
     rPos = rot(rPos, vert.position, vert.rotation);
     rPos.x *= vert.scale.x;
     rPos.y *= vert.scale.y;
