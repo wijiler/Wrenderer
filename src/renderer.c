@@ -9,6 +9,15 @@
 #include <stdlib.h>
 #include <string.h>
 
+typedef struct
+{
+    uint32_t *width, *height;
+    Image *image;
+} resizableImageobject;
+
+int resizableImageCount = 0;
+resizableImageobject *resizableImages = NULL;
+
 PFN_vkCmdSetVertexInputEXT vkCmdSetVertexInputEXT_ = NULL;
 PFN_vkCreateShadersEXT vkCreateShadersEXT_ = NULL;
 PFN_vkCmdBindShadersEXT vkCmdBindShadersEXT_ = NULL;
@@ -304,21 +313,26 @@ void create_device(VulkanCore_t *core)
 
     devFeatures13.synchronization2 = VK_TRUE;
 
-    VkDeviceQueueCreateInfo queueCreateInfo = {0};
-    queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-    queueCreateInfo.queueFamilyIndex = gfi;
-    queueCreateInfo.queueCount = 1;
+    VkDeviceQueueCreateInfo graphicsqueueCreateInfo = {0};
+    graphicsqueueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    graphicsqueueCreateInfo.queueFamilyIndex = gfi;
+    graphicsqueueCreateInfo.queueCount = 1;
 
     float queuePriority = 1.0f;
-    queueCreateInfo.pQueuePriorities = &queuePriority;
+    graphicsqueueCreateInfo.pQueuePriorities = &queuePriority;
+    VkDeviceQueueCreateInfo computequeueCreateInfo = {0};
+    computequeueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    computequeueCreateInfo.queueFamilyIndex = cfi;
+    computequeueCreateInfo.queueCount = 1;
 
+    computequeueCreateInfo.pQueuePriorities = &queuePriority;
     VkDevice dev;
 
     VkDeviceCreateInfo createInfo = {0};
     createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     createInfo.pNext = &devFeatures2;
 
-    createInfo.pQueueCreateInfos = &queueCreateInfo;
+    createInfo.pQueueCreateInfos = (VkDeviceQueueCreateInfo[2]){graphicsqueueCreateInfo, computequeueCreateInfo};
     createInfo.queueCreateInfoCount = 1;
 
     createInfo.ppEnabledExtensionNames = deviceExtensions;
@@ -332,8 +346,7 @@ void create_device(VulkanCore_t *core)
     core->lDev = dev;
     // Exclusive mode
     vkGetDeviceQueue(core->lDev, gfi, 0, &core->gQueue);
-    vkGetDeviceQueue(core->lDev, gfi, 0, &core->pQueue); // why do we store the same queue in two different things? Orginization + ordering + Synchronization
-    // We already know that we can present on our window surface because we check for that while finding a valid queue
+    vkGetDeviceQueue(core->lDev, gfi, 0, &core->pQueue);
     vkGetDeviceQueue(core->lDev, cfi, 0, &core->compQueue);
 }
 
@@ -461,6 +474,34 @@ void create_swapchain(VulkanCore_t *core)
     core->imgCount = imagecount;
 }
 
+VkImageUsageFlags accessMaskToUsage(VkAccessFlags flags)
+{
+    if ((flags & ACCESS_COLORATTACHMENT) != 0)
+    {
+        return USAGE_COLORATTACHMENT;
+    }
+    else if ((flags & ACCESS_DEPTHATTACHMENT) != 0)
+    {
+        return USAGE_DEPTHSTENCILATTACHMENT;
+    }
+    else if ((flags & ACCESS_TRANSFER_READ) != 0)
+    {
+        return USAGE_TRANSFER_SRC;
+    }
+    else if ((flags & ACCESS_TRANSFER_WRITE) != 0)
+    {
+        return USAGE_TRANSFER_DST;
+    }
+    else if ((flags & ACCESS_READ) != 0)
+    {
+        return USAGE_SAMPLED;
+    }
+    else
+    {
+        return USAGE_UNDEFINED;
+    }
+}
+
 void recreateSwapchain(renderer_t *renderer)
 {
     vkDeviceWaitIdle(renderer->vkCore.lDev);
@@ -477,6 +518,16 @@ void recreateSwapchain(renderer_t *renderer)
     renderer->vkCore.swapChainImageViews = NULL;
 
     create_swapchain(&renderer->vkCore);
+
+    // for (int i = 0; i < resizableImageCount; i++)
+    //{
+    //     Image *img = resizableImages[i].image;
+    //     vkDestroyImage(renderer->vkCore.lDev, img->image, NULL);
+    //     vkDestroyImageView(renderer->vkCore.lDev, img->imgview, NULL);
+    //     vkFreeMemory(renderer->vkCore.lDev, img->memory, NULL);
+
+    //    createImage(renderer->vkCore, accessMaskToUsage(img->accessMask), img->format, VK_IMAGE_TYPE_2D, *resizableImages[i].width, *resizableImages[i].height, img->aspectMask);
+    //}
 }
 
 void create_CommandBuffers(VulkanCore_t *core)
@@ -506,15 +557,15 @@ void create_CommandBuffers(VulkanCore_t *core)
         printf("Could not create command buffers\n");
         exit(1);
     }
-    if (vkAllocateCommandBuffers(core->lDev, &cbAI, &core->computeCommandBuffer) != VK_SUCCESS)
-    {
-        printf("Could not create command buffers\n");
-        exit(1);
-    }
 
     for (int i = 0; i < FRAMECOUNT; i++)
     {
         if (vkAllocateCommandBuffers(core->lDev, &cbAI, &core->commandBuffers[i]) != VK_SUCCESS) // could we batch this?
+        {
+            printf("Could not create command buffers\n");
+            exit(1);
+        }
+        if (vkAllocateCommandBuffers(core->lDev, &cbAI, &core->computeCommandBuffers[i]) != VK_SUCCESS)
         {
             printf("Could not create command buffers\n");
             exit(1);
@@ -915,6 +966,8 @@ void initRenderer(renderer_t *renderer)
         renderer->vkCore.swapChainImages[0],
         renderer->vkCore.swapChainImageViews[0],
         VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_ASPECT_COLOR_BIT,
+        VK_FORMAT_R8G8B8A8_SRGB,
         0,
         NULL,
     };
@@ -926,10 +979,10 @@ void initRenderer(renderer_t *renderer)
     renderer->meshHandler.instancedMeshes = NULL;
 }
 
-void bindGraphicsPipeline(graphicsPipeline pline, VkCommandBuffer cBuf)
+void bindGraphicsPipeline(graphicsPipeline pline, RenderPass pass, VkCommandBuffer cBuf)
 {
     VkBool32 cbEnable = pline.colorBlending;
-    vkCmdSetColorWriteMaskEXT_(cBuf, 0, 1, &pline.colorWriteMask);
+    vkCmdSetColorWriteMaskEXT_(cBuf, 0, pass.cAttCount, &pline.colorWriteMask);
 
     vkCmdSetColorBlendEnableEXT_(cBuf, 0, 1, &cbEnable);
     vkCmdSetLogicOpEnableEXT_(cBuf, pline.logicOpEnable);
@@ -944,7 +997,6 @@ void bindGraphicsPipeline(graphicsPipeline pline, VkCommandBuffer cBuf)
     vkCmdSetAlphaToCoverageEnableEXT_(cBuf, pline.alphaToCoverageEnable);
     vkCmdSetAlphaToOneEnableEXT_(cBuf, pline.alphaToOneEnable);
 
-    vkCmdSetColorWriteMaskEXT_(cBuf, 0, 1, &pline.colorWriteMask);
     vkCmdSetPolygonModeEXT_(cBuf, pline.polyMode);
     vkCmdSetPrimitiveTopology(cBuf, pline.topology);
     vkCmdSetRasterizerDiscardEnable(cBuf, pline.reasterizerDiscardEnable);
@@ -954,7 +1006,7 @@ void bindGraphicsPipeline(graphicsPipeline pline, VkCommandBuffer cBuf)
     vkCmdSetCullMode(cBuf, pline.cullMode);
 
     if (pline.colorBlending == VK_TRUE)
-        vkCmdSetColorBlendEquationEXT_(cBuf, 0, 1, &pline.colorBlendEq);
+        vkCmdSetColorBlendEquationEXT_(cBuf, 0, pass.cAttCount, &pline.colorBlendEq);
 
     if (pline.logicOpEnable == VK_TRUE)
         vkCmdSetLogicOpEXT_(cBuf, pline.logicOp);
@@ -1236,4 +1288,12 @@ void createComputePipelineLayout(VulkanCore_t core, computePipeline *pl)
     plcInf.pPushConstantRanges = &pl->pcRange;
     plcInf.pushConstantRangeCount = pl->pcRangeCount;
     vkCreatePipelineLayout(core.lDev, &plcInf, NULL, &pl->plLayout);
+}
+
+void markImageResizable(Image *img, uint32_t *width, uint32_t *height)
+{
+    if (resizableImageCount % 100 == 0)
+        resizableImages = realloc(resizableImages, sizeof(resizableImageobject) * (resizableImageCount + 100));
+    resizableImages[resizableImageCount] = (resizableImageobject){width, height, img};
+    resizableImageCount += 1;
 }

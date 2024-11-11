@@ -1,7 +1,35 @@
 #include <renderer.h>
 #include <stdio.h>
 
-Image createImage(VulkanCore_t core, VkImageUsageFlags usage, VkFormat format, VkImageType type, VkImageTiling tiling, uint32_t width, uint32_t height, MemoryAccess access, VkImageAspectFlags aspects)
+VkImageUsageFlags UsageToAccessMask(VkImageUsageFlags flags)
+{
+    if ((flags & USAGE_COLORATTACHMENT) != 0)
+    {
+        return ACCESS_COLORATTACHMENT;
+    }
+    else if ((flags & USAGE_DEPTHSTENCILATTACHMENT) != 0)
+    {
+        return ACCESS_DEPTHATTACHMENT;
+    }
+    else if ((flags & USAGE_TRANSFER_SRC) != 0)
+    {
+        return ACCESS_TRANSFER_READ;
+    }
+    else if ((flags & USAGE_TRANSFER_DST) != 0)
+    {
+        return ACCESS_TRANSFER_WRITE;
+    }
+    else if ((flags & USAGE_SAMPLED) != 0)
+    {
+        return ACCESS_READ;
+    }
+    else
+    {
+        return USAGE_UNDEFINED;
+    }
+}
+
+Image createImage(VulkanCore_t core, VkImageUsageFlags usage, VkFormat format, VkImageType type, uint32_t width, uint32_t height, VkImageAspectFlags aspects)
 {
     Image img = {0};
 
@@ -20,7 +48,7 @@ Image createImage(VulkanCore_t core, VkImageUsageFlags usage, VkFormat format, V
     iCInf.format = format;
     iCInf.imageType = type;
     iCInf.usage = usage;
-    iCInf.tiling = tiling;
+    iCInf.tiling = VK_IMAGE_TILING_OPTIMAL;
     iCInf.samples = VK_SAMPLE_COUNT_1_BIT;
     iCInf.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
@@ -43,7 +71,7 @@ Image createImage(VulkanCore_t core, VkImageUsageFlags usage, VkFormat format, V
     int index = -1;
     for (int i = 0; i <= 31; i++)
     {
-        if ((memProps.memoryTypes[i].propertyFlags & access) != 0)
+        if ((memProps.memoryTypes[i].propertyFlags & DEVICE_ONLY) != 0)
         {
             index = i;
             break;
@@ -80,6 +108,9 @@ Image createImage(VulkanCore_t core, VkImageUsageFlags usage, VkFormat format, V
     }
     img.CurrentLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     img.accessMask = 0;
+    img.format = format;
+    img.aspectMask = aspects;
+
     return img;
 }
 
@@ -109,7 +140,7 @@ void immediateSubmitEnd(VulkanCore_t core)
     vkQueueSubmit(core.gQueue, 1, &submitInfo, core.immediateFence);
 }
 
-void transitionLayout(VulkanCore_t core, Image *img, VkImageLayout newLayout, VkAccessFlags dstAccess, VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage) // texture images will always be colorful :D
+void transitionLayout(VkCommandBuffer cBuf, Image *img, VkImageLayout oldLayout, VkImageLayout newLayout, VkAccessFlags dstAccess, VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage)
 {
     VkImageMemoryBarrier memBarrier = {0};
     memBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -118,14 +149,14 @@ void transitionLayout(VulkanCore_t core, Image *img, VkImageLayout newLayout, Vk
     memBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     memBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 
-    memBarrier.oldLayout = img->CurrentLayout;
+    memBarrier.oldLayout = oldLayout;
     memBarrier.newLayout = newLayout;
 
     memBarrier.srcAccessMask = img->accessMask;
     memBarrier.dstAccessMask = dstAccess;
 
     memBarrier.subresourceRange = (VkImageSubresourceRange){
-        VK_IMAGE_ASPECT_COLOR_BIT,
+        img->aspectMask,
         0,
         1,
         0,
@@ -133,7 +164,7 @@ void transitionLayout(VulkanCore_t core, Image *img, VkImageLayout newLayout, Vk
     };
 
     memBarrier.image = img->image;
-    vkCmdPipelineBarrier(core.immediateSubmit, srcStage, dstStage, 0, 0, NULL, 0, NULL, 1, &memBarrier);
+    vkCmdPipelineBarrier(cBuf, srcStage, dstStage, 0, 0, NULL, 0, NULL, 1, &memBarrier);
     img->CurrentLayout = newLayout;
     img->accessMask = dstAccess;
 }
@@ -141,14 +172,14 @@ void transitionLayout(VulkanCore_t core, Image *img, VkImageLayout newLayout, Vk
 Texture createTexture(VulkanCore_t core, uint32_t width, uint32_t height)
 {
     Texture tex = {0};
-    tex.img = createImage(core, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TYPE_2D, VK_IMAGE_TILING_OPTIMAL, width, height, DEVICE_ONLY, VK_IMAGE_ASPECT_COLOR_BIT);
+    tex.img = createImage(core, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TYPE_2D, width, height, VK_IMAGE_ASPECT_COLOR_BIT);
     return tex;
 }
 
 void copyDataToTextureImage(VulkanCore_t core, Image *image, Buffer *buffer, uint32_t width, uint32_t height)
 {
     immediateSubmitBegin(core);
-    transitionLayout(core, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+    transitionLayout(core.immediateSubmit, image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
     VkBufferImageCopy bICopy = {0};
     bICopy.bufferOffset = 0;
     bICopy.bufferRowLength = 0;
@@ -169,7 +200,7 @@ void copyDataToTextureImage(VulkanCore_t core, Image *image, Buffer *buffer, uin
     bICopy.imageOffset = (VkOffset3D){0, 0, 0};
 
     vkCmdCopyBufferToImage(core.immediateSubmit, buffer->buffer, image->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &bICopy);
-    transitionLayout(core, image, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    transitionLayout(core.immediateSubmit, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
     immediateSubmitEnd(core);
 }
 

@@ -135,6 +135,13 @@ void deleteSprite(Sprite *sprite)
     }
 }
 
+const VkImageSubresourceRange colorImgSRR = {
+    VK_IMAGE_ASPECT_COLOR_BIT,
+    0,
+    VK_REMAINING_MIP_LEVELS,
+    0,
+    VK_REMAINING_ARRAY_LAYERS,
+};
 void spritePassCallback(RenderPass self, VkCommandBuffer cBuf)
 {
     typedef struct
@@ -146,19 +153,48 @@ void spritePassCallback(RenderPass self, VkCommandBuffer cBuf)
         spriteTextureIDs.gpuAddress,
         spriteInstanceData.gpuAddress,
     };
-    bindGraphicsPipeline(self.gPl, cBuf);
+    bindGraphicsPipeline(self.gPl, self, cBuf);
     vkCmdPushConstants(cBuf, self.gPl.plLayout, SHADER_STAGE_ALL, 0, sizeof(pc), &data);
 
     vkCmdDraw(cBuf, 6, spriteInstanceCount, 0, 0);
 }
 
-RenderPass spritePass(renderer_t renderer)
+void lightPassCallback(RenderPass self, VkCommandBuffer cBuf)
 {
-    RenderPass sPass = newPass("SpritePass", PASS_TYPE_GRAPHICS);
-    sPass.gPl = spritePipeline.gbufferPass;
-    addImageResource(&sPass, renderer.vkCore.currentScImg, USAGE_COLORATTACHMENT);
-    setExecutionCallBack(&sPass, spritePassCallback);
-    return sPass;
+    typedef struct
+    {
+        uint32_t lightCount;
+        VkDeviceAddress LightBuffer;
+        VkDeviceAddress InstanceBuffer;
+    } pc;
+    pc data = {
+        lightCount,
+        lightBuffer.gpuAddress,
+        spriteInstanceData.gpuAddress,
+    };
+    bindGraphicsPipeline(self.gPl, self, cBuf);
+    vkCmdPushConstants(cBuf, self.gPl.plLayout, SHADER_STAGE_ALL, 0, sizeof(pc), &data);
+
+    vkCmdDraw(cBuf, 6, spriteInstanceCount, 0, 0);
+}
+
+void spritePass(renderer_t renderer, SpritePipeline *pipeline)
+{
+    {
+        RenderPass sPass = newPass("gbfferPass2D", PASS_TYPE_GRAPHICS);
+        sPass.gPl = spritePipeline.gbufferPipeline;
+        addImageResource(&sPass, &pipeline->Albedo, USAGE_COLORATTACHMENT);
+        setExecutionCallBack(&sPass, spritePassCallback);
+        addPass(&pipeline->builder, &sPass);
+    }
+    {
+        RenderPass lightPass = newPass("lightPass2D", PASS_TYPE_GRAPHICS);
+        lightPass.gPl = pipeline->lightPipeline;
+        addSwapchainImageResource(&lightPass, renderer);
+        addImageResource(&lightPass, &pipeline->Albedo, USAGE_SAMPLED);
+        setExecutionCallBack(&lightPass, lightPassCallback);
+        addPass(&pipeline->builder, &lightPass);
+    }
 }
 
 void addNewLight(pointLight2D light, renderer_t renderer)

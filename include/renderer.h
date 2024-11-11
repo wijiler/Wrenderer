@@ -89,6 +89,8 @@ extern "C"
         VkImageView imgview;
         // Do not set manually
         VkImageLayout CurrentLayout;
+        VkImageAspectFlags aspectMask;
+        VkFormat format;
         VkAccessFlags accessMask;
         VkDeviceMemory memory;
     } Image;
@@ -177,12 +179,12 @@ extern "C"
     } accessFlags;
     typedef enum
     {
-        USAGE_UNDEFINED,
-        USAGE_SAMPLED,
-        USAGE_DEPTHSTENCILATTACHMENT,
-        USAGE_COLORATTACHMENT,
-        USAGE_TRANSFER_SRC,
-        USAGE_TRANSFER_DST,
+        USAGE_UNDEFINED = 1 << 0,
+        USAGE_SAMPLED = 1 << 1,
+        USAGE_DEPTHSTENCILATTACHMENT = 1 << 2,
+        USAGE_COLORATTACHMENT = 1 << 3,
+        USAGE_TRANSFER_SRC = 1 << 4,
+        USAGE_TRANSFER_DST = 1 << 5,
     } ResourceUsageFlags_t;
     typedef enum
     {
@@ -201,7 +203,8 @@ extern "C"
         union resourceVal
         {
             Buffer buffer;
-            Image *img;
+            Image img;
+            Image *swapChainImage;
             void *arbitrary;
         } value;
     } Resource;
@@ -286,7 +289,7 @@ extern "C"
 
         VkCommandPool *commandPool;
         VkCommandBuffer commandBuffers[FRAMECOUNT];
-        VkCommandBuffer computeCommandBuffer;
+        VkCommandBuffer computeCommandBuffers[FRAMECOUNT];
         VkCommandBuffer immediateSubmit;
 
         VkDescriptorPool tdescPool;
@@ -304,7 +307,7 @@ extern "C"
     typedef struct
     {
         VulkanCore_t vkCore;
-        MeshHandler meshHandler;
+        MeshHandler meshHandler; // TODO: Remove
         GraphBuilder *rg;
     } renderer_t;
 
@@ -343,6 +346,7 @@ extern "C"
     void setGraphicsPipeline(graphicsPipeline pl, RenderPass *pass);
     void setComputePipeline(computePipeline pl, RenderPass *pass);
     void addImageResource(RenderPass *pass, Image *image, ResourceUsageFlags_t usage);
+    void addSwapchainImageResource(RenderPass *pass, renderer_t renderer);
     void addBufferResource(RenderPass *pass, Buffer buf, ResourceUsageFlags_t usage);
     void addArbitraryResource(RenderPass *pass, void *data);
     void addColorAttachment(Image *img, RenderPass *pass, VkClearValue *clear);
@@ -350,10 +354,8 @@ extern "C"
     void setExecutionCallBack(RenderPass *pass, void (*callBack)(RenderPass pass, VkCommandBuffer cBuf));
 
     void addPass(GraphBuilder *builder, RenderPass *pass);
-    RenderGraph buildGraph(GraphBuilder *builder, Image scImage);
-    void destroyRenderGraph(RenderGraph *graph);
+    void copyGraph(GraphBuilder *src, GraphBuilder *dst);
     void removePass(GraphBuilder *builder, const char *name);
-    // void executeGraph(VkExtent2D extent, RenderGraph *graph, VkCommandBuffer cBuf);
 
     uint64_t fnv_64a_str(char *str, uint64_t hval);
 
@@ -368,15 +370,17 @@ extern "C"
     // ----------------------------------------- MODELFUNEND
 
     // ----------------------------------------- IMGUTILBEG
-    Image createImage(VulkanCore_t core, VkImageUsageFlags usage, VkFormat format, VkImageType type, VkImageTiling tiling, uint32_t width, uint32_t height, MemoryAccess access, VkImageAspectFlags aspects);
+    Image createImage(VulkanCore_t core, VkImageUsageFlags usage, VkFormat format, VkImageType type, uint32_t width, uint32_t height, VkImageAspectFlags aspects);
     Texture createTexture(VulkanCore_t core, uint32_t width, uint32_t height);
     void copyDataToTextureImage(VulkanCore_t core, Image *image, Buffer *buffer, uint32_t width, uint32_t height);
     void submitTexture(renderer_t *renderer, Texture *tex, VkSampler sampler);
     void write_textureDescriptorSet(VulkanCore_t core, VkImageView texture, VkSampler sampler, uint64_t textureIndex);
     void submitNormalMap(VulkanCore_t core, VkImageView texture);
+    void markImageResizable(Image *img, uint32_t *width, uint32_t *height);
+    void transitionLayout(VkCommandBuffer cBuf, Image *img, VkImageLayout oldLayout, VkImageLayout newLayout, VkAccessFlags dstAccess, VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage);
     // ----------------------------------------- IMGUTILEND
 
-    void bindGraphicsPipeline(graphicsPipeline pline, VkCommandBuffer cBuf);
+    void bindGraphicsPipeline(graphicsPipeline pline, RenderPass pass, VkCommandBuffer cBuf);
     void bindComputePipeline(computePipeline pline, VkCommandBuffer cBuf);
     void unbindGraphicsPipeline(VkCommandBuffer cBuf);
     void unbindComputePipeline(VkCommandBuffer cBuf);

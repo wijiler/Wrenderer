@@ -1,6 +1,7 @@
 #ifndef WRE_SPRITE_H__
 #define WRE_SPRITE_H__
 #include <renderer.h>
+#include <util/descriptor.h>
 #include <util/math.h>
 
 typedef struct
@@ -25,8 +26,11 @@ typedef struct
 
 typedef struct
 {
-    graphicsPipeline gbufferPass;
-    computePipeline lightPass;
+    GraphBuilder builder;
+    WREDescriptor gBuffer;
+    Image Albedo;
+    graphicsPipeline gbufferPipeline;
+    graphicsPipeline lightPipeline;
 } SpritePipeline;
 
 extern SpritePipeline spritePipeline;
@@ -36,6 +40,6 @@ spriteInstance createNewSpriteInstance(Sprite *sprite, renderer_t renderer);
 void updateSpriteInstance(spriteInstance *sprite, transform2D transform);
 void removeSpriteInstance(spriteInstance *sprite);
 void deleteSprite(Sprite *sprite);
-RenderPass spritePass(renderer_t renderer);
+void spritePass(renderer_t renderer, SpritePipeline *pipeline);
 void addNewLight(pointLight2D light, renderer_t renderer);
 #endif

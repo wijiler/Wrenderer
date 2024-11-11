@@ -69,7 +69,7 @@ typedef struct
 const uint64_t offSet = 0;
 void sceneDrawCallBack(RenderPass pass, VkCommandBuffer cBuf)
 {
-    bindGraphicsPipeline(pass.gPl, cBuf);
+    bindGraphicsPipeline(pass.gPl, pass, cBuf);
 
     for (int i = 1; i < pass.resourceCount; i += 3)
     {

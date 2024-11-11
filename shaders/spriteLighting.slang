@@ -82,13 +82,9 @@ float4 fragMain(VertOutput input, uint2 fragPos: SV_Position)
         float3 ambient = light.color.xyz * 0.1f;
 
         float3 lightDir = light.position - input.pos.xyz;
-        float lightDist = length(lightDir);
-        float atten = 1.0 / (lightDist * lightDist);
+        float atten = 1.0 / dot(lightDir, lightDir);
         float3 lightColor = light.color.xyz * (light.color.w * atten);
-        float3 diffuse = lightColor;
-
-        diffuse += ambient + diffuse;
+        diffuse = lightColor;
     }
-    color = float4(diffuse, 1.0f) * color;
-    return color;
+    return float4(1.0f);
 }
