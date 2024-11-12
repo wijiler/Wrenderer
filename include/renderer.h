@@ -136,9 +136,6 @@ extern "C"
         int setCount;
         VkDescriptorSet *descriptorSets;
 
-        size_t uboSize;
-        void *ubo;
-
         VkCompareOp depthCompareOp;
         int minDepth, maxDepth; // must be set if depthTestEnable is VK_TRUE
 
@@ -284,8 +281,6 @@ extern "C"
         VkSemaphore imageAvailable[FRAMECOUNT];
         VkSemaphore *renderFinished;
         VkFence computeFences[FRAMECOUNT];
-        VkSemaphore computeAvailable[FRAMECOUNT];
-        VkSemaphore *computeFinished;
 
         VkCommandPool *commandPool;
         VkCommandBuffer commandBuffers[FRAMECOUNT];

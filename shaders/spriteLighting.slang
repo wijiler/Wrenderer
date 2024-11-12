@@ -86,7 +86,7 @@ float4 fragMain(VertOutput input)
 
         float3 lightDir = lightPos - input.realPos;
         float lightDist = length(lightDir);
-        float atten = 1.0 / (lightDist * lightDist);
+        float atten = (1.0 / (lightDist * lightDist)) - 1 / light.radius;
         float3 lightColor = light.color.xyz * (light.color.w * atten);
         diffuse = lightColor;
     }

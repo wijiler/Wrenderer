@@ -581,12 +581,6 @@ void create_CommandBuffers(VulkanCore_t *core)
             exit(1);
         }
 
-        if (vkCreateSemaphore(core->lDev, &semaphoreCI, NULL, &core->computeAvailable[i]) != VK_SUCCESS)
-        {
-            printf("Could not create semaphore\n");
-            exit(1);
-        }
-
         VkFenceCreateInfo fenceCI = {0};
         fenceCI.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
         fenceCI.pNext = NULL;
@@ -605,7 +599,6 @@ void create_CommandBuffers(VulkanCore_t *core)
     }
 
     core->renderFinished = malloc(sizeof(VkSemaphore) * core->imgCount + 1);
-    core->computeFinished = malloc(sizeof(VkSemaphore) * core->imgCount + 1);
     for (uint32_t i = 0; i < core->imgCount; i++)
     {
         VkSemaphoreCreateInfo semaphoreCI = {0};
@@ -613,11 +606,6 @@ void create_CommandBuffers(VulkanCore_t *core)
         semaphoreCI.pNext = NULL;
         semaphoreCI.flags = 0;
         if (vkCreateSemaphore(core->lDev, &semaphoreCI, NULL, &core->renderFinished[i]) != VK_SUCCESS)
-        {
-            printf("Could not create semaphore\n");
-            exit(1);
-        }
-        if (vkCreateSemaphore(core->lDev, &semaphoreCI, NULL, &core->computeFinished[i]) != VK_SUCCESS)
         {
             printf("Could not create semaphore\n");
             exit(1);
@@ -945,7 +933,6 @@ void destroyRenderer(renderer_t *renderer)
     {
         vkDestroyImageView(renderer->vkCore.lDev, renderer->vkCore.swapChainImageViews[i], NULL);
         vkDestroySemaphore(renderer->vkCore.lDev, renderer->vkCore.renderFinished[i], NULL);
-        vkDestroySemaphore(renderer->vkCore.lDev, renderer->vkCore.computeFinished[i], NULL);
     }
     vkDestroySampler(renderer->vkCore.lDev, renderer->vkCore.linearSampler, NULL);
     vkDestroySwapchainKHR(renderer->vkCore.lDev, renderer->vkCore.swapChain, NULL);
@@ -953,8 +940,6 @@ void destroyRenderer(renderer_t *renderer)
     vkDestroySurfaceKHR(renderer->vkCore.instance, renderer->vkCore.surface, NULL);
     vkDestroyInstance(renderer->vkCore.instance, NULL);
 }
-
-const uint64_t maxVerts = 1000000;
 
 void initRenderer(renderer_t *renderer)
 {
