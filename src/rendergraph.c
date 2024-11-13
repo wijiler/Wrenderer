@@ -488,17 +488,23 @@ void destroyRenderGraph(RenderGraph *graph)
 }
 const VkClearColorValue clearValue = {{0.0f, 0.0f, 0.0f, 0.0f}};
 bool resize = false;
-
+uint64_t submitValue = 0;
 void drawRenderer(renderer_t *renderer, int cBufIndex)
 {
     VkCommandBuffer gcbuf = renderer->vkCore.commandBuffers[cBufIndex];
     VkCommandBuffer ccbuf = renderer->vkCore.computeCommandBuffers[cBufIndex];
-
-    vkWaitForFences(renderer->vkCore.lDev, 1, &renderer->vkCore.fences[cBufIndex], VK_TRUE, UINT64_MAX);
-    vkWaitForFences(renderer->vkCore.lDev, 1, &renderer->vkCore.computeFences[cBufIndex], VK_TRUE, UINT64_MAX);
-    vkResetFences(renderer->vkCore.lDev, 1, &renderer->vkCore.fences[cBufIndex]);
-    vkResetFences(renderer->vkCore.lDev, 1, &renderer->vkCore.computeFences[cBufIndex]);
-
+    {
+        VkSemaphoreWaitInfo semaWaitInf = {
+            VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
+            NULL,
+            0,
+            2,
+            (VkSemaphore[2]){renderer->vkCore.computeTimeline, renderer->vkCore.graphicsTimeline},
+            (uint64_t[2]){submitValue, submitValue},
+        };
+        vkWaitSemaphores(renderer->vkCore.lDev, &semaWaitInf, UINT64_MAX);
+        submitValue++;
+    }
     if (resize)
     {
         recreateSwapchain(renderer);
@@ -578,33 +584,79 @@ void drawRenderer(renderer_t *renderer, int cBufIndex)
     vkEndCommandBuffer(gcbuf);
     vkEndCommandBuffer(ccbuf);
     {
-        VkSubmitInfo submitInfo = {0};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submitInfo.pNext = NULL;
-
-        submitInfo.waitSemaphoreCount = 0;
-        submitInfo.signalSemaphoreCount = 0;
-
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &ccbuf;
-        vkQueueSubmit(renderer->vkCore.compQueue, 1, &submitInfo, renderer->vkCore.computeFences[cBufIndex]);
+        VkCommandBufferSubmitInfo cBufSubmit = {
+            VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+            NULL,
+            ccbuf,
+            0,
+        };
+        VkSemaphoreSubmitInfo timelineSemaphoreSubmitInfo = {
+            VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+            NULL,
+            renderer->vkCore.computeTimeline,
+            submitValue,
+            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+            0,
+        };
+        VkSubmitInfo2 submitInfo = {
+            VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
+            NULL,
+            0,
+            0,
+            NULL,
+            1,
+            &cBufSubmit,
+            1,
+            &timelineSemaphoreSubmitInfo,
+        };
+        vkQueueSubmit2(renderer->vkCore.compQueue, 1, &submitInfo, NULL);
     }
 
     {
-        VkSubmitInfo submitInfo = {0};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submitInfo.pNext = NULL;
+        VkCommandBufferSubmitInfo cBufSubmit = {
+            VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+            NULL,
+            gcbuf,
+            0,
+        };
+        VkSemaphoreSubmitInfo timelineSemaphoreSubmitInfo = {
+            VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+            NULL,
+            renderer->vkCore.graphicsTimeline,
+            submitValue,
+            VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
+            0,
+        };
+        VkSemaphoreSubmitInfo graphicsSemaphoreSubmitInfo = {
+            VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+            NULL,
+            renderer->vkCore.renderFinished[renderer->vkCore.currentImageIndex],
+            0,
+            VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
+            0,
+        };
+        VkSemaphoreSubmitInfo graphicsSemaphoreWaitInfo = {
+            VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+            NULL,
+            renderer->vkCore.imageAvailable[cBufIndex],
+            0,
+            VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
+            0,
+        };
+        VkSubmitInfo2 submitInfo = {
+            VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
+            NULL,
+            0,
+            1,
+            &graphicsSemaphoreWaitInfo,
+            1,
+            &cBufSubmit,
+            2,
+            (VkSemaphoreSubmitInfo[2]){timelineSemaphoreSubmitInfo, graphicsSemaphoreSubmitInfo},
+        };
 
-        submitInfo.waitSemaphoreCount = 1;
-        submitInfo.pWaitSemaphores = &renderer->vkCore.imageAvailable[cBufIndex];
-        submitInfo.pWaitDstStageMask = (VkPipelineStageFlags[1]){VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-        submitInfo.signalSemaphoreCount = 1;
-        submitInfo.pSignalSemaphores = &renderer->vkCore.renderFinished[renderer->vkCore.currentImageIndex];
+        vkQueueSubmit2(renderer->vkCore.gQueue, 1, &submitInfo, NULL);
 
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &gcbuf;
-
-        vkQueueSubmit(renderer->vkCore.gQueue, 1, &submitInfo, renderer->vkCore.fences[cBufIndex]);
         VkPresentInfoKHR presentInfo = {0};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
         presentInfo.pNext = NULL;

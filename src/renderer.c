@@ -207,7 +207,7 @@ VkPhysicalDevice find_valid_device(int deviceCount, VkPhysicalDevice devices[], 
             vertAttrDivFeats.vertexAttributeInstanceRateZeroDivisor == VK_TRUE && devFeat12.descriptorBindingPartiallyBound == VK_TRUE &&
             devFeat12.runtimeDescriptorArray == VK_TRUE && devFeat12.descriptorBindingSampledImageUpdateAfterBind == VK_TRUE && devFeat2.features.shaderInt64 &&
             devFeat12.scalarBlockLayout == VK_TRUE && devFeat11.variablePointers == VK_TRUE && devFeat11.variablePointersStorageBuffer == VK_TRUE &&
-            devFeat2.features.samplerAnisotropy == VK_TRUE && devFeat2.features.shaderInt16 && devFeat13.synchronization2)
+            devFeat2.features.samplerAnisotropy == VK_TRUE && devFeat2.features.shaderInt16 && devFeat13.synchronization2 && devFeat12.timelineSemaphore == VK_TRUE)
         {
             graphicsFamilyIndex = &gfami;
             computeFamilyIndex = &cfami;
@@ -312,6 +312,8 @@ void create_device(VulkanCore_t *core)
     devFeatures2.features.samplerAnisotropy = VK_TRUE;
 
     devFeatures13.synchronization2 = VK_TRUE;
+
+    devFeatures12.timelineSemaphore = VK_TRUE;
 
     VkDeviceQueueCreateInfo graphicsqueueCreateInfo = {0};
     graphicsqueueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
@@ -551,13 +553,27 @@ void create_CommandBuffers(VulkanCore_t *core)
     cbAI.commandPool = (VkCommandPool)core->commandPool;
     cbAI.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     cbAI.commandBufferCount = 1;
-
     if (vkAllocateCommandBuffers(core->lDev, &cbAI, &core->immediateSubmit) != VK_SUCCESS)
     {
         printf("Could not create command buffers\n");
         exit(1);
     }
+    {
+        VkSemaphoreTypeCreateInfo typeInfo = {
+            VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
+            NULL,
+            VK_SEMAPHORE_TYPE_TIMELINE,
+            0,
+        };
+        VkSemaphoreCreateInfo timelineCreateInfo = {
+            VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+            &typeInfo,
+            0,
+        };
 
+        vkCreateSemaphore(core->lDev, &timelineCreateInfo, NULL, &core->computeTimeline);
+        vkCreateSemaphore(core->lDev, &timelineCreateInfo, NULL, &core->graphicsTimeline);
+    }
     for (int i = 0; i < FRAMECOUNT; i++)
     {
         if (vkAllocateCommandBuffers(core->lDev, &cbAI, &core->commandBuffers[i]) != VK_SUCCESS) // could we batch this?
@@ -585,17 +601,6 @@ void create_CommandBuffers(VulkanCore_t *core)
         fenceCI.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
         fenceCI.pNext = NULL;
         fenceCI.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-
-        if (vkCreateFence(core->lDev, &fenceCI, NULL, &core->fences[i]) != VK_SUCCESS)
-        {
-            printf("Could not create fence\n");
-            exit(1);
-        }
-        if (vkCreateFence(core->lDev, &fenceCI, NULL, &core->computeFences[i]) != VK_SUCCESS)
-        {
-            printf("Could not create fence\n");
-            exit(1);
-        }
     }
 
     core->renderFinished = malloc(sizeof(VkSemaphore) * core->imgCount + 1);
@@ -913,8 +918,6 @@ void destroyRenderer(renderer_t *renderer)
     for (uint32_t i = 0; i < FRAMECOUNT; i++)
     {
         vkDestroySemaphore(renderer->vkCore.lDev, renderer->vkCore.imageAvailable[i], NULL);
-        vkDestroyFence(renderer->vkCore.lDev, renderer->vkCore.fences[i], NULL);
-        vkDestroyFence(renderer->vkCore.lDev, renderer->vkCore.computeFences[i], NULL);
     }
     vkDestroyFence(renderer->vkCore.lDev, renderer->vkCore.immediateFence, NULL);
     vkDestroyCommandPool(renderer->vkCore.lDev, (VkCommandPool)renderer->vkCore.commandPool, NULL);

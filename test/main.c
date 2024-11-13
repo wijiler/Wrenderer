@@ -60,7 +60,7 @@ void init()
 int main(void)
 {
     wininfo.name = (char *)"Thing";
-    wininfo.w = 1920;
+    wininfo.w = 1080;
     wininfo.h = 1080;
     launch_window(wininfo, &renderer, loop, init);
 

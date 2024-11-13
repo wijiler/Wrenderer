@@ -276,11 +276,11 @@ extern "C"
         VkImageView *swapChainImageViews;
         Image *currentScImg;
 
-        VkFence fences[FRAMECOUNT];
+        VkSemaphore graphicsTimeline;
+        VkSemaphore computeTimeline;
         VkFence immediateFence;
         VkSemaphore imageAvailable[FRAMECOUNT];
         VkSemaphore *renderFinished;
-        VkFence computeFences[FRAMECOUNT];
 
         VkCommandPool *commandPool;
         VkCommandBuffer commandBuffers[FRAMECOUNT];

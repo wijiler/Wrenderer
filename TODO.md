@@ -2,6 +2,8 @@
 
 ## working on
 
+- [ ] util.h
+
 ## high priority
 
 - [ ] metal backend
@@ -10,7 +12,6 @@
 
 ## low priority
 
-- [ ] Timeline Semaphores?
 - [ ] Check Extension support for VK_KHR_swapchain  
 - [ ] Add support for actual pipelines
 
@@ -20,3 +21,4 @@
 - [x] Nicer shader API
 - [x] BDA
 - [x] Compute passes
+- [x] Timeline Semaphores?
