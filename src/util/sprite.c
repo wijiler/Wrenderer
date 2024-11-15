@@ -41,7 +41,7 @@ Sprite createSprite(char *path, VkSampler sampler, renderer_t *renderer)
     sp.image = tex;
     return sp;
 }
-spriteInstance createNewSpriteInstance(Sprite *sprite, renderer_t renderer, SpritePipeline *spLine)
+spriteInstance createNewSpriteInstance(Sprite *sprite, renderer_t renderer, WREScene2D *scene)
 {
     spriteInstance instance;
     sprite->instanceCount += 1;
@@ -49,8 +49,8 @@ spriteInstance createNewSpriteInstance(Sprite *sprite, renderer_t renderer, Spri
     if (spriteInstanceCount % spriteIncrementAmount == 0)
     {
         spriteInstances = realloc(spriteInstances, sizeof(spriteInstance) * (spriteInstanceCount + spriteIncrementAmount));
-        spLine->spriteInstanceData = realloc(spLine->spriteInstanceData, sizeof(transform2D) * (spLine->spriteInstanceCount + spriteIncrementAmount));
-        spLine->textureIDs = realloc(spLine->textureIDs, sizeof(uint64_t) * (spLine->spriteInstanceCount + spriteIncrementAmount));
+        scene->spritePipeline.spriteInstanceData = realloc(scene->spritePipeline.spriteInstanceData, sizeof(transform2D) * (scene->spritePipeline.spriteInstanceCount + spriteIncrementAmount));
+        scene->spritePipeline.textureIDs = realloc(scene->spritePipeline.textureIDs, sizeof(uint64_t) * (scene->spritePipeline.spriteInstanceCount + spriteIncrementAmount));
 
         if (spriteInstanceCount == 0)
         {
@@ -88,7 +88,7 @@ spriteInstance createNewSpriteInstance(Sprite *sprite, renderer_t renderer, Spri
             }
         }
     }
-    spLine->textureIDs[spLine->spriteInstanceCount] = sprite->image.index;
+    scene->spritePipeline.textureIDs[scene->spritePipeline.spriteInstanceCount] = sprite->image.index;
     instance.id = spriteInstanceCount;
     instance.transform = (transform2D){
         {0, 0, 0},
@@ -96,9 +96,9 @@ spriteInstance createNewSpriteInstance(Sprite *sprite, renderer_t renderer, Spri
         0,
     };
     spriteInstances[spriteInstanceCount] = instance;
-    spLine->spriteInstanceData[spLine->spriteInstanceCount] = instance.transform;
+    scene->spritePipeline.spriteInstanceData[scene->spritePipeline.spriteInstanceCount] = instance.transform;
     spriteInstanceCount += 1;
-    spLine->spriteInstanceCount += 1;
+    scene->spritePipeline.spriteInstanceCount += 1;
 
     return instance;
 }

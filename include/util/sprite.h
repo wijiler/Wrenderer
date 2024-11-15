@@ -54,7 +54,7 @@ void initializeScene(WREScene2D *scene);
 // extern SpritePipeline spritePipeline;
 
 Sprite createSprite(char *path, VkSampler sampler, renderer_t *renderer);
-spriteInstance createNewSpriteInstance(Sprite *sprite, renderer_t renderer, SpritePipeline *spLine);
+spriteInstance createNewSpriteInstance(Sprite *sprite, renderer_t renderer, WREScene2D *scene);
 void updateSpriteInstance(spriteInstance *sprite, transform2D transform, WREScene2D *scene);
 void removeSpriteInstance(spriteInstance *sprite, WREScene2D *scene);
 void deleteSpriteInstances(Sprite *sprite, WREScene2D *scene);
