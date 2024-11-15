@@ -31,15 +31,33 @@ typedef struct
     Image Albedo;
     graphicsPipeline gbufferPipeline;
     graphicsPipeline lightPipeline;
+    //
+    uint32_t spriteInstanceCount;
+    transform2D *spriteInstanceData;
+    uint64_t *textureIDs;
+
 } SpritePipeline;
 
-extern SpritePipeline spritePipeline;
+typedef struct
+{
+    SpritePipeline spritePipeline;
+
+    uint32_t lightCount;
+    pointLight2D *lights;
+
+    renderer_t *Renderer;
+} WREScene2D;
+
+void addNewLight(pointLight2D light, WREScene2D *scene);
+void setActiveScene(WREScene2D *scene);
+void initializeScene(WREScene2D *scene);
+// extern SpritePipeline spritePipeline;
 
 Sprite createSprite(char *path, VkSampler sampler, renderer_t *renderer);
-spriteInstance createNewSpriteInstance(Sprite *sprite, renderer_t renderer);
-void updateSpriteInstance(spriteInstance *sprite, transform2D transform);
-void removeSpriteInstance(spriteInstance *sprite);
-void deleteSprite(Sprite *sprite);
+spriteInstance createNewSpriteInstance(Sprite *sprite, renderer_t renderer, SpritePipeline *spLine);
+void updateSpriteInstance(spriteInstance *sprite, transform2D transform, WREScene2D *scene);
+void removeSpriteInstance(spriteInstance *sprite, WREScene2D *scene);
+void deleteSpriteInstances(Sprite *sprite, WREScene2D *scene);
 void spritePass(renderer_t renderer, SpritePipeline *pipeline);
-void addNewLight(pointLight2D light, renderer_t renderer);
+// void addNewLight(pointLight2D light, renderer_t renderer);
 #endif

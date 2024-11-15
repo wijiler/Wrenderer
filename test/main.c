@@ -4,6 +4,7 @@
 #include <windowing.h>
 
 renderer_t renderer;
+WREScene2D scene = {0};
 winf_t wininfo = {0};
 GraphBuilder builder = {0};
 spriteInstance birby1 = {0};
@@ -24,37 +25,42 @@ void loop()
                                       {0, 0, 1},
                                       {1, 1},
                                       thing,
-                                  });
+                                  },
+                         &scene);
     drawRenderer(&renderer, Index);
 }
 
 void init()
 {
     initRenderer(&renderer);
-    initializePipelines(renderer);
+    scene.Renderer = &renderer;
+    initializeScene(&scene);
 
     Sprite birb = createSprite("assets/birb.png", renderer.vkCore.nearestSampler, &renderer);
-    birby1 = createNewSpriteInstance(&birb, renderer);
-    birby2 = createNewSpriteInstance(&birb, renderer);
-    birby3 = createNewSpriteInstance(&birb, renderer);
+    birby1 = createNewSpriteInstance(&birb, renderer, &scene.spritePipeline);
+    birby2 = createNewSpriteInstance(&birb, renderer, &scene.spritePipeline);
+    birby3 = createNewSpriteInstance(&birb, renderer, &scene.spritePipeline);
     updateSpriteInstance(&birby2, (transform2D){
                                       {0, -10, 1},
                                       {1, 1},
                                       0,
-                                  });
+                                  },
+                         &scene);
     updateSpriteInstance(&birby3, (transform2D){
                                       {0, -5, 1},
                                       {1, 1},
                                       0,
-                                  });
+                                  },
+                         &scene);
     pointLight2D light = {
         {0.f, -10.f, 1.f},
         {1.f, 1.f, 1.f, 1.f},
         1.0f,
     };
-    addNewLight(light, renderer);
-    spritePass(renderer, &spritePipeline);
-    copyGraph(&spritePipeline.builder, &builder);
+    addNewLight(light, &scene);
+    setActiveScene(&scene);
+    spritePass(renderer, &scene.spritePipeline);
+    copyGraph(&scene.spritePipeline.builder, &builder);
     renderer.rg = &builder;
 }
 int main(void)
