@@ -1,7 +1,7 @@
+#include <renderer.h>
 #include <stdio.h>
-#include <util/descriptor.h>
 
-void initializeDescriptor(renderer_t renderer, WREDescriptor *desc, uint32_t descriptorCount, uint32_t setCount, VkDescriptorType type, shaderStage stage, bool bindless)
+void initializeDescriptor(VulkanCore_t core, WREDescriptor *desc, uint32_t descriptorCount, uint32_t setCount, VkDescriptorType type, shaderStage stage, bool bindless)
 {
     desc->type = type;
     desc->setcount = setCount;
@@ -21,7 +21,7 @@ void initializeDescriptor(renderer_t renderer, WREDescriptor *desc, uint32_t des
     dspCI.poolSizeCount = 1;
     dspCI.pPoolSizes = &poolSize;
 
-    vkCreateDescriptorPool(renderer.vkCore.lDev, &dspCI, NULL, &desc->pool);
+    vkCreateDescriptorPool(core.lDev, &dspCI, NULL, &desc->pool);
 
     VkDescriptorSetLayoutBinding UBindingInf = {0};
     UBindingInf.binding = 0;
@@ -45,14 +45,14 @@ void initializeDescriptor(renderer_t renderer, WREDescriptor *desc, uint32_t des
     slci.pBindings = &UBindingInf;
     slci.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT_EXT;
 
-    if (vkCreateDescriptorSetLayout(renderer.vkCore.lDev, &slci, NULL, &desc->layout) != VK_SUCCESS)
+    if (vkCreateDescriptorSetLayout(core.lDev, &slci, NULL, &desc->layout) != VK_SUCCESS)
     {
         printf("Could not create descriptor set layout 1");
         exit(1);
     }
 }
 
-void allocateDescriptorSets(renderer_t renderer, WREDescriptor *desc)
+void allocateDescriptorSets(VulkanCore_t core, WREDescriptor *desc)
 {
     VkDescriptorSetVariableDescriptorCountAllocateInfoEXT countAllocInfoEXT = {0};
     countAllocInfoEXT.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO_EXT;
@@ -73,12 +73,12 @@ void allocateDescriptorSets(renderer_t renderer, WREDescriptor *desc)
     desc->sets = malloc(sizeof(WREDescriptorSet) * desc->setcount);
     for (uint32_t i = 0; i < desc->setcount; i++)
     {
-        if (vkAllocateDescriptorSets(renderer.vkCore.lDev, &allocInfo, &desc->sets[i].set) != VK_SUCCESS)
+        if (vkAllocateDescriptorSets(core.lDev, &allocInfo, &desc->sets[i].set) != VK_SUCCESS)
             printf("Couldnt allocate descriptor sets");
     }
 }
 
-void writeDescriptorSet(renderer_t renderer, WREDescriptor desc, uint32_t setIndex, uint32_t arrayIndex, VkImageView image, VkSampler sampler)
+void writeDescriptorSet(VulkanCore_t core, WREDescriptor desc, uint32_t setIndex, uint32_t arrayIndex, VkImageView image, VkSampler sampler)
 {
     VkWriteDescriptorSet dsWrite = {0};
     dsWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -97,5 +97,5 @@ void writeDescriptorSet(renderer_t renderer, WREDescriptor desc, uint32_t setInd
 
     dsWrite.pImageInfo = &descImgInfo;
 
-    vkUpdateDescriptorSets(renderer.vkCore.lDev, 1, &dsWrite, 0, NULL);
+    vkUpdateDescriptorSets(core.lDev, 1, &dsWrite, 0, NULL);
 }

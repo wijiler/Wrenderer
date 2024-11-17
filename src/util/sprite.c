@@ -5,9 +5,7 @@
 
 uint32_t spriteInstanceCount = 0;
 uint32_t lightCount = 0;
-spriteInstance *spriteInstances;
 
-// pointLight2D *lights;
 Buffer spriteInstanceData = {0};
 Buffer spriteTextureIDs = {0};
 Buffer lightBuffer = {0};
@@ -48,7 +46,7 @@ spriteInstance createNewSpriteInstance(Sprite *sprite, renderer_t renderer, WRES
     instance.parent = sprite;
     if (spriteInstanceCount % spriteIncrementAmount == 0)
     {
-        spriteInstances = realloc(spriteInstances, sizeof(spriteInstance) * (spriteInstanceCount + spriteIncrementAmount));
+        scene->spritePipeline.spriteInstances = realloc(scene->spritePipeline.spriteInstances, sizeof(spriteInstance) * (spriteInstanceCount + spriteIncrementAmount));
         scene->spritePipeline.spriteInstanceData = realloc(scene->spritePipeline.spriteInstanceData, sizeof(transform2D) * (scene->spritePipeline.spriteInstanceCount + spriteIncrementAmount));
         scene->spritePipeline.textureIDs = realloc(scene->spritePipeline.textureIDs, sizeof(uint64_t) * (scene->spritePipeline.spriteInstanceCount + spriteIncrementAmount));
 
@@ -95,7 +93,7 @@ spriteInstance createNewSpriteInstance(Sprite *sprite, renderer_t renderer, WRES
         {1, 1},
         0,
     };
-    spriteInstances[spriteInstanceCount] = instance;
+    scene->spritePipeline.spriteInstances[spriteInstanceCount] = instance;
     scene->spritePipeline.spriteInstanceData[scene->spritePipeline.spriteInstanceCount] = instance.transform;
     spriteInstanceCount += 1;
     scene->spritePipeline.spriteInstanceCount += 1;
@@ -104,18 +102,18 @@ spriteInstance createNewSpriteInstance(Sprite *sprite, renderer_t renderer, WRES
 }
 void updateSpriteInstance(spriteInstance *sprite, transform2D transform, WREScene2D *scene)
 {
-    spriteInstances[sprite->id].transform = transform;
+    scene->spritePipeline.spriteInstances[sprite->id].transform = transform;
     scene->spritePipeline.spriteInstanceData[sprite->id] = transform;
-    *sprite = spriteInstances[sprite->id];
+    *sprite = scene->spritePipeline.spriteInstances[sprite->id];
     pushDataToBuffer(scene->spritePipeline.spriteInstanceData, sizeof(transform2D) * scene->spritePipeline.spriteInstanceCount, spriteInstanceData, 0);
 }
 void removeSpriteInstance(spriteInstance *sprite, WREScene2D *scene)
 {
-    memcpy(spriteInstances + sprite->id, spriteInstances + sprite->id + 1, sizeof(spriteInstance) * (spriteInstanceCount - 1));
+    memcpy(scene->spritePipeline.spriteInstances + sprite->id, scene->spritePipeline.spriteInstances + sprite->id + 1, sizeof(spriteInstance) * (spriteInstanceCount - 1));
     memcpy(scene->spritePipeline.textureIDs + sprite->id, scene->spritePipeline.textureIDs + sprite->id + 1, sizeof(uint64_t) * (spriteInstanceCount - 1));
     for (uint32_t i = sprite->id; i < spriteInstanceCount; i++)
     {
-        spriteInstances[i].id -= 1;
+        scene->spritePipeline.spriteInstances[i].id -= 1;
     }
     pushDataToBuffer(scene->spritePipeline.spriteInstanceData, sizeof(transform2D) * scene->spritePipeline.spriteInstanceCount, spriteInstanceData, 0);
 }
@@ -126,7 +124,7 @@ void deleteSpriteInstances(Sprite *sprite, WREScene2D *scene)
     {
         if (scene->spritePipeline.textureIDs[i] == sprite->image.index)
         {
-            removeSpriteInstance(&spriteInstances[i], scene);
+            removeSpriteInstance(&scene->spritePipeline.spriteInstances[i], scene);
         }
     }
 }
@@ -179,7 +177,7 @@ void spritePass(renderer_t renderer, SpritePipeline *pipeline)
     {
         RenderPass sPass = newPass("gbfferPass2D", PASS_TYPE_GRAPHICS);
         sPass.gPl = pipeline->gbufferPipeline;
-        addImageResource(&sPass, &pipeline->Albedo, USAGE_COLORATTACHMENT);
+        addImageResource(&sPass, &WREalbedoBuffer2D, USAGE_COLORATTACHMENT);
         setExecutionCallBack(&sPass, spritePassCallback);
         addPass(&pipeline->builder, &sPass);
     }
@@ -187,7 +185,7 @@ void spritePass(renderer_t renderer, SpritePipeline *pipeline)
         RenderPass lightPass = newPass("lightPass2D", PASS_TYPE_GRAPHICS);
         lightPass.gPl = pipeline->lightPipeline;
         addSwapchainImageResource(&lightPass, renderer);
-        addImageResource(&lightPass, &pipeline->Albedo, USAGE_SAMPLED);
+        addImageResource(&lightPass, &WREalbedoBuffer2D, USAGE_SAMPLED);
         setExecutionCallBack(&lightPass, lightPassCallback);
         addPass(&pipeline->builder, &lightPass);
     }
@@ -217,15 +215,11 @@ void setActiveScene(WREScene2D *scene)
     pushDataToBuffer(scene->lights, sizeof(pointLight2D) * scene->lightCount, lightBuffer, 0);
 }
 
-void initializePipelines(renderer_t renderer, SpritePipeline *pipeline)
+Image albedoBuffer2d = {0};
+
+void initializePipelines(renderer_t *renderer, SpritePipeline *pipeline)
 {
     {
-        initializeDescriptor(renderer, &pipeline->gBuffer, 1, 1, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, SHADER_STAGE_ALL, true);
-        pipeline->Albedo = createImage(renderer.vkCore, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TYPE_2D, renderer.vkCore.extent.width, renderer.vkCore.extent.height, VK_IMAGE_ASPECT_COLOR_BIT);
-        // markImageResizable(&pipeline->Albedo, &renderer.vkCore.extent.width, &renderer.vkCore.extent.height);
-        allocateDescriptorSets(renderer, &pipeline->gBuffer);
-        writeDescriptorSet(renderer, pipeline->gBuffer, 0, 0, pipeline->Albedo.imgview, renderer.vkCore.linearSampler);
-
         uint64_t Len = 0;
         uint32_t *Shader = NULL;
 
@@ -263,12 +257,12 @@ void initializePipelines(renderer_t renderer, SpritePipeline *pipeline)
             VkDeviceAddress InstanceBuffer;
         } pc;
         setPushConstantRange(&pipeline->gbufferPipeline, sizeof(pc), SHADER_STAGE_ALL, 0);
-        addSetLayoutToGPL(&renderer.vkCore.tdSetLayout, &pipeline->gbufferPipeline);
-        addDescriptorSetToGPL(&renderer.vkCore.tdescriptorSet, &pipeline->gbufferPipeline);
+        addSetLayoutToGPL(&renderer->vkCore.tdSetLayout, &pipeline->gbufferPipeline);
+        addDescriptorSetToGPL(&renderer->vkCore.tdescriptorSet, &pipeline->gbufferPipeline);
 
-        setShaderSLSPRV(renderer.vkCore, &pipeline->gbufferPipeline, Shader, Len);
+        setShaderSLSPRV(renderer->vkCore, &pipeline->gbufferPipeline, Shader, Len);
 
-        createPipelineLayout(renderer.vkCore, &pipeline->gbufferPipeline);
+        createPipelineLayout(renderer->vkCore, &pipeline->gbufferPipeline);
     }
     {
         uint64_t Len = 0;
@@ -309,16 +303,16 @@ void initializePipelines(renderer_t renderer, SpritePipeline *pipeline)
             VkDeviceAddress instanceBuf;
         } pc;
         setPushConstantRange(&pipeline->lightPipeline, sizeof(pc), SHADER_STAGE_ALL, 0);
-        addSetLayoutToGPL(&pipeline->gBuffer.layout, &pipeline->lightPipeline);
-        addDescriptorSetToGPL(&pipeline->gBuffer.sets[0].set, &pipeline->lightPipeline);
+        addSetLayoutToGPL(&WREgBuffer2D.layout, &pipeline->lightPipeline);
+        addDescriptorSetToGPL(&WREgBuffer2D.sets[0].set, &pipeline->lightPipeline);
 
-        setShaderSLSPRV(renderer.vkCore, &pipeline->lightPipeline, Shader, Len);
+        setShaderSLSPRV(renderer->vkCore, &pipeline->lightPipeline, Shader, Len);
 
-        createPipelineLayout(renderer.vkCore, &pipeline->lightPipeline);
+        createPipelineLayout(renderer->vkCore, &pipeline->lightPipeline);
     }
 }
 
 void initializeScene(WREScene2D *scene)
 {
-    initializePipelines(*scene->Renderer, &scene->spritePipeline);
+    initializePipelines(scene->Renderer, &scene->spritePipeline);
 }

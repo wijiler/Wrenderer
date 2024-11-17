@@ -37,9 +37,9 @@ void init()
     initializeScene(&scene);
 
     Sprite birb = createSprite("assets/birb.png", renderer.vkCore.nearestSampler, &renderer);
-    birby1 = createNewSpriteInstance(&birb, renderer, &scene.spritePipeline);
-    birby2 = createNewSpriteInstance(&birb, renderer, &scene.spritePipeline);
-    birby3 = createNewSpriteInstance(&birb, renderer, &scene.spritePipeline);
+    birby1 = createNewSpriteInstance(&birb, renderer, &scene);
+    birby2 = createNewSpriteInstance(&birb, renderer, &scene);
+    birby3 = createNewSpriteInstance(&birb, renderer, &scene);
     updateSpriteInstance(&birby2, (transform2D){
                                       {0, -10, 1},
                                       {1, 1},
@@ -72,6 +72,6 @@ int main(void)
 
     destroyRenderer(&renderer);
 
-    glfwDestroyWindow(renderer.vkCore.window);
+    glfwDestroyWindow(renderer.window);
     glfwTerminate();
 }

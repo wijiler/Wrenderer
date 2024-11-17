@@ -9,10 +9,21 @@
 #include <stdlib.h>
 #include <string.h>
 
+VkInstance WREVulkinstance = VK_NULL_HANDLE;
+VkPhysicalDevice WREPhysicalDevice = VK_NULL_HANDLE;
+VkSwapchainKHR WREswapChain = VK_NULL_HANDLE;
+VkImage *WREswapChainImages = VK_NULL_HANDLE;
+VkImageView *WREswapChainImageViews = VK_NULL_HANDLE;
+
+WREDescriptor WREgBuffer2D = {0};
+Image WREalbedoBuffer2D = {0};
+
 typedef struct
 {
     uint32_t *width, *height;
     Image *image;
+    VkImageUsageFlags usage;
+    VkImageLayout layout;
 } resizableImageobject;
 
 int resizableImageCount = 0;
@@ -69,7 +80,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
     return VK_FALSE;
 }
 
-void create_instance(renderer_t *renderer)
+void create_instance()
 {
     VkApplicationInfo appInfo;
     appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -116,24 +127,24 @@ void create_instance(renderer_t *renderer)
     {
         printf("Could not create a Vulkan instance\n");
     }
-    renderer->vkCore.instance = instance;
+    WREVulkinstance = instance;
 
-    vkCmdSetVertexInputEXT_ = (PFN_vkCmdSetVertexInputEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkCmdSetVertexInputEXT");
-    vkCreateShadersEXT_ = (PFN_vkCreateShadersEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkCreateShadersEXT");
-    vkCmdBindShadersEXT_ = (PFN_vkCmdBindShadersEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkCmdBindShadersEXT");
-    vkCmdSetColorBlendEnableEXT_ = (PFN_vkCmdSetColorBlendEnableEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkCmdSetColorBlendEnableEXT");
-    vkCmdSetColorWriteMaskEXT_ = (PFN_vkCmdSetColorWriteMaskEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkCmdSetColorWriteMaskEXT");
-    vkCmdSetDepthClampEnableEXT_ = (PFN_vkCmdSetDepthClampEnableEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkCmdSetDepthClampEnableEXT");
-    vkCmdSetPolygonModeEXT_ = (PFN_vkCmdSetPolygonModeEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkCmdSetPolygonModeEXT");
-    vkCmdSetLogicOpEnableEXT_ = (PFN_vkCmdSetLogicOpEnableEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkCmdSetLogicOpEnableEXT");
-    vkCmdSetRasterizationSamplesEXT_ = (PFN_vkCmdSetRasterizationSamplesEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkCmdSetRasterizationSamplesEXT");
-    vkCmdSetColorBlendEquationEXT_ = (PFN_vkCmdSetColorBlendEquationEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkCmdSetColorBlendEquationEXT");
-    vkCmdSetSampleMaskEXT_ = (PFN_vkCmdSetSampleMaskEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkCmdSetSampleMaskEXT");
-    vkCmdSetAlphaToCoverageEnableEXT_ = (PFN_vkCmdSetAlphaToCoverageEnableEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkCmdSetAlphaToCoverageEnableEXT");
-    vkCmdSetAlphaToOneEnableEXT_ = (PFN_vkCmdSetAlphaToOneEnableEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkCmdSetAlphaToOneEnableEXT");
-    vkCmdSetDepthClipEnableEXT_ = (PFN_vkCmdSetDepthClipEnableEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkCmdSetDepthClipEnableEXT");
-    vkCmdSetLogicOpEXT_ = (PFN_vkCmdSetLogicOpEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkCmdSetLogicOpEXT");
-    vkDestroyShaderEXT_ = (PFN_vkDestroyShaderEXT)vkGetInstanceProcAddr(renderer->vkCore.instance, "vkDestroyShaderEXT");
+    vkCmdSetVertexInputEXT_ = (PFN_vkCmdSetVertexInputEXT)vkGetInstanceProcAddr(WREVulkinstance, "vkCmdSetVertexInputEXT");
+    vkCreateShadersEXT_ = (PFN_vkCreateShadersEXT)vkGetInstanceProcAddr(WREVulkinstance, "vkCreateShadersEXT");
+    vkCmdBindShadersEXT_ = (PFN_vkCmdBindShadersEXT)vkGetInstanceProcAddr(WREVulkinstance, "vkCmdBindShadersEXT");
+    vkCmdSetColorBlendEnableEXT_ = (PFN_vkCmdSetColorBlendEnableEXT)vkGetInstanceProcAddr(WREVulkinstance, "vkCmdSetColorBlendEnableEXT");
+    vkCmdSetColorWriteMaskEXT_ = (PFN_vkCmdSetColorWriteMaskEXT)vkGetInstanceProcAddr(WREVulkinstance, "vkCmdSetColorWriteMaskEXT");
+    vkCmdSetDepthClampEnableEXT_ = (PFN_vkCmdSetDepthClampEnableEXT)vkGetInstanceProcAddr(WREVulkinstance, "vkCmdSetDepthClampEnableEXT");
+    vkCmdSetPolygonModeEXT_ = (PFN_vkCmdSetPolygonModeEXT)vkGetInstanceProcAddr(WREVulkinstance, "vkCmdSetPolygonModeEXT");
+    vkCmdSetLogicOpEnableEXT_ = (PFN_vkCmdSetLogicOpEnableEXT)vkGetInstanceProcAddr(WREVulkinstance, "vkCmdSetLogicOpEnableEXT");
+    vkCmdSetRasterizationSamplesEXT_ = (PFN_vkCmdSetRasterizationSamplesEXT)vkGetInstanceProcAddr(WREVulkinstance, "vkCmdSetRasterizationSamplesEXT");
+    vkCmdSetColorBlendEquationEXT_ = (PFN_vkCmdSetColorBlendEquationEXT)vkGetInstanceProcAddr(WREVulkinstance, "vkCmdSetColorBlendEquationEXT");
+    vkCmdSetSampleMaskEXT_ = (PFN_vkCmdSetSampleMaskEXT)vkGetInstanceProcAddr(WREVulkinstance, "vkCmdSetSampleMaskEXT");
+    vkCmdSetAlphaToCoverageEnableEXT_ = (PFN_vkCmdSetAlphaToCoverageEnableEXT)vkGetInstanceProcAddr(WREVulkinstance, "vkCmdSetAlphaToCoverageEnableEXT");
+    vkCmdSetAlphaToOneEnableEXT_ = (PFN_vkCmdSetAlphaToOneEnableEXT)vkGetInstanceProcAddr(WREVulkinstance, "vkCmdSetAlphaToOneEnableEXT");
+    vkCmdSetDepthClipEnableEXT_ = (PFN_vkCmdSetDepthClipEnableEXT)vkGetInstanceProcAddr(WREVulkinstance, "vkCmdSetDepthClipEnableEXT");
+    vkCmdSetLogicOpEXT_ = (PFN_vkCmdSetLogicOpEXT)vkGetInstanceProcAddr(WREVulkinstance, "vkCmdSetLogicOpEXT");
+    vkDestroyShaderEXT_ = (PFN_vkDestroyShaderEXT)vkGetInstanceProcAddr(WREVulkinstance, "vkDestroyShaderEXT");
 }
 
 VkPhysicalDevice find_valid_device(int deviceCount, VkPhysicalDevice devices[], unsigned int *graphicsFamilyIndex, unsigned int *computeFamilyIndex, VkSurfaceKHR surface)
@@ -233,9 +244,9 @@ void create_device(VulkanCore_t *core)
 {
     unsigned int deviceCount = 0;
 
-    vkEnumeratePhysicalDevices(core->instance, &deviceCount, NULL);
+    vkEnumeratePhysicalDevices(WREVulkinstance, &deviceCount, NULL);
     VkPhysicalDevice devices[8];
-    vkEnumeratePhysicalDevices(core->instance, &deviceCount, devices);
+    vkEnumeratePhysicalDevices(WREVulkinstance, &deviceCount, devices);
 
     if (deviceCount == 0)
     {
@@ -243,14 +254,6 @@ void create_device(VulkanCore_t *core)
         exit(1);
     }
 
-    {
-        VkResult result = glfwCreateWindowSurface(core->instance, core->window, NULL, &core->surface);
-        if (result != VK_SUCCESS)
-        {
-            printf("Could not create window surface %i\n", result);
-            exit(1);
-        }
-    }
     VkPhysicalDeviceVulkan11Features devFeat11 = {0};
     devFeat11.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
     devFeat11.pNext = NULL;
@@ -279,8 +282,9 @@ void create_device(VulkanCore_t *core)
     devFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
     unsigned int gfi = 0;
     unsigned int cfi = 0;
-
-    core->pDev = find_valid_device(deviceCount, devices, &gfi, &cfi, core->surface);
+    VkPhysicalDevice pdevice = find_valid_device(deviceCount, devices, &gfi, &cfi, core->surface);
+    if (WREPhysicalDevice == VK_NULL_HANDLE)
+        WREPhysicalDevice = pdevice;
     core->qfi = gfi;
     core->compQfi = cfi;
     devFeatures2.pNext = &devFeatures13;
@@ -340,7 +344,7 @@ void create_device(VulkanCore_t *core)
     createInfo.ppEnabledExtensionNames = deviceExtensions;
     createInfo.enabledExtensionCount = DEVICEEXTENSIONSCOUNT;
 
-    if (vkCreateDevice(core->pDev, &createInfo, NULL, &dev) != VK_SUCCESS)
+    if (vkCreateDevice(WREPhysicalDevice, &createInfo, NULL, &dev) != VK_SUCCESS)
     {
         printf("could not create the logical device\n");
         exit(1);
@@ -384,22 +388,30 @@ VkImageView get_image_view(VkImage image, VulkanCore_t core)
     return view;
 }
 
-void create_swapchain(VulkanCore_t *core)
+void create_swapchain(VulkanCore_t *core, int w, int h)
 {
-    VkSurfaceCapabilitiesKHR capabilities;
+    VkSwapchainKHR oldChain = WREswapChain;
+    VkSurfaceCapabilitiesKHR capabilities = {0};
 
-    VkSurfaceFormatKHR aFormats[4];
-    VkPresentModeKHR aPresentModes[4];
+    VkSurfaceFormatKHR *aFormats = NULL;
+    VkPresentModeKHR *aPresentModes = NULL;
 
-    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(core->pDev, core->surface, &capabilities);
+    if (vkGetPhysicalDeviceSurfaceCapabilitiesKHR(WREPhysicalDevice, core->surface, &capabilities) != VK_SUCCESS)
+    {
+        printf("couldn't successfully get surface caps\n");
+    }
 
     uint32_t formatCount = 0;
-    vkGetPhysicalDeviceSurfacePresentModesKHR(core->pDev, core->surface, &formatCount, NULL);
-    vkGetPhysicalDeviceSurfaceFormatsKHR(core->pDev, core->surface, &formatCount, aFormats);
-
     uint32_t pModeCount = 0;
-    vkGetPhysicalDeviceSurfacePresentModesKHR(core->pDev, core->surface, &pModeCount, NULL);
-    vkGetPhysicalDeviceSurfacePresentModesKHR(core->pDev, core->surface, &pModeCount, aPresentModes);
+
+    vkGetPhysicalDeviceSurfaceFormatsKHR(WREPhysicalDevice, core->surface, &formatCount, NULL);
+    vkGetPhysicalDeviceSurfacePresentModesKHR(WREPhysicalDevice, core->surface, &pModeCount, NULL);
+
+    aFormats = malloc(sizeof(VkSurfaceFormatKHR) * formatCount);
+    aPresentModes = malloc(sizeof(VkPresentModeKHR) * formatCount);
+
+    vkGetPhysicalDeviceSurfaceFormatsKHR(WREPhysicalDevice, core->surface, &formatCount, aFormats);
+    vkGetPhysicalDeviceSurfacePresentModesKHR(WREPhysicalDevice, core->surface, &pModeCount, aPresentModes);
 
     core->sFormat = aFormats[0];
     for (unsigned int i = 0; i < formatCount; i++)
@@ -421,8 +433,8 @@ void create_swapchain(VulkanCore_t *core)
         }
     }
 
-    int w, h = 0;
-    glfwGetWindowSize(core->window, &w, &h);
+    free(aFormats);
+    free(aPresentModes);
 
     VkExtent2D extent;
     extent.height = h;
@@ -439,7 +451,7 @@ void create_swapchain(VulkanCore_t *core)
     swapchainCI.imageFormat = core->sFormat.format;
     swapchainCI.imageColorSpace = core->sFormat.colorSpace;
     swapchainCI.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    swapchainCI.imageArrayLayers = 1; // TODO: If I want to implement vr, change this
+    swapchainCI.imageArrayLayers = 1;
     swapchainCI.minImageCount = capabilities.minImageCount + 1 < capabilities.maxImageCount ? capabilities.minImageCount + 1 : capabilities.minImageCount;
     swapchainCI.imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
@@ -453,25 +465,27 @@ void create_swapchain(VulkanCore_t *core)
 
     swapchainCI.surface = core->surface;
 
-    swapchainCI.oldSwapchain = VK_NULL_HANDLE;
+    swapchainCI.oldSwapchain = oldChain;
 
-    if (vkCreateSwapchainKHR(core->lDev, &swapchainCI, NULL, &core->swapChain) != VK_SUCCESS)
+    if (vkCreateSwapchainKHR(core->lDev, &swapchainCI, NULL, &WREswapChain) != VK_SUCCESS)
     {
         printf("Swapchain could not be created");
         exit(1);
     }
 
+    vkDestroySwapchainKHR(core->lDev, oldChain, NULL);
+
     uint32_t imagecount = 0;
     VkImage *images;
-    vkGetSwapchainImagesKHR(core->lDev, core->swapChain, &imagecount, NULL);
+    vkGetSwapchainImagesKHR(core->lDev, WREswapChain, &imagecount, NULL);
     images = malloc(sizeof(VkImage) * imagecount);
-    vkGetSwapchainImagesKHR(core->lDev, core->swapChain, &imagecount, images);
+    vkGetSwapchainImagesKHR(core->lDev, WREswapChain, &imagecount, images);
 
-    core->swapChainImages = images;
-    core->swapChainImageViews = malloc(sizeof(VkImageView) * imagecount);
+    WREswapChainImages = images;
+    WREswapChainImageViews = malloc(sizeof(VkImageView) * imagecount);
     for (uint32_t i = 0; i < imagecount; i++)
     {
-        core->swapChainImageViews[i] = get_image_view(images[i], *core);
+        WREswapChainImageViews[i] = get_image_view(images[i], *core);
     }
     core->imgCount = imagecount;
 }
@@ -504,32 +518,29 @@ VkImageUsageFlags accessMaskToUsage(VkAccessFlags flags)
     }
 }
 
-void recreateSwapchain(renderer_t *renderer)
+void recreateSwapchain(VulkanCore_t *core, int w, int h)
 {
-    vkDeviceWaitIdle(renderer->vkCore.lDev);
+    vkDeviceWaitIdle(core->lDev);
 
-    vkDestroySwapchainKHR(renderer->vkCore.lDev, renderer->vkCore.swapChain, NULL);
-    for (uint32_t i = 0; i < renderer->vkCore.imgCount; i++)
+    for (uint32_t i = 0; i < core->imgCount; i++)
     {
-        vkDestroyImageView(renderer->vkCore.lDev, renderer->vkCore.swapChainImageViews[i], NULL);
+        vkDestroyImageView(core->lDev, WREswapChainImageViews[i], NULL);
     }
 
-    free(renderer->vkCore.swapChainImages);
-    free(renderer->vkCore.swapChainImageViews);
-    renderer->vkCore.swapChainImages = NULL;
-    renderer->vkCore.swapChainImageViews = NULL;
+    free(WREswapChainImages);
+    free(WREswapChainImageViews);
+    WREswapChainImages = NULL;
+    WREswapChainImageViews = NULL;
 
-    create_swapchain(&renderer->vkCore);
+    create_swapchain(core, w, h);
 
-    // for (int i = 0; i < resizableImageCount; i++)
-    //{
-    //     Image *img = resizableImages[i].image;
-    //     vkDestroyImage(renderer->vkCore.lDev, img->image, NULL);
-    //     vkDestroyImageView(renderer->vkCore.lDev, img->imgview, NULL);
-    //     vkFreeMemory(renderer->vkCore.lDev, img->memory, NULL);
+    vkDestroyImage(core->lDev, WREalbedoBuffer2D.image, NULL);
+    vkDestroyImageView(core->lDev, WREalbedoBuffer2D.imgview, NULL);
+    vkFreeMemory(core->lDev, WREalbedoBuffer2D.memory, NULL);
 
-    //    createImage(renderer->vkCore, accessMaskToUsage(img->accessMask), img->format, VK_IMAGE_TYPE_2D, *resizableImages[i].width, *resizableImages[i].height, img->aspectMask);
-    //}
+    WREalbedoBuffer2D = createImage(*core, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TYPE_2D, core->extent.width, core->extent.height, VK_IMAGE_ASPECT_COLOR_BIT);
+    transitionLayout(core->immediateSubmit, &WREalbedoBuffer2D, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, ACCESS_COLORATTACHMENT, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT);
+    writeDescriptorSet(*core, WREgBuffer2D, 0, 0, WREalbedoBuffer2D.imgview, core->linearSampler);
 }
 
 void create_CommandBuffers(VulkanCore_t *core)
@@ -682,7 +693,7 @@ void createBuffer(VulkanCore_t core, BufferCreateInfo createInfo, Buffer *buf)
 
     VkPhysicalDeviceMemoryProperties memProps = {0};
 
-    vkGetPhysicalDeviceMemoryProperties(core.pDev, &memProps);
+    vkGetPhysicalDeviceMemoryProperties(WREPhysicalDevice, &memProps);
     int index = -1;
     for (int i = 0; i <= 31; i++)
     {
@@ -891,7 +902,7 @@ void createSamplers(VulkanCore_t *core)
     samplerCI.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 
     VkPhysicalDeviceProperties props = {0};
-    vkGetPhysicalDeviceProperties(core->pDev, &props);
+    vkGetPhysicalDeviceProperties(WREPhysicalDevice, &props);
 
     samplerCI.anisotropyEnable = VK_TRUE;
     samplerCI.maxAnisotropy = props.limits.maxSamplerAnisotropy;
@@ -934,25 +945,39 @@ void destroyRenderer(renderer_t *renderer)
     }
     for (uint32_t i = 0; i < renderer->vkCore.imgCount; i++)
     {
-        vkDestroyImageView(renderer->vkCore.lDev, renderer->vkCore.swapChainImageViews[i], NULL);
+        vkDestroyImageView(renderer->vkCore.lDev, WREswapChainImageViews[i], NULL);
         vkDestroySemaphore(renderer->vkCore.lDev, renderer->vkCore.renderFinished[i], NULL);
     }
     vkDestroySampler(renderer->vkCore.lDev, renderer->vkCore.linearSampler, NULL);
-    vkDestroySwapchainKHR(renderer->vkCore.lDev, renderer->vkCore.swapChain, NULL);
+    vkDestroySwapchainKHR(renderer->vkCore.lDev, WREswapChain, NULL);
     vkDestroyDevice(renderer->vkCore.lDev, NULL);
-    vkDestroySurfaceKHR(renderer->vkCore.instance, renderer->vkCore.surface, NULL);
-    vkDestroyInstance(renderer->vkCore.instance, NULL);
+    vkDestroySurfaceKHR(WREVulkinstance, renderer->vkCore.surface, NULL);
+    vkDestroyInstance(WREVulkinstance, NULL);
 }
 
 void initRenderer(renderer_t *renderer)
 {
-    create_instance(renderer);
+    if (WREVulkinstance == VK_NULL_HANDLE)
+        create_instance();
+    {
+        VkResult result = glfwCreateWindowSurface(WREVulkinstance, renderer->window, NULL, &renderer->vkCore.surface);
+        if (result != VK_SUCCESS)
+        {
+            printf("Could not create window surface %i\n", result);
+            exit(1);
+        }
+    }
     create_device(&renderer->vkCore);
-    create_swapchain(&renderer->vkCore);
+    if (WREswapChain == VK_NULL_HANDLE)
+    {
+        int w, h = 0;
+        glfwGetFramebufferSize(renderer->window, &w, &h);
+        create_swapchain(&renderer->vkCore, w, h);
+    }
     renderer->vkCore.currentScImg = malloc(sizeof(Image));
     *renderer->vkCore.currentScImg = (Image){
-        renderer->vkCore.swapChainImages[0],
-        renderer->vkCore.swapChainImageViews[0],
+        WREswapChainImages[0],
+        WREswapChainImageViews[0],
         VK_IMAGE_LAYOUT_UNDEFINED,
         VK_IMAGE_ASPECT_COLOR_BIT,
         VK_FORMAT_R8G8B8A8_SRGB,
@@ -965,6 +990,11 @@ void initRenderer(renderer_t *renderer)
     allocate_textureDescriptorSet(&renderer->vkCore);
     createSamplers(&renderer->vkCore);
     renderer->meshHandler.instancedMeshes = NULL;
+
+    initializeDescriptor(renderer->vkCore, &WREgBuffer2D, 1, 1, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, SHADER_STAGE_ALL, true);
+    WREalbedoBuffer2D = createImage(renderer->vkCore, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TYPE_2D, renderer->vkCore.extent.width, renderer->vkCore.extent.height, VK_IMAGE_ASPECT_COLOR_BIT);
+    allocateDescriptorSets(renderer->vkCore, &WREgBuffer2D);
+    writeDescriptorSet(renderer->vkCore, WREgBuffer2D, 0, 0, WREalbedoBuffer2D.imgview, renderer->vkCore.linearSampler);
 }
 
 void bindGraphicsPipeline(graphicsPipeline pline, RenderPass pass, VkCommandBuffer cBuf)
@@ -1278,10 +1308,10 @@ void createComputePipelineLayout(VulkanCore_t core, computePipeline *pl)
     vkCreatePipelineLayout(core.lDev, &plcInf, NULL, &pl->plLayout);
 }
 
-void markImageResizable(Image *img, uint32_t *width, uint32_t *height)
+void markImageResizable(Image *img, uint32_t *width, uint32_t *height, VkImageUsageFlags usage, VkImageLayout wantedLayout)
 {
     if (resizableImageCount % 100 == 0)
         resizableImages = realloc(resizableImages, sizeof(resizableImageobject) * (resizableImageCount + 100));
-    resizableImages[resizableImageCount] = (resizableImageobject){width, height, img};
+    resizableImages[resizableImageCount] = (resizableImageobject){width, height, img, usage, wantedLayout};
     resizableImageCount += 1;
 }

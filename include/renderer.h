@@ -1,6 +1,7 @@
 #ifndef REND
 #define REND
 #include <GLFW/glfw3.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <vulkan/vulkan.h>
 
@@ -59,16 +60,6 @@ extern "C"
         void *mappedMemory;
         VkDeviceAddress gpuAddress;
     } Buffer;
-    typedef struct
-    {
-        Buffer *buffer;
-        uint64_t capacity, filled;
-    } VirtualBufferParent;
-    typedef struct
-    {
-        VirtualBufferParent parentBuffer;
-        uint64_t offSet;
-    } VirtualBuffer;
 
     typedef struct
     {
@@ -190,6 +181,14 @@ extern "C"
         PASS_TYPE_BLIT,
         PASS_TYPE_TRANSFER,
     } passType;
+
+    typedef struct
+    {
+        Image *handle;
+        VkImageLayout layout;
+        VkAccessFlags accessMask;
+    } ImageResource;
+
     typedef struct
     {
         Resourcetype type;
@@ -200,7 +199,7 @@ extern "C"
         union resourceVal
         {
             Buffer buffer;
-            Image img;
+            ImageResource img;
             Image *swapChainImage;
             void *arbitrary;
         } value;
@@ -253,12 +252,14 @@ extern "C"
         RenderPass *passes;
     } GraphBuilder;
     // ----------------------------------------- RGEND
+    extern VkInstance WREVulkinstance;
+    extern VkPhysicalDevice WREPhysicalDevice;
+    extern VkSwapchainKHR WREswapChain;
+    extern VkImage *WREswapChainImages;
+    extern VkImageView *WREswapChainImageViews;
 
     typedef struct
     {
-        VkInstance instance;
-
-        VkPhysicalDevice pDev;
         uint32_t qfi;
         uint32_t compQfi;
         VkSurfaceKHR surface;
@@ -266,14 +267,11 @@ extern "C"
         VkQueue pQueue, gQueue;
         VkQueue compQueue;
 
-        VkSwapchainKHR swapChain;
         VkExtent2D extent;
         VkSurfaceFormatKHR sFormat;
         VkPresentModeKHR sPresentMode;
-        VkImage *swapChainImages;
         unsigned int imgCount;
         uint32_t currentImageIndex;
-        VkImageView *swapChainImageViews;
         Image *currentScImg;
 
         VkSemaphore graphicsTimeline;
@@ -295,8 +293,6 @@ extern "C"
         VkSampler linearSampler;
         VkSampler nearestSampler;
 
-        GLFWwindow *window;
-
     } VulkanCore_t;
 
     typedef struct
@@ -304,9 +300,10 @@ extern "C"
         VulkanCore_t vkCore;
         MeshHandler meshHandler; // TODO: Remove
         GraphBuilder *rg;
+        GLFWwindow *window;
     } renderer_t;
 
-    void recreateSwapchain(renderer_t *renderer);
+    void recreateSwapchain(VulkanCore_t *core, int w, int h);
 
     void initRenderer(renderer_t *renderer);
 
@@ -371,7 +368,7 @@ extern "C"
     void submitTexture(renderer_t *renderer, Texture *tex, VkSampler sampler);
     void write_textureDescriptorSet(VulkanCore_t core, VkImageView texture, VkSampler sampler, uint64_t textureIndex);
     void submitNormalMap(VulkanCore_t core, VkImageView texture);
-    void markImageResizable(Image *img, uint32_t *width, uint32_t *height);
+    void markImageResizable(Image *img, uint32_t *width, uint32_t *height, VkImageUsageFlags usage, VkImageLayout wantedLayout);
     void transitionLayout(VkCommandBuffer cBuf, Image *img, VkImageLayout oldLayout, VkImageLayout newLayout, VkAccessFlags dstAccess, VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage);
     // ----------------------------------------- IMGUTILEND
 
@@ -383,6 +380,30 @@ extern "C"
     //
     void immediateSubmitBegin(VulkanCore_t core);
     void immediateSubmitEnd(VulkanCore_t core);
+
+    // Descriptors
+    typedef struct
+    {
+        VkDescriptorSet set;
+        uint32_t binding;
+    } WREDescriptorSet;
+
+    typedef struct
+    {
+        VkDescriptorType type;
+        VkDescriptorPool pool;
+        VkDescriptorSetLayout layout;
+        WREDescriptorSet *sets;
+        uint32_t setcount, descriptorCount;
+        bool bindless;
+    } WREDescriptor;
+
+    void initializeDescriptor(VulkanCore_t core, WREDescriptor *desc, uint32_t descriptorCount, uint32_t setCount, VkDescriptorType type, shaderStage stage, bool bindless);
+    void allocateDescriptorSets(VulkanCore_t core, WREDescriptor *desc);
+    void writeDescriptorSet(VulkanCore_t core, WREDescriptor desc, uint32_t setIndex, uint32_t arrayIndex, VkImageView image, VkSampler sampler);
+
+    extern Image WREalbedoBuffer2D;
+    extern WREDescriptor WREgBuffer2D;
 
 #ifdef __cplusplus
 }

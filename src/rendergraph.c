@@ -74,7 +74,7 @@ void recordPass(RenderPass *pass, renderer_t *renderer, VkCommandBuffer cBuf)
 bool resEq(Resource rhs, Resource lhs)
 {
     return rhs.value.buffer.buffer == lhs.value.buffer.buffer &&
-           rhs.value.img.imgview == lhs.value.img.imgview &&
+           rhs.value.img.handle->imgview == lhs.value.img.handle->imgview &&
            rhs.type == lhs.type &&
            rhs.usage == lhs.usage;
 }
@@ -83,7 +83,7 @@ bool resEqWoUsage(Resource rhs, Resource lhs)
 {
     return rhs.type == lhs.type &&
            rhs.value.buffer.index == lhs.value.buffer.index &&
-           rhs.value.img.image == lhs.value.img.image;
+           rhs.value.img.handle->image == lhs.value.img.handle->image;
 }
 
 const VkImageSubresourceRange imgSRR = {
@@ -178,51 +178,52 @@ void addImageResource(RenderPass *pass, Image *image, ResourceUsageFlags_t usage
 {
     Resource res = {0};
     res.type = RES_TYPE_Image;
-    res.value.img = *image;
+    res.value.img.handle = image;
     res.usage = usage;
 
     if ((usage & USAGE_COLORATTACHMENT) != 0)
     {
         res.access = ACCESS_COLORATTACHMENT;
-        res.value.img.CurrentLayout |= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        res.value.img.layout |= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
         res.cAttIndex = pass->cAttCount;
-        res.value.img.accessMask |= ACCESS_COLORATTACHMENT;
+        res.value.img.handle->accessMask |= ACCESS_COLORATTACHMENT;
         addColorAttachment(image, pass, NULL);
     }
     else if ((usage & USAGE_DEPTHSTENCILATTACHMENT) != 0)
     {
         res.access = ACCESS_DEPTHATTACHMENT;
-        res.value.img.CurrentLayout |= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        res.value.img.layout |= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
         res.value.img.accessMask |= ACCESS_DEPTHATTACHMENT;
         setDepthStencilAttachment(*image, pass);
     }
     else if ((usage & USAGE_TRANSFER_SRC) != 0)
     {
         res.access = ACCESS_TRANSFER_READ;
-        res.value.img.CurrentLayout |= VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        res.value.img.layout |= VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
         res.value.img.accessMask |= ACCESS_TRANSFER_READ;
     }
     else if ((usage & USAGE_TRANSFER_DST) != 0)
     {
         res.access = ACCESS_TRANSFER_WRITE;
-        res.value.img.CurrentLayout |= VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        res.value.img.layout |= VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
         res.value.img.accessMask |= ACCESS_TRANSFER_WRITE;
     }
     else if ((usage & USAGE_SAMPLED) != 0)
     {
         res.access = ACCESS_READ;
-        res.value.img.CurrentLayout |= VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        res.value.img.layout |= VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         res.value.img.accessMask |= ACCESS_READ;
     }
     else if ((usage & USAGE_UNDEFINED) != 0)
     {
         res.access = 0;
-        res.value.img.CurrentLayout |= VK_IMAGE_LAYOUT_UNDEFINED;
+        res.value.img.layout |= VK_IMAGE_LAYOUT_UNDEFINED;
         res.value.img.accessMask = 0;
     }
 
     addResource(pass, res);
 }
+
 // only transfers, and undefined are valid for buffers
 void addBufferResource(RenderPass *pass, Buffer buf, ResourceUsageFlags_t usage)
 {
@@ -301,7 +302,8 @@ void optimizePasses(RenderGraph *graph, Image *swapChainImg)
         for (int r = 0; r <= curPass.resourceCount - 1; r++)
         {
             Resource cr = curPass.resources[r];
-
+            if (cr.usage == USAGE_COLORATTACHMENT)
+                curPass.colorAttachments[cr.cAttIndex].imageView = cr.value.img.handle->imgview;
             if (cr.value.swapChainImage == swapChainImg)
             {
                 rootResources = realloc(rootResources, sizeof(Resource) * (rootResourceCount + curPass.resourceCount));
@@ -329,11 +331,11 @@ void optimizePasses(RenderGraph *graph, Image *swapChainImg)
                             icBar.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
                             icBar.pNext = NULL;
 
-                            icBar.image = cr.value.img.image;
+                            icBar.image = cr.value.img.handle->image;
                             icBar.subresourceRange = imgSRR;
 
-                            icBar.oldLayout = cr.value.img.CurrentLayout;
-                            icBar.newLayout = oldImg.value.img.CurrentLayout;
+                            icBar.oldLayout = cr.value.img.layout;
+                            icBar.newLayout = oldImg.value.img.layout;
 
                             icBar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
                             icBar.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -487,7 +489,7 @@ void destroyRenderGraph(RenderGraph *graph)
     free(graph->passes);
 }
 const VkClearColorValue clearValue = {{0.0f, 0.0f, 0.0f, 0.0f}};
-bool resize = false;
+bool swapchainCorrect = true;
 uint64_t submitValue = 0;
 void drawRenderer(renderer_t *renderer, int cBufIndex)
 {
@@ -505,21 +507,20 @@ void drawRenderer(renderer_t *renderer, int cBufIndex)
         vkWaitSemaphores(renderer->vkCore.lDev, &semaWaitInf, UINT64_MAX);
         submitValue++;
     }
-    if (resize)
-    {
-        recreateSwapchain(renderer);
-        resize = false;
-    }
+
     VkResult result;
-    if ((result = vkAcquireNextImageKHR(renderer->vkCore.lDev, renderer->vkCore.swapChain, UINT64_MAX, renderer->vkCore.imageAvailable[cBufIndex], VK_NULL_HANDLE, &renderer->vkCore.currentImageIndex)) ==
-        VK_ERROR_OUT_OF_DATE_KHR)
+    if (swapchainCorrect)
     {
-        resize = true;
+        result = vkAcquireNextImageKHR(renderer->vkCore.lDev, WREswapChain, UINT64_MAX, renderer->vkCore.imageAvailable[cBufIndex], VK_NULL_HANDLE, &renderer->vkCore.currentImageIndex);
+        if (result == VK_ERROR_OUT_OF_DATE_KHR)
+            swapchainCorrect = false;
     }
+    if (!swapchainCorrect)
+        return;
 
     *renderer->vkCore.currentScImg = (Image){
-        renderer->vkCore.swapChainImages[renderer->vkCore.currentImageIndex],
-        renderer->vkCore.swapChainImageViews[renderer->vkCore.currentImageIndex],
+        WREswapChainImages[renderer->vkCore.currentImageIndex],
+        WREswapChainImageViews[renderer->vkCore.currentImageIndex],
         VK_IMAGE_LAYOUT_UNDEFINED,
         VK_IMAGE_ASPECT_COLOR_BIT,
         VK_FORMAT_R8G8B8A8_SRGB,
@@ -665,13 +666,13 @@ void drawRenderer(renderer_t *renderer, int cBufIndex)
         presentInfo.pWaitSemaphores = &renderer->vkCore.renderFinished[renderer->vkCore.currentImageIndex];
 
         presentInfo.swapchainCount = 1;
-        presentInfo.pSwapchains = &renderer->vkCore.swapChain;
+        presentInfo.pSwapchains = &WREswapChain;
         presentInfo.pImageIndices = &renderer->vkCore.currentImageIndex;
 
         result = 0;
         if ((result = vkQueuePresentKHR(renderer->vkCore.pQueue, &presentInfo)) == VK_ERROR_OUT_OF_DATE_KHR)
         {
-            resize = true;
+            swapchainCorrect = false;
         }
     }
 

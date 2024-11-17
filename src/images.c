@@ -63,7 +63,7 @@ Image createImage(VulkanCore_t core, VkImageUsageFlags usage, VkFormat format, V
 
     VkPhysicalDeviceMemoryProperties memProps = {0};
 
-    vkGetPhysicalDeviceMemoryProperties(core.pDev, &memProps);
+    vkGetPhysicalDeviceMemoryProperties(WREPhysicalDevice, &memProps);
     VkMemoryAllocateInfo memAllocInf = {0};
     memAllocInf.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     memAllocInf.pNext = NULL;
