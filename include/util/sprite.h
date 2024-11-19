@@ -21,6 +21,8 @@ typedef struct
     vec3 pos;
     vec4 color;
     float radius;
+    bool on;
+    uint32_t id;
 } pointLight2D;
 
 typedef struct
@@ -46,8 +48,8 @@ typedef struct
     renderer_t *Renderer;
 } WREScene2D;
 
-void addNewLight(pointLight2D light, WREScene2D *scene);
-void updateLight(pointLight2D light, WREScene2D *scene);
+void addNewLight(pointLight2D *light, WREScene2D *scene);
+void updateLight(pointLight2D *light, WREScene2D *scene);
 void setActiveScene(WREScene2D *scene);
 void initializeScene(WREScene2D *scene);
 

@@ -191,28 +191,41 @@ void spritePass(renderer_t renderer, SpritePipeline *pipeline)
     }
 }
 
-void addNewLight(pointLight2D light, WREScene2D *scene)
+void addNewLight(pointLight2D *light, WREScene2D *scene)
 {
     scene->lights = realloc(scene->lights, sizeof(pointLight2D) * (lightCount + 1));
     if (lightCount == 0)
     {
         BufferCreateInfo bci = {
-            sizeof(light) * (lightCount + spriteIncrementAmount),
+            sizeof(pointLight2D) * (lightCount + spriteIncrementAmount),
             BUFFER_USAGE_STORAGE_BUFFER | BUFFER_USAGE_TRANSFER_SRC | BUFFER_USAGE_TRANSFER_DST,
             CPU_ONLY,
         };
         createBuffer(scene->Renderer->vkCore, bci, &lightBuffer);
     }
-    scene->lights[lightCount] = light;
+    scene->lights[lightCount] = *light;
+    light->id = lightCount;
+    light->on = true;
     scene->lightCount += 1;
     lightCount += 1;
 }
 
+void updateLight(pointLight2D *light, WREScene2D *scene)
+{
+    scene->lights[light->id] = *light;
+}
+
 void setActiveScene(WREScene2D *scene)
 {
-    pushDataToBuffer(scene->spritePipeline.spriteInstanceData, sizeof(transform2D) * scene->spritePipeline.spriteInstanceCount, spriteInstanceData, 0);
-    pushDataToBuffer(scene->spritePipeline.textureIDs, sizeof(uint64_t) * scene->spritePipeline.spriteInstanceCount, spriteTextureIDs, 0);
-    pushDataToBuffer(scene->lights, sizeof(pointLight2D) * scene->lightCount, lightBuffer, 0);
+    // pushDataToBuffer(scene->spritePipeline.spriteInstanceData, sizeof(transform2D) * scene->spritePipeline.spriteInstanceCount, spriteInstanceData, 0);
+    // pushDataToBuffer(scene->spritePipeline.textureIDs, sizeof(uint64_t) * scene->spritePipeline.spriteInstanceCount, spriteTextureIDs, 0);
+    // pushDataToBuffer(scene->lights, sizeof(pointLight2D) * scene->lightCount, lightBuffer, 0);
+    vkUnmapMemory(scene->Renderer->vkCore.lDev, spriteInstanceData.associatedMemory);
+    vkUnmapMemory(scene->Renderer->vkCore.lDev, spriteTextureIDs.associatedMemory);
+    vkUnmapMemory(scene->Renderer->vkCore.lDev, lightBuffer.associatedMemory);
+    vkMapMemory(scene->Renderer->vkCore.lDev, spriteInstanceData.associatedMemory, 0, spriteInstanceData.size, 0, (void **)&scene->spritePipeline.spriteInstanceData);
+    vkMapMemory(scene->Renderer->vkCore.lDev, spriteTextureIDs.associatedMemory, 0, spriteTextureIDs.size, 0, (void **)&scene->spritePipeline.textureIDs);
+    vkMapMemory(scene->Renderer->vkCore.lDev, lightBuffer.associatedMemory, 0, lightBuffer.size, 0, (void **)&scene->lights);
 }
 
 Image albedoBuffer2d = {0};

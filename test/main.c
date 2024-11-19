@@ -10,6 +10,13 @@ GraphBuilder builder = {0};
 spriteInstance birby1 = {0};
 spriteInstance birby2 = {0};
 spriteInstance birby3 = {0};
+pointLight2D light = {
+    {0.f, -10.f, 1.f},
+    {1.f, 1.f, 1.f, 1.f},
+    1.0f,
+    true,
+    0,
+};
 int ImageIndex = 0;
 int FrameIndex = 0;
 int Index = 0;
@@ -27,6 +34,8 @@ void loop()
                                       thing,
                                   },
                          &scene);
+    light.pos.y -= 0.001f;
+    updateLight(&light, &scene);
     drawRenderer(&renderer, Index);
 }
 
@@ -52,12 +61,8 @@ void init()
                                       0,
                                   },
                          &scene);
-    pointLight2D light = {
-        {0.f, -10.f, 1.f},
-        {1.f, 1.f, 1.f, 1.f},
-        1.0f,
-    };
-    addNewLight(light, &scene);
+
+    addNewLight(&light, &scene);
     setActiveScene(&scene);
     spritePass(renderer, &scene.spritePipeline);
     copyGraph(&scene.spritePipeline.builder, &builder);

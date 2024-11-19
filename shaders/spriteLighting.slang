@@ -5,6 +5,8 @@ struct Light
     float3 position;
     float4 color;
     float radius;
+    bool on;
+    uint id;
 }
 ///
 struct Transform
@@ -81,6 +83,8 @@ float4 fragMain(VertOutput input)
     for (uint i = 0; i < pc.lightCount; i++)
     {
         Light light = pc.lights[i];
+        if (!light.on)
+            continue;
         float3 lightPos = light.position / spriteScaleFactor;
         float3 ambient = light.color.xyz * 0.1f;
 
