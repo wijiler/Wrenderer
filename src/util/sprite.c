@@ -215,11 +215,14 @@ void updateLight(pointLight2D *light, WREScene2D *scene)
     scene->lights[light->id] = *light;
 }
 
+void switchLight(pointLight2D *light, WREScene2D *scene)
+{
+    light->on = !light->on;
+    scene->lights[light->id] = *light;
+}
+
 void setActiveScene(WREScene2D *scene)
 {
-    // pushDataToBuffer(scene->spritePipeline.spriteInstanceData, sizeof(transform2D) * scene->spritePipeline.spriteInstanceCount, spriteInstanceData, 0);
-    // pushDataToBuffer(scene->spritePipeline.textureIDs, sizeof(uint64_t) * scene->spritePipeline.spriteInstanceCount, spriteTextureIDs, 0);
-    // pushDataToBuffer(scene->lights, sizeof(pointLight2D) * scene->lightCount, lightBuffer, 0);
     vkUnmapMemory(scene->Renderer->vkCore.lDev, spriteInstanceData.associatedMemory);
     vkUnmapMemory(scene->Renderer->vkCore.lDev, spriteTextureIDs.associatedMemory);
     vkUnmapMemory(scene->Renderer->vkCore.lDev, lightBuffer.associatedMemory);

@@ -64,6 +64,7 @@ void init()
 
     addNewLight(&light, &scene);
     setActiveScene(&scene);
+    // switchLight(&light, &scene);
     spritePass(renderer, &scene.spritePipeline);
     copyGraph(&scene.spritePipeline.builder, &builder);
     renderer.rg = &builder;
