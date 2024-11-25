@@ -4,11 +4,28 @@
 #include <renderer.h>
 #include <util/math.h>
 
+typedef enum
+{
+    WRE_ORTHOGRAPHIC_CAM,
+    WRE_PERSPECTIVE_CAM,
+} WRECAMERATYPE;
+
 typedef struct
 {
+    vec3 pos;
+    vec2 rotation;
+} cameraTransform;
+
+typedef struct
+{
+    WRECAMERATYPE type;
     mat4x4 perspective;
     mat4x4 view;
-    Image *renderTarget;
+    cameraTransform position;
+    float fov;
 } WRECamera;
+
+void initOrthoCamera(WRECamera *cam, renderer_t *renderer, vec3 pos, vec2 rotation);
+void initPerspCamera(WRECamera *cam, renderer_t *renderer, cameraTransform transform, float fov);
 
 #endif

@@ -6,6 +6,8 @@
 uint32_t spriteInstanceCount = 0;
 uint32_t lightCount = 0;
 
+bool cameraSet = false;
+Buffer activeCameraBuffer;
 Buffer spriteInstanceData = {0};
 Buffer spriteTextureIDs = {0};
 Buffer lightBuffer = {0};
@@ -142,10 +144,12 @@ void spritePassCallback(RenderPass self, VkCommandBuffer cBuf)
     {
         VkDeviceAddress SpriteBuffer;
         VkDeviceAddress InstanceBuffer;
+        VkDeviceAddress cameraBuf;
     } pc;
     pc data = {
         spriteTextureIDs.gpuAddress,
         spriteInstanceData.gpuAddress,
+        activeCameraBuffer.gpuAddress,
     };
     bindGraphicsPipeline(self.gPl, self, cBuf);
     vkCmdPushConstants(cBuf, self.gPl.plLayout, SHADER_STAGE_ALL, 0, sizeof(pc), &data);
@@ -160,11 +164,13 @@ void lightPassCallback(RenderPass self, VkCommandBuffer cBuf)
         uint32_t lightCount;
         VkDeviceAddress LightBuffer;
         VkDeviceAddress InstanceBuffer;
+        VkDeviceAddress cameraBuf;
     } pc;
     pc data = {
         lightCount,
         lightBuffer.gpuAddress,
         spriteInstanceData.gpuAddress,
+        activeCameraBuffer.gpuAddress,
     };
     bindGraphicsPipeline(self.gPl, self, cBuf);
     vkCmdPushConstants(cBuf, self.gPl.plLayout, SHADER_STAGE_ALL, 0, sizeof(pc), &data);
@@ -213,22 +219,33 @@ void addNewLight(pointLight2D *light, WREScene2D *scene)
 void updateLight(pointLight2D *light, WREScene2D *scene)
 {
     scene->lights[light->id] = *light;
+    pushDataToBuffer(scene->lights, sizeof(pointLight2D) * scene->lightCount, lightBuffer, 0);
 }
 
 void switchLight(pointLight2D *light, WREScene2D *scene)
 {
     light->on = !light->on;
     scene->lights[light->id] = *light;
+    pushDataToBuffer(scene->lights, sizeof(pointLight2D) * scene->lightCount, lightBuffer, 0);
 }
 
 void setActiveScene(WREScene2D *scene)
 {
-    vkUnmapMemory(scene->Renderer->vkCore.lDev, spriteInstanceData.associatedMemory);
-    vkUnmapMemory(scene->Renderer->vkCore.lDev, spriteTextureIDs.associatedMemory);
-    vkUnmapMemory(scene->Renderer->vkCore.lDev, lightBuffer.associatedMemory);
-    vkMapMemory(scene->Renderer->vkCore.lDev, spriteInstanceData.associatedMemory, 0, spriteInstanceData.size, 0, (void **)&scene->spritePipeline.spriteInstanceData);
-    vkMapMemory(scene->Renderer->vkCore.lDev, spriteTextureIDs.associatedMemory, 0, spriteTextureIDs.size, 0, (void **)&scene->spritePipeline.textureIDs);
-    vkMapMemory(scene->Renderer->vkCore.lDev, lightBuffer.associatedMemory, 0, lightBuffer.size, 0, (void **)&scene->lights);
+    if (!cameraSet)
+    {
+        {
+            BufferCreateInfo BCI = {
+                sizeof(WRECamera),
+                BUFFER_USAGE_STORAGE_BUFFER,
+                CPU_ONLY,
+            };
+            createBuffer(scene->Renderer->vkCore, BCI, &activeCameraBuffer);
+        }
+    }
+    pushDataToBuffer(scene->camera, sizeof(WRECamera), activeCameraBuffer, 0);
+    pushDataToBuffer(scene->lights, sizeof(pointLight2D) * scene->lightCount, lightBuffer, 0);
+    pushDataToBuffer(scene->spritePipeline.spriteInstanceData, sizeof(transform2D) * scene->spritePipeline.spriteInstanceCount, spriteInstanceData, 0);
+    pushDataToBuffer(scene->spritePipeline.textureIDs, sizeof(uint64_t) * scene->spritePipeline.spriteInstanceCount, spriteTextureIDs, 0);
 }
 
 Image albedoBuffer2d = {0};
@@ -271,6 +288,7 @@ void initializePipelines(renderer_t *renderer, SpritePipeline *pipeline)
         {
             VkDeviceAddress SpriteBuffer;
             VkDeviceAddress InstanceBuffer;
+            VkDeviceAddress cameraBuf;
         } pc;
         setPushConstantRange(&pipeline->gbufferPipeline, sizeof(pc), SHADER_STAGE_ALL, 0);
         addSetLayoutToGPL(&renderer->vkCore.tdSetLayout, &pipeline->gbufferPipeline);
@@ -317,6 +335,7 @@ void initializePipelines(renderer_t *renderer, SpritePipeline *pipeline)
             uint32_t lightCount;
             VkDeviceAddress lightBuf;
             VkDeviceAddress instanceBuf;
+            VkDeviceAddress cameraBuf;
         } pc;
         setPushConstantRange(&pipeline->lightPipeline, sizeof(pc), SHADER_STAGE_ALL, 0);
         addSetLayoutToGPL(&WREgBuffer2D.layout, &pipeline->lightPipeline);
@@ -331,4 +350,21 @@ void initializePipelines(renderer_t *renderer, SpritePipeline *pipeline)
 void initializeScene(WREScene2D *scene)
 {
     initializePipelines(scene->Renderer, &scene->spritePipeline);
+}
+
+void updateCamera(WRECamera *cam, WREScene2D *scene)
+{
+    switch (cam->type)
+    {
+    case WRE_ORTHOGRAPHIC_CAM:
+    {
+        initOrthoCamera(cam, scene->Renderer, cam->position.pos, cam->position.rotation);
+    }
+    break;
+    case WRE_PERSPECTIVE_CAM:
+    {
+        initPerspCamera(cam, scene->Renderer, cam->position, cam->fov);
+    }
+    break;
+    }
 }

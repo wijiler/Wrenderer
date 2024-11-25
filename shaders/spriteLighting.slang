@@ -15,6 +15,28 @@ struct Transform
     float2 scale;
     float rotation;
 }
+
+enum WRECAMERATYPE
+{
+    WRE_ORTHOGRAPHIC_CAM,
+    WRE_PERSPECTIVE_CAM,
+}
+
+struct cameraTransform
+{
+    float3 pos;
+    float2 rotation;
+}
+
+struct Camera
+{
+    WRECAMERATYPE type;
+    float4x4 perspective;
+    float4x4 view;
+    cameraTransform position;
+    float fov;
+}
+
 static const float4 vpositions[6] =
     {
         float4(.1f, .1f, 0.0f, 1.0f),
@@ -50,6 +72,7 @@ struct pushConstants
     uint lightCount;
     Light *lights;
     Transform *instances;
+    Camera *camera;
 }
 
 struct VertOutput
@@ -69,8 +92,9 @@ pushConstants pc;
 VertOutput vertMain(uint vertID: SV_VertexID, uint instID: SV_InstanceID)
 {
     VertOutput output;
-    output.pos = float4(transform(pc.instances[instID], vertID), 1.0f);
-    output.realPos = transform(pc.instances[instID], vertID);
+    float4 pos = mul(pc.camera.perspective, mul(pc.camera.view, float4(transform(pc.instances[instID], vertID), 1.0f)));
+    output.pos = pos;
+    output.realPos = float3(pos.x, pos.y, pos.z);
     return output;
 }
 

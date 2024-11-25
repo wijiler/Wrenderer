@@ -1,6 +1,7 @@
 #ifndef WRE_SPRITE_H__
 #define WRE_SPRITE_H__
 #include <renderer.h>
+#include <util/camera.h>
 #include <util/math.h>
 
 typedef struct
@@ -45,6 +46,7 @@ typedef struct
     uint32_t lightCount;
     pointLight2D *lights;
 
+    WRECamera *camera;
     renderer_t *Renderer;
 } WREScene2D;
 
@@ -60,4 +62,6 @@ void updateSpriteInstance(spriteInstance *sprite, transform2D transform, WREScen
 void removeSpriteInstance(spriteInstance *sprite, WREScene2D *scene);
 void deleteSpriteInstances(Sprite *sprite, WREScene2D *scene);
 void spritePass(renderer_t renderer, SpritePipeline *pipeline);
+void updateCamera(WRECamera *cam, WREScene2D *renderer);
+
 #endif

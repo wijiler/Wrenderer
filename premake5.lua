@@ -52,7 +52,7 @@ project "Wrenderer"
     filter ""
     filter "action:gmake"
     toolset "clang"
-    buildoptions {"-Wextra", "-Wall"}
+    buildoptions {"-Wextra", "-Wall", "-mavx", "-mavx2"}
 
     filter "not action:gmake"
     toolset "msc"

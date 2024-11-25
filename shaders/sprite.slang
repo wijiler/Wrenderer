@@ -7,11 +7,32 @@ struct Transform
     float rotation;
 }
 
+enum WRECAMERATYPE
+{
+    WRE_ORTHOGRAPHIC_CAM,
+    WRE_PERSPECTIVE_CAM,
+}
+
+struct cameraTransform
+{
+    float3 pos;
+    float2 rotation;
+}
+
+struct Camera
+{
+    WRECAMERATYPE type;
+    float4x4 perspective;
+    float4x4 view;
+    cameraTransform position;
+    float fov;
+}
+
 struct pushConstants
 {
     uint64_t *ids;
     Transform *instances;
-    // Light *lights;
+    Camera *camera;
 }
 
 [vk_push_constant]
@@ -62,7 +83,7 @@ VertOutput vertMain(uint32_t vertID: SV_VertexID, uint32_t instID: SV_InstanceID
 {
     VertOutput output;
 
-    output.sv_pos = float4(transform(ptrs.instances[instID], vertID), 1.0f);
+    output.sv_pos = mul(ptrs.camera.perspective, mul(ptrs.camera.view, float4(transform(ptrs.instances[instID], vertID), 1.0f)));
     output.color = float3(1.0f, 1.0f, 1.0f);
     output.texID = ptrs.ids[instID];
     output.uv = uvs[vertID];

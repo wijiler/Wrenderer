@@ -13,6 +13,22 @@ extern "C"
 {
 #endif
 
+    // Descriptors
+    typedef struct
+    {
+        VkDescriptorSet set;
+        uint32_t binding;
+    } WREDescriptorSet;
+
+    typedef struct
+    {
+        VkDescriptorType type;
+        VkDescriptorPool pool;
+        VkDescriptorSetLayout layout;
+        WREDescriptorSet *sets;
+        uint32_t setcount, descriptorCount;
+        bool bindless;
+    } WREDescriptor;
     // ----------------------------------------- RGBEG
     static const VkCommandBufferBeginInfo cBufBeginInf = {
         VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -289,6 +305,8 @@ extern "C"
         int textureCount;
         VkDescriptorSetLayout tdSetLayout;
         VkDescriptorSet tdescriptorSet;
+        int normalCount;
+        VkDescriptorSet normalDescriptorSet;
 
         VkSampler linearSampler;
         VkSampler nearestSampler;
@@ -380,23 +398,6 @@ extern "C"
     //
     void immediateSubmitBegin(VulkanCore_t core);
     void immediateSubmitEnd(VulkanCore_t core);
-
-    // Descriptors
-    typedef struct
-    {
-        VkDescriptorSet set;
-        uint32_t binding;
-    } WREDescriptorSet;
-
-    typedef struct
-    {
-        VkDescriptorType type;
-        VkDescriptorPool pool;
-        VkDescriptorSetLayout layout;
-        WREDescriptorSet *sets;
-        uint32_t setcount, descriptorCount;
-        bool bindless;
-    } WREDescriptor;
 
     void initializeDescriptor(VulkanCore_t core, WREDescriptor *desc, uint32_t descriptorCount, uint32_t setCount, VkDescriptorType type, shaderStage stage, bool bindless);
     void allocateDescriptorSets(VulkanCore_t core, WREDescriptor *desc);
