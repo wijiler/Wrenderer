@@ -30,7 +30,7 @@ void loop()
     thing += 0.001;
     if (thing >= 6.28319)
         thing = 0;
-    camera.position.pos.x += 0.001f;
+    camera.position.rotation.x += .001;
     updateCamera(&camera, &scene);
     updateSpriteInstance(&birby1, (transform2D){
                                       {0, 0, 0},
@@ -46,7 +46,7 @@ void init()
     initRenderer(&renderer);
     scene.Renderer = &renderer;
     initializeScene(&scene);
-    initOrthoCamera(&camera, &renderer, (vec3){0, 0, 0}, (vec2){0, 0});
+    initPerspCamera(&camera, &renderer, (cameraTransform){(vec3){0, 0, 0}, (vec2){0, 0}}, 90);
     scene.camera = &camera;
 
     Sprite birb = createSprite("assets/birb.png", renderer.vkCore.nearestSampler, &renderer);

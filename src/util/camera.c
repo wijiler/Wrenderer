@@ -4,7 +4,7 @@ void initOrthoCamera(WRECamera *cam, renderer_t *renderer, vec3 pos, vec2 rotati
 {
     cam->type = WRE_ORTHOGRAPHIC_CAM;
 
-    cam->view = transposeMat4x4(fpsViewMatrix(pos, rotation.y, rotation.x));
+    cam->view = transposeMat4x4(fpsViewMatrix(pos, rotation.y + PI32, rotation.x));
 
     cam->position.pos = pos;
     cam->position.rotation = rotation;
@@ -16,11 +16,11 @@ void initPerspCamera(WRECamera *cam, renderer_t *renderer, cameraTransform trans
 {
     cam->type = WRE_PERSPECTIVE_CAM;
 
-    cam->view = (fpsViewMatrix(transform.pos, transform.rotation.y, transform.rotation.x));
+    cam->view = transposeMat4x4(fpsViewMatrix(transform.pos, transform.rotation.y, transform.rotation.x));
 
     cam->position.pos = transform.pos;
     cam->position.rotation = transform.rotation;
 
-    cam->perspective = perspProjMatrix(fov, (float)renderer->vkCore.extent.width / renderer->vkCore.extent.height, 1, 0);
+    cam->perspective = transposeMat4x4(perspProjMatrix(fov, (float)renderer->vkCore.extent.width / renderer->vkCore.extent.height, 1, 0.1));
     cam->fov = fov;
 }

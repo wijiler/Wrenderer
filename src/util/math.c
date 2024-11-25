@@ -371,7 +371,7 @@ mat4x4 fpsViewMatrix(vec3 pos, float pitch, float yaw)
 {
     mat4x4 tmat = identity4x4;
     mat4x4Translate(pos, &tmat);
-    mat4x4 rot = mat4x4RotateQuat(eulerToQuaternion((vec3){yaw, 0, pitch + PI32}));
+    mat4x4 rot = mat4x4RotateQuat(eulerToQuaternion((vec3){0, yaw, pitch}));
 
     return mat4x4Mul(transposeMat4x4(tmat), rot);
 }
@@ -408,5 +408,5 @@ mat4x4 perspProjMatrix(float vertical_fov, float aspect_ratio, float n, float f)
         x, 0.0f, 0.0f, 0.0f,
         0.0f, y, 0.0f, 0.0f,
         0.0f, 0.0f, A, B,
-        0.0f, 0.0f, -1.0f, 0.0f};
+        0.0f, 0.0f, 1.0f, 1.0f};
 }
