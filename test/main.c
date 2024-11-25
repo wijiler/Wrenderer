@@ -30,7 +30,7 @@ void loop()
     thing += 0.001;
     if (thing >= 6.28319)
         thing = 0;
-    camera.position.rotation.y += .001;
+    camera.position.pos.x += 0.001f;
     updateCamera(&camera, &scene);
     updateSpriteInstance(&birby1, (transform2D){
                                       {0, 0, 0},
