@@ -9,7 +9,7 @@ void initOrthoCamera(WRECamera *cam, renderer_t *renderer, vec3 pos, vec2 rotati
     cam->position.pos = pos;
     cam->position.rotation = rotation;
 
-    cam->perspective = transposeMat4x4(orthoProjMatrix(1, 0, 1, -1, -1, 1));
+    cam->perspective = identity4x4;
 }
 
 void initPerspCamera(WRECamera *cam, renderer_t *renderer, cameraTransform transform, float fov)

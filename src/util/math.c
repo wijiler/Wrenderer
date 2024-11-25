@@ -371,7 +371,7 @@ mat4x4 fpsViewMatrix(vec3 pos, float pitch, float yaw)
 {
     mat4x4 tmat = identity4x4;
     mat4x4Translate(pos, &tmat);
-    mat4x4 rot = mat4x4RotateQuat(eulerToQuaternion((vec3){pitch, yaw, 3.14159}));
+    mat4x4 rot = mat4x4RotateQuat(eulerToQuaternion((vec3){yaw, 0, pitch + PI32}));
 
     return mat4x4Mul(tmat, rot);
 }
