@@ -9,8 +9,6 @@ void initOrthoCamera(WRECamera *cam, renderer_t *renderer, vec3 pos, vec2 rotati
     cam->position.pos = pos;
     cam->position.rotation = rotation;
 
-    float aspectRatio = (float)renderer->vkCore.extent.width / renderer->vkCore.extent.height;
-
     cam->perspective = transposeMat4x4(orthoProjMatrix(1, 0, 1, -1, -1, 1));
 }
 

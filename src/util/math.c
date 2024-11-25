@@ -367,26 +367,13 @@ mat4x4 lookAtMatrix(vec3 pos, vec3 target, vec3 up)
         -vec3Dot(right, pos), -vec3Dot(newUp, pos), -vec3Dot(forward, pos), 1};
 }
 
-// TODO Use quaternions :3
 mat4x4 fpsViewMatrix(vec3 pos, float pitch, float yaw)
 {
-    float cosPitch = cosf(pitch - 1.5708);
-    float cosYaw = cosf(yaw + 1.5708);
+    mat4x4 tmat = identity4x4;
+    mat4x4Translate(pos, &tmat);
+    mat4x4 rot = mat4x4RotateQuat(eulerToQuaternion((vec3){pitch, yaw, 3.14159}));
 
-    float sinPitch = sinf(pitch - 1.5708);
-    float sinYaw = sinf(yaw + 1.5708);
-
-    vec3 forward = {cosYaw, 0, -sinYaw};
-
-    vec3 right = {sinYaw * sinPitch, cosPitch, cosYaw * sinPitch};
-
-    vec3 newUp = {sinYaw * cosPitch, -sinPitch, cosPitch * cosYaw};
-
-    return (mat4x4){
-        right.x, newUp.x, forward.x, 0,
-        right.y, newUp.y, forward.y, 0,
-        right.z, newUp.z, forward.z, 0,
-        -vec3Dot(right, pos), -vec3Dot(newUp, pos), -vec3Dot(forward, pos), 1};
+    return mat4x4Mul(tmat, rot);
 }
 
 mat4x4 orthoProjMatrix(float near, float far, float top, float bottom, float left, float right)

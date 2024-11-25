@@ -242,7 +242,10 @@ void setActiveScene(WREScene2D *scene)
             createBuffer(scene->Renderer->vkCore, BCI, &activeCameraBuffer);
         }
     }
-    pushDataToBuffer(scene->camera, sizeof(WRECamera), activeCameraBuffer, 0);
+    WRECamera camera = *scene->camera;
+    vkUnmapMemory(scene->Renderer->vkCore.lDev, activeCameraBuffer.associatedMemory);
+    vkMapMemory(scene->Renderer->vkCore.lDev, activeCameraBuffer.associatedMemory, 0, sizeof(WRECamera), 0, (void *)&scene->camera);
+    memcpy(scene->camera, &camera, sizeof(WRECamera));
     pushDataToBuffer(scene->lights, sizeof(pointLight2D) * scene->lightCount, lightBuffer, 0);
     pushDataToBuffer(scene->spritePipeline.spriteInstanceData, sizeof(transform2D) * scene->spritePipeline.spriteInstanceCount, spriteInstanceData, 0);
     pushDataToBuffer(scene->spritePipeline.textureIDs, sizeof(uint64_t) * scene->spritePipeline.spriteInstanceCount, spriteTextureIDs, 0);
@@ -367,4 +370,5 @@ void updateCamera(WRECamera *cam, WREScene2D *scene)
     }
     break;
     }
+    memcpy(scene->camera, cam, sizeof(WRECamera));
 }
