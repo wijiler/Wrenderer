@@ -28,23 +28,31 @@ struct Camera
     float fov;
 }
 
+struct MaterialId
+{
+    uint32_t texture;
+    uint32_t normal;
+}
+
 struct pushConstants
 {
-    uint64_t *ids;
+    MaterialId *ids;
     Transform *instances;
     Camera *camera;
 }
 
 [vk_push_constant]
 const pushConstants ptrs;
-[vk_binding(0)]
+[vk_binding(0, 0)]
 Sampler2D textures[];
+[vk_binding(0, 1)]
+Sampler2D normals[];
 
 struct VertOutput
 {
     float3 color : fragColor;
     float2 uv : vertUVCOORDS;
-    uint64_t texID : meshTextureID;
+    MaterialId matID : meshTextureID;
     float4 sv_pos : SV_Position;
 }
 
@@ -85,20 +93,29 @@ VertOutput vertMain(uint32_t vertID: SV_VertexID, uint32_t instID: SV_InstanceID
 
     output.sv_pos = mul(ptrs.camera.perspective, mul(ptrs.camera.view, float4(transform(ptrs.instances[instID], vertID), 1.0f)));
     output.color = float3(1.0f, 1.0f, 1.0f);
-    output.texID = ptrs.ids[instID];
+    output.matID = ptrs.ids[instID];
     output.uv = uvs[vertID];
 
     return output;
 }
 
-[shader("fragment")]
-float4 fragMain(VertOutput input)
-    : SV_Target
+struct FragOutput
 {
-    float4 albedo = textures[NonUniformResourceIndex(int(input.texID))].Sample(input.uv) * float4(input.color, 1.0);
+    float4 albedo : SV_Target0;
+    float4 normal : SV_Target1;
+}
+
+[shader("fragment")]
+FragOutput fragMain(VertOutput input)
+{
+    FragOutput output;
+    uint2 fragpos = uint2((uint)input.sv_pos.x, (uint)input.sv_pos.y);
+
+    output.albedo = textures[NonUniformResourceIndex(int(input.matID.texture))].Sample(input.uv) * float4(input.color, 1.0);
+    output.normal = normals[NonUniformResourceIndex(int(input.matID.normal))].Sample(input.uv);
 
     // float4 color = float4(input.normal, 1.0f);
 
-    return albedo;
+    return output;
 }
 

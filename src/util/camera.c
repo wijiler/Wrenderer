@@ -21,6 +21,6 @@ void initPerspCamera(WRECamera *cam, renderer_t *renderer, cameraTransform trans
     cam->position.pos = transform.pos;
     cam->position.rotation = transform.rotation;
 
-    cam->perspective = transposeMat4x4(perspProjMatrix(fov, (float)renderer->vkCore.extent.width / renderer->vkCore.extent.height, 1, 0.1));
+    cam->perspective = transposeMat4x4(perspProjMatrix(fov, (float)renderer->vkCore.extent.width / renderer->vkCore.extent.height, 1, 0));
     cam->fov = fov;
 }

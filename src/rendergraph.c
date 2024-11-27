@@ -40,31 +40,187 @@ uint64_t passTypeToVulkanStage(passType type)
     };
     return stages[type];
 }
+#define CATTINFO(i)                                   \
+    {                                                 \
+        VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,  \
+            NULL,                                     \
+            pass->colorAttachments[i]->imgview,       \
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, \
+            0,                                        \
+            NULL,                                     \
+            0,                                        \
+            VK_ATTACHMENT_LOAD_OP_LOAD,               \
+            VK_ATTACHMENT_STORE_OP_STORE,             \
+            {{{0, 0, 0, 0}}},                         \
+    }
+typedef struct
+{
+    VkRenderingAttachmentInfo attinf[8];
+} renInfo;
+renInfo genCattInfo(RenderPass *pass)
+{
+    switch (pass->cAttCount)
+    {
+    case 0:
+        return (renInfo){0};
+    case 1:
+    {
+        renInfo cattInfo = {{
+            CATTINFO(0),
+            CATTINFO(0),
+            CATTINFO(0),
+            CATTINFO(0),
+            CATTINFO(0),
+            CATTINFO(0),
+            CATTINFO(0),
+            CATTINFO(0),
+        }};
+        return cattInfo;
+    }
+    case 2:
+    {
+        renInfo cattInfo = {{
+            CATTINFO(0),
+            CATTINFO(1),
+            CATTINFO(0),
+            CATTINFO(0),
+            CATTINFO(0),
+            CATTINFO(0),
+            CATTINFO(0),
+            CATTINFO(0),
+        }};
+        return cattInfo;
+    }
+    case 3:
+    {
+        renInfo cattInfo = {{
+            CATTINFO(0),
+            CATTINFO(1),
+            CATTINFO(2),
+            CATTINFO(0),
+            CATTINFO(0),
+            CATTINFO(0),
+            CATTINFO(0),
+            CATTINFO(0),
+        }};
+        return cattInfo;
+    }
+    case 4:
+    {
+        renInfo cattInfo = {{
+            CATTINFO(0),
+            CATTINFO(1),
+            CATTINFO(2),
+            CATTINFO(3),
+            CATTINFO(0),
+            CATTINFO(0),
+            CATTINFO(0),
+            CATTINFO(0),
+        }};
+        return cattInfo;
+    }
+    case 5:
+    {
+        renInfo cattInfo = {{
+            CATTINFO(0),
+            CATTINFO(1),
+            CATTINFO(2),
+            CATTINFO(3),
+            CATTINFO(4),
+            CATTINFO(0),
+            CATTINFO(0),
+            CATTINFO(0),
+        }};
+        return cattInfo;
+    }
+    case 6:
+    {
+        renInfo cattInfo = {{
+            CATTINFO(0),
+            CATTINFO(1),
+            CATTINFO(2),
+            CATTINFO(3),
+            CATTINFO(4),
+            CATTINFO(5),
+            CATTINFO(0),
+            CATTINFO(0),
+        }};
+        return cattInfo;
+    }
+    case 7:
+    {
+        renInfo cattInfo = {{
+            CATTINFO(0),
+            CATTINFO(1),
+            CATTINFO(2),
+            CATTINFO(3),
+            CATTINFO(4),
+            CATTINFO(5),
+            CATTINFO(6),
+            CATTINFO(0),
+        }};
+        return cattInfo;
+    }
+
+    case 8:
+    {
+        renInfo cattInfo = {{
+            CATTINFO(0),
+            CATTINFO(1),
+            CATTINFO(2),
+            CATTINFO(3),
+            CATTINFO(4),
+            CATTINFO(5),
+            CATTINFO(6),
+            CATTINFO(7),
+        }};
+        return cattInfo;
+    }
+
+    default:
+        return (renInfo){0};
+    }
+}
 
 void recordPass(RenderPass *pass, renderer_t *renderer, VkCommandBuffer cBuf)
 {
-    VkRenderingInfo renInf = {0};
-    renInf.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
-    renInf.pNext = NULL;
+    VkRenderingInfo frameBuf = {0};
+    frameBuf.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+    frameBuf.pNext = NULL;
 
-    renInf.layerCount = 1;
-    renInf.renderArea = (VkRect2D){
+    frameBuf.layerCount = 1;
+    frameBuf.renderArea = (VkRect2D){
         {0, 0},
         renderer->vkCore.extent,
     };
 
-    renInf.colorAttachmentCount = pass->cAttCount;
-    renInf.pColorAttachments = pass->colorAttachments;
+    frameBuf.colorAttachmentCount = pass->cAttCount;
+    renInfo cattInfo = genCattInfo(pass);
+    frameBuf.pColorAttachments = cattInfo.attinf;
+
+    VkRenderingAttachmentInfo depthInfo = {0};
     if (pass->depthAttachment)
     {
-        renInf.pDepthAttachment = pass->depthAttachment;
+        depthInfo = (VkRenderingAttachmentInfo){
+            VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+            NULL,
+            pass->depthAttachment->imgview,
+            VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+            0,
+            NULL,
+            0,
+            VK_ATTACHMENT_LOAD_OP_CLEAR,
+            VK_ATTACHMENT_STORE_OP_STORE,
+            {{{0, 0, 0, 0}}},
+        };
+        frameBuf.pDepthAttachment = &depthInfo;
     }
     if (pass->stencilAttachment)
     {
-        renInf.pDepthAttachment = pass->stencilAttachment;
+        frameBuf.pStencilAttachment = NULL;
     }
 
-    vkCmdBeginRendering(cBuf, &renInf);
+    vkCmdBeginRendering(cBuf, &frameBuf);
 
     pass->callBack(*pass, cBuf);
 
@@ -110,10 +266,9 @@ void addResource(RenderPass *pass, Resource res)
     pass->resourceCount += 1;
 }
 
-void addCatt(RenderPass *pass, VkRenderingAttachmentInfo att)
+void addCatt(RenderPass *pass, Image *img)
 {
-    pass->colorAttachments = realloc(pass->colorAttachments, sizeof(VkRenderingAttachmentInfo) * (pass->cAttCount + 1));
-    pass->colorAttachments[pass->cAttCount] = att;
+    pass->colorAttachments[pass->cAttCount] = img;
     pass->cAttCount += 1;
 }
 
@@ -129,7 +284,6 @@ RenderPass newPass(char *name, passType type)
     p.resourceCount = 0;
     p.resources = NULL;
     p.cAttCount = 0;
-    p.colorAttachments = NULL;
 
     return p;
 }
@@ -144,35 +298,29 @@ void addSwapchainImageResource(RenderPass *pass, renderer_t renderer)
     addColorAttachment(renderer.vkCore.currentScImg, pass, NULL);
 }
 
+const VkColorComponentFlags colorFlags = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+const VkBool32 colorBlendingEnable = VK_TRUE;
+const VkColorBlendEquationEXT colorBlenEq = {
+    VK_BLEND_FACTOR_SRC_ALPHA,
+    VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+    VK_BLEND_OP_ADD,
+    VK_BLEND_FACTOR_ONE,
+    VK_BLEND_FACTOR_ZERO,
+    VK_BLEND_OP_ADD,
+};
+
 void addColorAttachment(Image *img, RenderPass *pass, VkClearValue *clear)
 {
-    VkRenderingAttachmentInfo rAttInfo = {0};
-    rAttInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-    rAttInfo.pNext = NULL;
+    pass->cbEnable[pass->cAttCount] = colorBlendingEnable;
+    pass->colorflags[pass->cAttCount] = colorFlags;
+    pass->colorBlend[pass->cAttCount] = colorBlenEq;
 
-    rAttInfo.imageView = img->imgview;
-    rAttInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    rAttInfo.loadOp = clear != NULL ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
-    rAttInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-
-    if (clear)
-        rAttInfo.clearValue = *clear;
-    addCatt(pass, rAttInfo);
+    addCatt(pass, img);
 }
 
-void setDepthStencilAttachment(Image img, RenderPass *pass)
+void setDepthStencilAttachment(Image *img, RenderPass *pass)
 {
-    VkRenderingAttachmentInfo dAttInfo = {0};
-    dAttInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-    dAttInfo.pNext = NULL;
-
-    dAttInfo.imageView = img.imgview;
-    dAttInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-    dAttInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    dAttInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    dAttInfo.clearValue.depthStencil.depth = 0;
-
-    pass->depthAttachment = &dAttInfo;
+    pass->depthAttachment = img;
 }
 void addImageResource(RenderPass *pass, Image *image, ResourceUsageFlags_t usage)
 {
@@ -194,7 +342,7 @@ void addImageResource(RenderPass *pass, Image *image, ResourceUsageFlags_t usage
         res.access = ACCESS_DEPTHATTACHMENT;
         res.value.img.layout |= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
         res.value.img.accessMask |= ACCESS_DEPTHATTACHMENT;
-        setDepthStencilAttachment(*image, pass);
+        setDepthStencilAttachment(image, pass);
     }
     else if ((usage & USAGE_TRANSFER_SRC) != 0)
     {
@@ -224,7 +372,6 @@ void addImageResource(RenderPass *pass, Image *image, ResourceUsageFlags_t usage
     addResource(pass, res);
 }
 
-// only transfers, and undefined are valid for buffers
 void addBufferResource(RenderPass *pass, Buffer buf, ResourceUsageFlags_t usage)
 {
     Resource res = {0};
@@ -277,8 +424,7 @@ void setExecutionCallBack(RenderPass *pass, void (*callBack)(struct RenderPass, 
 void addPass(GraphBuilder *builder, RenderPass *pass)
 {
     builder->passes = realloc(builder->passes, sizeof(RenderPass) * (builder->passCount + 1));
-    /*builder->passes[builder->passCount] = *pass;*/
-    memcpy(builder->passes + builder->passCount, pass, sizeof(RenderPass));
+    builder->passes[builder->passCount] = *pass;
     builder->passCount += 1;
 }
 
@@ -303,7 +449,7 @@ void optimizePasses(RenderGraph *graph, Image *swapChainImg)
         {
             Resource cr = curPass.resources[r];
             if (cr.usage == USAGE_COLORATTACHMENT)
-                curPass.colorAttachments[cr.cAttIndex].imageView = cr.value.img.handle->imgview;
+                curPass.colorAttachments[cr.cAttIndex]->imgview = cr.value.img.handle->imgview;
             if (cr.value.swapChainImage == swapChainImg)
             {
                 rootResources = realloc(rootResources, sizeof(Resource) * (rootResourceCount + curPass.resourceCount));
@@ -312,7 +458,7 @@ void optimizePasses(RenderGraph *graph, Image *swapChainImg)
 
                 newPasses[graph->passCount - newPassCount - 1] = curPass;
                 newPassCount += 1;
-                curPass.colorAttachments[cr.cAttIndex].imageView = cr.value.swapChainImage->imgview;
+                curPass.colorAttachments[cr.cAttIndex]->imgview = cr.value.swapChainImage->imgview;
                 break;
             }
             else

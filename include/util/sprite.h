@@ -6,15 +6,21 @@
 
 typedef struct
 {
-    Texture image;
+    Texture image, normal;
     uint32_t instanceCount, id;
 } Sprite;
 
 typedef struct
 {
+    uint32_t texId, normalId;
+
+} Material2D;
+
+typedef struct
+{
     transform2D transform;
     Sprite *parent;
-    uint32_t id;
+    int id;
 } spriteInstance;
 
 typedef struct
@@ -35,7 +41,7 @@ typedef struct
     uint32_t spriteInstanceCount;
     spriteInstance *spriteInstances;
     transform2D *spriteInstanceData;
-    uint64_t *textureIDs;
+    Material2D *textureIDs;
 
 } SpritePipeline;
 
@@ -56,7 +62,7 @@ void switchLight(pointLight2D *light, WREScene2D *scene);
 void setActiveScene(WREScene2D *scene);
 void initializeScene(WREScene2D *scene);
 
-Sprite createSprite(char *path, VkSampler sampler, renderer_t *renderer);
+Sprite createSprite(char *texturePath, char *normalPath, VkSampler sampler, renderer_t *renderer);
 spriteInstance createNewSpriteInstance(Sprite *sprite, renderer_t renderer, WREScene2D *scene);
 void updateSpriteInstance(spriteInstance *sprite, transform2D transform, WREScene2D *scene);
 void removeSpriteInstance(spriteInstance *sprite, WREScene2D *scene);

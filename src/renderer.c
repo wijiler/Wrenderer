@@ -15,8 +15,9 @@ VkSwapchainKHR WREswapChain = VK_NULL_HANDLE;
 VkImage *WREswapChainImages = VK_NULL_HANDLE;
 VkImageView *WREswapChainImageViews = VK_NULL_HANDLE;
 
-WREDescriptor WREgBuffer2D = {0};
-Image WREalbedoBuffer2D = {0};
+WREDescriptor WREgBuffer = {0};
+Image WREalbedoBuffer = {0};
+Image WREnormalBuffer = {0};
 
 typedef struct
 {
@@ -534,13 +535,19 @@ void recreateSwapchain(VulkanCore_t *core, int w, int h)
 
     create_swapchain(core, w, h);
 
-    vkDestroyImage(core->lDev, WREalbedoBuffer2D.image, NULL);
-    vkDestroyImageView(core->lDev, WREalbedoBuffer2D.imgview, NULL);
-    vkFreeMemory(core->lDev, WREalbedoBuffer2D.memory, NULL);
+    vkDestroyImage(core->lDev, WREalbedoBuffer.image, NULL);
+    vkDestroyImageView(core->lDev, WREalbedoBuffer.imgview, NULL);
+    vkFreeMemory(core->lDev, WREalbedoBuffer.memory, NULL);
 
-    WREalbedoBuffer2D = createImage(*core, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TYPE_2D, core->extent.width, core->extent.height, VK_IMAGE_ASPECT_COLOR_BIT);
-    transitionLayout(core->immediateSubmit, &WREalbedoBuffer2D, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, ACCESS_COLORATTACHMENT, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT);
-    writeDescriptorSet(*core, WREgBuffer2D, 0, 0, WREalbedoBuffer2D.imgview, core->linearSampler);
+    WREalbedoBuffer = createImage(*core, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TYPE_2D, core->extent.width, core->extent.height, VK_IMAGE_ASPECT_COLOR_BIT);
+    writeDescriptorSet(*core, WREgBuffer, 0, 0, WREalbedoBuffer.imgview, core->linearSampler);
+
+    vkDestroyImage(core->lDev, WREnormalBuffer.image, NULL);
+    vkDestroyImageView(core->lDev, WREnormalBuffer.imgview, NULL);
+    vkFreeMemory(core->lDev, WREnormalBuffer.memory, NULL);
+
+    WREnormalBuffer = createImage(*core, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TYPE_2D, core->extent.width, core->extent.height, VK_IMAGE_ASPECT_COLOR_BIT);
+    writeDescriptorSet(*core, WREgBuffer, 1, 0, WREnormalBuffer.imgview, core->linearSampler);
 }
 
 void create_CommandBuffers(VulkanCore_t *core)
@@ -731,11 +738,8 @@ void createBuffer(VulkanCore_t core, BufferCreateInfo createInfo, Buffer *buf)
         printf("Could not allocate memory\n");
         exit(1);
     }
-    buf->mappedMemory = malloc(vkMemReq.size);
     if ((createInfo.access & CPU_ONLY) != 0)
-    {
         vkMapMemory(core.lDev, buf->associatedMemory, 0, vkMemReq.size, 0, &buf->mappedMemory);
-    }
     if (vkBindBufferMemory(core.lDev, buf->buffer, buf->associatedMemory, 0) != VK_SUCCESS)
     {
         printf("Could not bind memory\n");
@@ -756,7 +760,7 @@ void createBuffer(VulkanCore_t core, BufferCreateInfo createInfo, Buffer *buf)
 
 void destroyBuffer(Buffer buf, VulkanCore_t core)
 {
-    vkWaitForFences(core.lDev, 1, &core.immediateFence, VK_TRUE, UINT64_MAX);
+    vkDeviceWaitIdle(core.lDev);
     vkDestroyBuffer(core.lDev, buf.buffer, NULL);
     vkFreeMemory(core.lDev, buf.associatedMemory, NULL);
 
@@ -797,75 +801,6 @@ void copyBuf(VulkanCore_t core, Buffer src, Buffer dest, size_t size, uint32_t s
     vkQueueSubmit(core.gQueue, 1, &submitInfo, core.immediateFence);
 }
 
-void create_dsp(VulkanCore_t *core)
-{
-    VkDescriptorPoolSize poolSize = {0};
-
-    poolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    poolSize.descriptorCount = MAXTEXTURES;
-
-    VkDescriptorPoolCreateInfo dspCI = {0};
-    dspCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    dspCI.pNext = 0;
-
-    dspCI.maxSets = 1;
-    dspCI.flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT;
-    dspCI.poolSizeCount = 1;
-    dspCI.pPoolSizes = &poolSize;
-
-    vkCreateDescriptorPool(core->lDev, &dspCI, NULL, &core->tdescPool);
-
-    VkDescriptorSetLayoutBinding UBindingInf = {0};
-    UBindingInf.binding = 0;
-    UBindingInf.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    UBindingInf.descriptorCount = MAXTEXTURES;
-
-    UBindingInf.stageFlags = VK_SHADER_STAGE_ALL;
-
-    VkDescriptorBindingFlagsEXT slciFlags = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT_EXT | VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT_EXT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT_EXT;
-    VkDescriptorSetLayoutBindingFlagsCreateInfoEXT slciFlagsEXT = {0};
-    slciFlagsEXT.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT;
-    slciFlagsEXT.pNext = NULL;
-    slciFlagsEXT.pBindingFlags = &slciFlags;
-    slciFlagsEXT.bindingCount = 1;
-
-    VkDescriptorSetLayoutCreateInfo slci = {0};
-    slci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    slci.pNext = &slciFlagsEXT;
-
-    slci.bindingCount = 1;
-    slci.pBindings = &UBindingInf;
-    slci.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT_EXT;
-
-    if (vkCreateDescriptorSetLayout(core->lDev, &slci, NULL, &core->tdSetLayout) != VK_SUCCESS)
-    {
-        printf("Could not create descriptor set layout 1");
-        exit(1);
-    }
-}
-
-void allocate_textureDescriptorSet(VulkanCore_t *core)
-{
-    VkDescriptorSetVariableDescriptorCountAllocateInfoEXT countAllocInfoEXT = {0};
-    countAllocInfoEXT.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO_EXT;
-    countAllocInfoEXT.pNext = NULL;
-
-    countAllocInfoEXT.descriptorSetCount = 1;
-    uint32_t mDescCount = MAXTEXTURES;
-    countAllocInfoEXT.pDescriptorCounts = &mDescCount;
-
-    VkDescriptorSetAllocateInfo allocInfo = {0};
-    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    allocInfo.pNext = &countAllocInfoEXT;
-
-    allocInfo.descriptorPool = core->tdescPool;
-    allocInfo.descriptorSetCount = 1;
-    allocInfo.pSetLayouts = &core->tdSetLayout;
-
-    if (vkAllocateDescriptorSets(core->lDev, &allocInfo, &core->tdescriptorSet) != VK_SUCCESS)
-        printf("Couldnt allocate descriptor sets");
-}
-
 void write_textureDescriptorSet(VulkanCore_t core, VkImageView texture, VkSampler sampler, uint64_t textureIndex)
 {
     VkWriteDescriptorSet dsWrite = {0};
@@ -875,7 +810,7 @@ void write_textureDescriptorSet(VulkanCore_t core, VkImageView texture, VkSample
     dsWrite.descriptorCount = 1;
     dsWrite.dstArrayElement = textureIndex;
     dsWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    dsWrite.dstSet = core.tdescriptorSet;
+    dsWrite.dstSet = core.textureDescriptorSet;
     dsWrite.dstBinding = 0;
 
     VkDescriptorImageInfo descImgInfo = {0};
@@ -924,8 +859,8 @@ void createSamplers(VulkanCore_t *core)
 void destroyRenderer(renderer_t *renderer)
 {
     vkDeviceWaitIdle(renderer->vkCore.lDev);
-    vkDestroyDescriptorPool(renderer->vkCore.lDev, renderer->vkCore.tdescPool, NULL);
-    vkDestroyDescriptorSetLayout(renderer->vkCore.lDev, renderer->vkCore.tdSetLayout, NULL);
+    vkDestroyDescriptorPool(renderer->vkCore.lDev, renderer->vkCore.textureDescriptor.pool, NULL);
+    vkDestroyDescriptorSetLayout(renderer->vkCore.lDev, renderer->vkCore.textureDescriptor.layout, NULL);
     for (uint32_t i = 0; i < FRAMECOUNT; i++)
     {
         vkDestroySemaphore(renderer->vkCore.lDev, renderer->vkCore.imageAvailable[i], NULL);
@@ -986,25 +921,31 @@ void initRenderer(renderer_t *renderer)
     };
     renderer->vkCore.currentImageIndex = 0;
     create_CommandBuffers(&renderer->vkCore);
-    create_dsp(&renderer->vkCore);
-    allocate_textureDescriptorSet(&renderer->vkCore);
+    // create_dsp(&renderer->vkCore);
+    // allocate_textureDescriptorSet(&renderer->vkCore);
+    initializeDescriptor(renderer->vkCore, &renderer->vkCore.textureDescriptor, MAXTEXTURES, 2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, SHADER_STAGE_ALL, true);
+    allocateDescriptorSets(renderer->vkCore, &renderer->vkCore.textureDescriptor);
+    renderer->vkCore.textureDescriptorSet = renderer->vkCore.textureDescriptor.sets[0].set;
+    renderer->vkCore.normalDescriptorSet = renderer->vkCore.textureDescriptor.sets[1].set;
     createSamplers(&renderer->vkCore);
-    renderer->meshHandler.instancedMeshes = NULL;
 
-    initializeDescriptor(renderer->vkCore, &WREgBuffer2D, 1, 1, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, SHADER_STAGE_ALL, true);
-    WREalbedoBuffer2D = createImage(renderer->vkCore, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TYPE_2D, renderer->vkCore.extent.width, renderer->vkCore.extent.height, VK_IMAGE_ASPECT_COLOR_BIT);
-    allocateDescriptorSets(renderer->vkCore, &WREgBuffer2D);
-    writeDescriptorSet(renderer->vkCore, WREgBuffer2D, 0, 0, WREalbedoBuffer2D.imgview, renderer->vkCore.linearSampler);
+    initializeDescriptor(renderer->vkCore, &WREgBuffer, 1, 2, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, SHADER_STAGE_ALL, true);
+    WREalbedoBuffer = createImage(renderer->vkCore, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TYPE_2D, renderer->vkCore.extent.width, renderer->vkCore.extent.height, VK_IMAGE_ASPECT_COLOR_BIT);
+    WREnormalBuffer = createImage(renderer->vkCore, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TYPE_2D, renderer->vkCore.extent.width, renderer->vkCore.extent.height, VK_IMAGE_ASPECT_COLOR_BIT);
+    allocateDescriptorSets(renderer->vkCore, &WREgBuffer);
+    writeDescriptorSet(renderer->vkCore, WREgBuffer, 0, 0, WREalbedoBuffer.imgview, renderer->vkCore.linearSampler);
+    writeDescriptorSet(renderer->vkCore, WREgBuffer, 1, 0, WREnormalBuffer.imgview, renderer->vkCore.linearSampler);
+
+    Texture defaultNormal = loadImageFromPNG("assets/defaultNormal.png", renderer);
+    submitNormal(renderer, &defaultNormal, renderer->vkCore.linearSampler);
 }
 
 void bindGraphicsPipeline(graphicsPipeline pline, RenderPass pass, VkCommandBuffer cBuf)
 {
-    VkBool32 cbEnable = pline.colorBlending;
-    vkCmdSetColorWriteMaskEXT_(cBuf, 0, pass.cAttCount, &pline.colorWriteMask);
+    vkCmdSetColorWriteMaskEXT_(cBuf, 0, pass.cAttCount, pass.colorflags);
 
-    vkCmdSetColorBlendEnableEXT_(cBuf, 0, 1, &cbEnable);
+    vkCmdSetColorBlendEnableEXT_(cBuf, 0, pass.cAttCount, pass.cbEnable);
     vkCmdSetLogicOpEnableEXT_(cBuf, pline.logicOpEnable);
-
     vkCmdSetDepthTestEnable(cBuf, pline.depthTestEnable);
     vkCmdSetDepthBiasEnable(cBuf, pline.depthBiasEnable);
     vkCmdSetDepthClampEnableEXT_(cBuf, pline.depthClampEnable);
@@ -1022,9 +963,7 @@ void bindGraphicsPipeline(graphicsPipeline pline, RenderPass pass, VkCommandBuff
     vkCmdSetRasterizationSamplesEXT_(cBuf, pline.rastSampleCount);
     vkCmdSetFrontFace(cBuf, pline.frontFace);
     vkCmdSetCullMode(cBuf, pline.cullMode);
-
-    if (pline.colorBlending == VK_TRUE)
-        vkCmdSetColorBlendEquationEXT_(cBuf, 0, pass.cAttCount, &pline.colorBlendEq);
+    vkCmdSetColorBlendEquationEXT_(cBuf, 0, pass.cAttCount, pass.colorBlend);
 
     if (pline.logicOpEnable == VK_TRUE)
         vkCmdSetLogicOpEXT_(cBuf, pline.logicOp);
@@ -1251,30 +1190,25 @@ void setComputePushConstantRange(computePipeline *pl, size_t size)
     pl->pcRangeCount = 1;
 }
 
-void addSetLayoutToGPL(VkDescriptorSetLayout *layout, graphicsPipeline *pl)
+void addDescriptorSetToGPL(VkDescriptorSet *set, VkDescriptorSetLayout *layout, graphicsPipeline *pl)
 {
-    pl->setLayouts = realloc(pl->setLayouts, sizeof(VkDescriptorSetLayout) * (pl->setLayoutCount + 1));
-    pl->setLayouts[pl->setLayoutCount] = *layout;
-    pl->setLayoutCount += 1;
-}
-void addSetLayoutToCPL(VkDescriptorSetLayout *layout, computePipeline *pl)
-{
-    pl->setLayouts = realloc(pl->setLayouts, sizeof(VkDescriptorSetLayout) * (pl->setLayoutCount + 1));
-    pl->setLayouts[pl->setLayoutCount] = *layout;
-    pl->setLayoutCount += 1;
-}
+    pl->descriptorSets = realloc(pl->descriptorSets, sizeof(VkDescriptorSet) * (pl->setCount + 1));
+    pl->descriptorSets[pl->setCount] = *set;
+    pl->setCount += 1;
 
-void addDescriptorSetToGPL(VkDescriptorSet *set, graphicsPipeline *pl)
-{
-    pl->descriptorSets = realloc(pl->descriptorSets, sizeof(VkDescriptorSet) * (pl->setCount + 1));
-    pl->descriptorSets[pl->setCount] = *set;
-    pl->setCount += 1;
+    pl->setLayouts = realloc(pl->setLayouts, sizeof(VkDescriptorSetLayout) * (pl->setLayoutCount + 1));
+    pl->setLayouts[pl->setLayoutCount] = *layout;
+    pl->setLayoutCount += 1;
 }
-void addDescriptorSetToCPL(VkDescriptorSet *set, computePipeline *pl)
+void addDescriptorSetToCPL(VkDescriptorSet *set, VkDescriptorSetLayout *layout, computePipeline *pl)
 {
     pl->descriptorSets = realloc(pl->descriptorSets, sizeof(VkDescriptorSet) * (pl->setCount + 1));
     pl->descriptorSets[pl->setCount] = *set;
     pl->setCount += 1;
+
+    pl->setLayouts = realloc(pl->setLayouts, sizeof(VkDescriptorSetLayout) * (pl->setLayoutCount + 1));
+    pl->setLayouts[pl->setLayoutCount] = *layout;
+    pl->setLayoutCount += 1;
 }
 
 void createPipelineLayout(VulkanCore_t core, graphicsPipeline *pl)
@@ -1298,7 +1232,7 @@ void createComputePipelineLayout(VulkanCore_t core, computePipeline *pl)
     plcInf.pNext = NULL;
     VkDescriptorSetLayout *setLayouts = malloc(sizeof(VkDescriptorSetLayout) * (pl->setLayoutCount + 1));
     memcpy(setLayouts, pl->setLayouts, sizeof(VkDescriptorSetLayout) * (pl->setLayoutCount));
-    setLayouts[pl->setLayoutCount] = core.tdSetLayout;
+    setLayouts[pl->setLayoutCount] = core.textureDescriptor.layout;
 
     plcInf.setLayoutCount = 0;
     plcInf.pSetLayouts = NULL;

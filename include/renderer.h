@@ -79,19 +79,6 @@ extern "C"
 
     typedef struct
     {
-        Buffer verticies;
-        Buffer indices;
-        uint32_t instanceCount;
-    } Mesh;
-
-    typedef struct
-    {
-        uint32_t instancedmeshCount;
-        Mesh *instancedMeshes;
-    } MeshHandler;
-
-    typedef struct
-    {
         VkImage image;
         VkImageView imgview;
         // Do not set manually
@@ -104,7 +91,7 @@ extern "C"
     typedef struct
     {
         Image img;
-        uint64_t index;
+        uint32_t index;
     } Texture;
     typedef struct
     {
@@ -118,15 +105,13 @@ extern "C"
     {
         Shader vert, frag;
 
-        VkColorComponentFlags colorWriteMask;
-        VkColorBlendEquationEXT colorBlendEq;
         VkPolygonMode polyMode;
         VkPrimitiveTopology topology;
         VkSampleCountFlagBits rastSampleCount;
         VkFrontFace frontFace;
         VkCullModeFlags cullMode;
 
-        VkBool32 colorBlending, logicOpEnable, depthTestEnable, depthBiasEnable, depthClampEnable, depthClipEnable, stencilTestEnable, depthWriteEnable, depthBoundsEnable, alphaToCoverageEnable, alphaToOneEnable, reasterizerDiscardEnable, primitiveRestartEnable;
+        VkBool32 logicOpEnable, depthTestEnable, depthBiasEnable, depthClampEnable, depthClipEnable, stencilTestEnable, depthWriteEnable, depthBoundsEnable, alphaToCoverageEnable, alphaToOneEnable, reasterizerDiscardEnable, primitiveRestartEnable;
 
         VkLogicOp logicOp;   // if logicOp is changed logicOpEnable must be true
         uint32_t sampleMask; // usually UINT32_MAX
@@ -238,10 +223,13 @@ extern "C"
 
         // for renderingBeginInfo
         int cAttCount;
-        VkRenderingAttachmentInfo *colorAttachments;
-        VkRenderingAttachmentInfo *depthAttachment;
-        VkRenderingAttachmentInfo *stencilAttachment;
+        Image *colorAttachments[8];
+        Image *depthAttachment;
+        Image *stencilAttachment;
 
+        VkBool32 cbEnable[8];
+        VkColorComponentFlags colorflags[8];
+        VkColorBlendEquationEXT colorBlend[8];
         int resourceCount;
         Resource *resources;
 
@@ -301,11 +289,10 @@ extern "C"
         VkCommandBuffer computeCommandBuffers[FRAMECOUNT];
         VkCommandBuffer immediateSubmit;
 
-        VkDescriptorPool tdescPool;
         int textureCount;
-        VkDescriptorSetLayout tdSetLayout;
-        VkDescriptorSet tdescriptorSet;
         int normalCount;
+        WREDescriptor textureDescriptor;
+        VkDescriptorSet textureDescriptorSet;
         VkDescriptorSet normalDescriptorSet;
 
         VkSampler linearSampler;
@@ -316,7 +303,6 @@ extern "C"
     typedef struct
     {
         VulkanCore_t vkCore;
-        MeshHandler meshHandler; // TODO: Remove
         GraphBuilder *rg;
         GLFWwindow *window;
     } renderer_t;
@@ -346,10 +332,8 @@ extern "C"
     void setComputePushConstantRange(computePipeline *pl, size_t size);
     void createPipelineLayout(VulkanCore_t core, graphicsPipeline *pl);
     void createComputePipelineLayout(VulkanCore_t core, computePipeline *pl);
-    void addDescriptorSetToCPL(VkDescriptorSet *set, computePipeline *pl);
-    void addDescriptorSetToGPL(VkDescriptorSet *set, graphicsPipeline *pl);
-    void addSetLayoutToCPL(VkDescriptorSetLayout *layout, computePipeline *pl);
-    void addSetLayoutToGPL(VkDescriptorSetLayout *layout, graphicsPipeline *pl);
+    void addDescriptorSetToCPL(VkDescriptorSet *set, VkDescriptorSetLayout *layout, computePipeline *pl);
+    void addDescriptorSetToGPL(VkDescriptorSet *set, VkDescriptorSetLayout *layout, graphicsPipeline *pl);
 
     RenderPass newPass(char *name, passType type);
 
@@ -360,7 +344,7 @@ extern "C"
     void addBufferResource(RenderPass *pass, Buffer buf, ResourceUsageFlags_t usage);
     void addArbitraryResource(RenderPass *pass, void *data);
     void addColorAttachment(Image *img, RenderPass *pass, VkClearValue *clear);
-    void setDepthStencilAttachment(Image img, RenderPass *pass);
+    void setDepthStencilAttachment(Image *img, RenderPass *pass);
     void setExecutionCallBack(RenderPass *pass, void (*callBack)(RenderPass pass, VkCommandBuffer cBuf));
 
     void addPass(GraphBuilder *builder, RenderPass *pass);
@@ -371,14 +355,6 @@ extern "C"
 
     // ----------------------------------------- RGFUNEND
 
-    // ----------------------------------------- MODELFUNBG
-
-    Mesh createMesh(renderer_t renderer, uint32_t vertCount, void *vertices, uint32_t indexCount, uint32_t indices[], uint32_t instanceCount, size_t vertexSize);
-    void submitMesh(Mesh mesh, MeshHandler *handler);
-    void removeMesh(Mesh mesh, MeshHandler *handler, renderer_t renderer);
-    RenderPass sceneDraw(renderer_t *renderer, MeshHandler *handler, char *name);
-    // ----------------------------------------- MODELFUNEND
-
     // ----------------------------------------- IMGUTILBEG
     Image createImage(VulkanCore_t core, VkImageUsageFlags usage, VkFormat format, VkImageType type, uint32_t width, uint32_t height, VkImageAspectFlags aspects);
     Texture createTexture(VulkanCore_t core, uint32_t width, uint32_t height);
@@ -387,7 +363,9 @@ extern "C"
     void write_textureDescriptorSet(VulkanCore_t core, VkImageView texture, VkSampler sampler, uint64_t textureIndex);
     void submitNormalMap(VulkanCore_t core, VkImageView texture);
     void markImageResizable(Image *img, uint32_t *width, uint32_t *height, VkImageUsageFlags usage, VkImageLayout wantedLayout);
+    Texture loadImageFromPNG(char *path, renderer_t *renderer);
     void transitionLayout(VkCommandBuffer cBuf, Image *img, VkImageLayout oldLayout, VkImageLayout newLayout, VkAccessFlags dstAccess, VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage);
+    void submitNormal(renderer_t *renderer, Texture *tex, VkSampler sampler);
     // ----------------------------------------- IMGUTILEND
 
     void bindGraphicsPipeline(graphicsPipeline pline, RenderPass pass, VkCommandBuffer cBuf);
@@ -403,8 +381,9 @@ extern "C"
     void allocateDescriptorSets(VulkanCore_t core, WREDescriptor *desc);
     void writeDescriptorSet(VulkanCore_t core, WREDescriptor desc, uint32_t setIndex, uint32_t arrayIndex, VkImageView image, VkSampler sampler);
 
-    extern Image WREalbedoBuffer2D;
-    extern WREDescriptor WREgBuffer2D;
+    extern Image WREalbedoBuffer;
+    extern Image WREnormalBuffer;
+    extern WREDescriptor WREgBuffer;
 
 #ifdef __cplusplus
 }

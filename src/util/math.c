@@ -370,7 +370,7 @@ mat4x4 lookAtMatrix(vec3 pos, vec3 target, vec3 up)
 mat4x4 fpsViewMatrix(vec3 pos, float pitch, float yaw)
 {
     mat4x4 tmat = identity4x4;
-    mat4x4Translate(pos, &tmat);
+    mat4x4Translate(divVec3Scalar(pos, 100), &tmat);
     mat4x4 rot = mat4x4RotateQuat(eulerToQuaternion((vec3){0, yaw, pitch}));
 
     return mat4x4Mul(transposeMat4x4(tmat), rot);

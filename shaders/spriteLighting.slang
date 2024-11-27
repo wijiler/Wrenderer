@@ -85,6 +85,7 @@ struct VertOutput
 Texture2D<float4> gBuffer[];
 
 static const Texture2D<float4> albedo = gBuffer[0];
+static const Texture2D<float4> normal = gBuffer[1];
 
 [vk_push_constant]
 pushConstants pc;
@@ -115,7 +116,7 @@ float4 fragMain(VertOutput input)
         float3 lightDir = lightPos - input.realPos;
         float lightDist = length(lightDir);
         float atten = (1.0 / (lightDist * lightDist)) - 1 / light.radius;
-        float3 lightColor = light.color.xyz * (light.color.w * atten);
+        float3 lightColor = light.color.xyz * (light.color.w * atten + (max(dot(float3(normal[uint2(input.pos.xy)].xyz), lightDir), 0)));
         diffuse = lightColor;
     }
     return float4(diffuse, 1.0f) * color;

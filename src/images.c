@@ -1,5 +1,7 @@
 #include <renderer.h>
 #include <stdio.h>
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb/stb_image.h>
 
 VkImageUsageFlags UsageToAccessMask(VkImageUsageFlags flags)
 {
@@ -221,9 +223,40 @@ uint32_t packUnorm4x8(float t[4])
     return clamp(c, 0, 1) * 255;
 }
 
+Texture loadImageFromPNG(char *path, renderer_t *renderer)
+{
+    int texWidth, texHeight, texChannels;
+    stbi_set_flip_vertically_on_load(true);
+    stbi_uc *img = stbi_load(path, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+    Texture tex = createTexture(renderer->vkCore, texWidth, texHeight);
+    BufferCreateInfo tci = {
+        texWidth * texHeight * 4,
+        BUFFER_USAGE_TRANSFER_SRC,
+        CPU_ONLY,
+    };
+
+    Buffer buf;
+
+    createBuffer(renderer->vkCore, tci, &buf);
+    pushDataToBuffer(img, texWidth * texHeight * 4, buf, 0);
+    copyDataToTextureImage(renderer->vkCore, &tex.img, &buf, texWidth, texHeight);
+
+    destroyBuffer(buf, renderer->vkCore);
+    stbi_image_free(img);
+    stbi_set_flip_vertically_on_load(false);
+    return tex;
+}
+
 void submitTexture(renderer_t *renderer, Texture *tex, VkSampler sampler)
 {
     write_textureDescriptorSet(renderer->vkCore, tex->img.imgview, sampler, renderer->vkCore.textureCount);
     tex->index = renderer->vkCore.textureCount;
+    renderer->vkCore.textureCount += 1;
+}
+
+void submitNormal(renderer_t *renderer, Texture *tex, VkSampler sampler)
+{
+    writeDescriptorSet(renderer->vkCore, renderer->vkCore.textureDescriptor, 1, renderer->vkCore.normalCount, tex->img.imgview, sampler);
+    tex->index = renderer->vkCore.normalCount;
     renderer->vkCore.textureCount += 1;
 }

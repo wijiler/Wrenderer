@@ -1,4 +1,4 @@
-static const int spriteScaleFactor = 10;
+static const int spriteScaleFactor = 100;
 
 static const float4 spriteVPositions[6] =
     {
