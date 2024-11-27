@@ -445,7 +445,7 @@ void optimizePasses(RenderGraph *graph, Image *swapChainImg)
         int bufBrrCount = 0;
         VkBufferMemoryBarrier2 *bufMemBarriers = NULL;
         RenderPass curPass = graph->passes[i];
-        for (int r = 0; r <= curPass.resourceCount - 1; r++)
+        for (int r = curPass.resourceCount - 1; r >= 0; r--)
         {
             Resource cr = curPass.resources[r];
             if (cr.usage == USAGE_COLORATTACHMENT)
@@ -463,7 +463,7 @@ void optimizePasses(RenderGraph *graph, Image *swapChainImg)
             }
             else
             {
-                for (int e = rootResourceCount; e >= 0; e--)
+                for (int e = rootResourceCount - 1; e >= 0; e--)
                 {
                     if (resEqWoUsage(cr, rootResources[e]))
                     {
@@ -524,20 +524,13 @@ void optimizePasses(RenderGraph *graph, Image *swapChainImg)
                         default:
                             break;
                         }
-                        break;
+                        if ((cr.usage & USAGE_COLORATTACHMENT) != 0 || (cr.usage & USAGE_TRANSFER_DST) != 0 || (cr.usage & USAGE_DEPTHSTENCILATTACHMENT) != 0)
+                        {
+                            rootResources = realloc(rootResources, sizeof(Resource) * (rootResourceCount + 1));
+                            rootResources[rootResourceCount] = cr;
+                            rootResourceCount += 1;
+                        }
                     }
-                }
-
-                if ((cr.usage & USAGE_COLORATTACHMENT) != 0 || (cr.usage & USAGE_TRANSFER_DST) != 0 || (cr.usage & USAGE_DEPTHSTENCILATTACHMENT) != 0)
-                {
-                    rootResources = realloc(rootResources, sizeof(Resource) * (rootResourceCount + curPass.resourceCount));
-                    memcpy(rootResources + rootResourceCount, curPass.resources, sizeof(Resource) * (curPass.resourceCount));
-                    rootResourceCount += curPass.resourceCount;
-
-                    newPasses[graph->passCount - newPassCount - 1] = curPass;
-                    newPassCount += 1;
-
-                    r = curPass.resourceCount + 1;
                 }
             }
         }
@@ -546,6 +539,11 @@ void optimizePasses(RenderGraph *graph, Image *swapChainImg)
         graph->barriers[barrierIndex].imgMemBarriers = NULL;
         graph->barriers[barrierIndex].bufPBCount = bufBrrCount;
         graph->barriers[barrierIndex].imgPBCount = imgBrrCount;
+        if (bufMemBarriers != NULL || imgMemBarriers != NULL)
+        {
+            newPasses[graph->passCount - newPassCount - 1] = curPass;
+            newPassCount += 1;
+        }
         if (bufMemBarriers != NULL)
         {
             graph->barriers[barrierIndex].bufMemBarriers = malloc(sizeof(VkBufferMemoryBarrier2) * bufBrrCount);
