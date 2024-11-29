@@ -4,7 +4,7 @@
 #include <renderer.h>
 #include <util/camera.h>
 #include <util/math.h>
+#include <util/mesh.h>
 #include <util/sprite.h>
-
 
 #endif

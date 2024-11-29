@@ -15,9 +15,9 @@ spriteInstance birby3 = {0};
 spriteInstance birby4 = {0};
 spriteInstance birby5 = {0};
 pointLight2D light = {
-    {0.f, -100.f, 0.f},
-    {1, 0.996, 0.816, .1f},
-    .5f,
+    {100.f, 0.f, 0.f},
+    {1, 0.996, 0.816, 3.f},
+    3.f,
     true,
     0,
 };
@@ -34,11 +34,6 @@ void loop()
     if (thing >= 6.28319)
         thing = 0;
     camera.position.rotation.x += .001;
-    light.pos.y += .05 * mul;
-    if (light.pos.y >= 100)
-        mul = -1;
-    else if (light.pos.y == -100)
-        mul = 1;
     updateLight(&light, &scene);
     updateCamera(&camera, &scene);
     updateSpriteInstance(&birby1, (transform2D){
@@ -101,7 +96,6 @@ void init()
 
 int main(void)
 {
-
     wininfo.name = (char *)"Thing";
     wininfo.w = 1080;
     wininfo.h = 1080;

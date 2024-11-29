@@ -883,10 +883,17 @@ void destroyRenderer(renderer_t *renderer)
         vkDestroyImageView(renderer->vkCore.lDev, WREswapChainImageViews[i], NULL);
         vkDestroySemaphore(renderer->vkCore.lDev, renderer->vkCore.renderFinished[i], NULL);
     }
+    vkDestroyImage(renderer->vkCore.lDev, WREnormalBuffer.image, NULL);
+    vkDestroyImageView(renderer->vkCore.lDev, WREnormalBuffer.imgview, NULL);
+    vkFreeMemory(renderer->vkCore.lDev, WREnormalBuffer.memory, NULL);
+    vkDestroyImage(renderer->vkCore.lDev, WREalbedoBuffer.image, NULL);
+    vkDestroyImageView(renderer->vkCore.lDev, WREalbedoBuffer.imgview, NULL);
+    vkFreeMemory(renderer->vkCore.lDev, WREalbedoBuffer.memory, NULL);
     vkDestroySampler(renderer->vkCore.lDev, renderer->vkCore.linearSampler, NULL);
     vkDestroySwapchainKHR(renderer->vkCore.lDev, WREswapChain, NULL);
     vkDestroyDevice(renderer->vkCore.lDev, NULL);
     vkDestroySurfaceKHR(WREVulkinstance, renderer->vkCore.surface, NULL);
+
     vkDestroyInstance(WREVulkinstance, NULL);
 }
 
