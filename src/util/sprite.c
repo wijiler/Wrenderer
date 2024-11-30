@@ -4,8 +4,6 @@
 uint32_t spriteInstanceCount = 0;
 uint32_t lightCount = 0;
 
-bool cameraSet = false;
-Buffer activeCameraBuffer;
 Buffer spriteInstanceData = {0};
 Buffer spriteTextureIDs = {0};
 Buffer lightBuffer = {0};

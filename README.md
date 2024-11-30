@@ -40,12 +40,12 @@ $ make config=debug/release/lib
 
 ## Features of Wrenderer
 
-Vulkan lol  
-Immediate Rendergraph  
-Dead pass removal  
-Bindless textures  
-Optimized mesh api  
+Vulkan backend
+Rendergraph driven  
 Shader Object Support  
+Slang  
+SIMD optimized maths  
+glTF mesh support
 
 ## Issues
 

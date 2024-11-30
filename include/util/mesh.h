@@ -21,6 +21,7 @@ typedef struct
     Buffer vBuf;
     Buffer iBuf;
 
+    WREMaterial3D material;
     int instanceCount;
     mat4x4 *transformations;
 } WREmesh;
@@ -38,8 +39,7 @@ typedef struct
 
     uint32_t instanceCount;
     WREmeshInstance *instances;
-
 } WREScene3D;
 
-WREmesh loadMeshFromGLTF(char *filepath);
+WREmesh loadMeshFromGLTF(char *filepath, renderer_t *renderer);
 #endif

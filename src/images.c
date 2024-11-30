@@ -258,5 +258,5 @@ void submitNormal(renderer_t *renderer, Texture *tex, VkSampler sampler)
 {
     writeDescriptorSet(renderer->vkCore, renderer->vkCore.textureDescriptor, 1, renderer->vkCore.normalCount, tex->img.imgview, sampler);
     tex->index = renderer->vkCore.normalCount;
-    renderer->vkCore.textureCount += 1;
+    renderer->vkCore.normalCount += 1;
 }

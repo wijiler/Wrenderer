@@ -25,6 +25,9 @@ typedef struct
     float fov;
 } WRECamera;
 
+extern bool cameraSet;
+extern Buffer activeCameraBuffer;
+
 void initOrthoCamera(WRECamera *cam, renderer_t *renderer, vec3 pos, vec2 rotation);
 void initPerspCamera(WRECamera *cam, renderer_t *renderer, cameraTransform transform, float fov);
 

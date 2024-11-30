@@ -1,5 +1,8 @@
 #include <util/camera.h>
 
+bool cameraSet = false;
+Buffer activeCameraBuffer;
+
 void initOrthoCamera(WRECamera *cam, renderer_t *renderer, vec3 pos, vec2 rotation)
 {
     cam->type = WRE_ORTHOGRAPHIC_CAM;

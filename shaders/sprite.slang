@@ -52,7 +52,7 @@ struct VertOutput
 {
     float3 color : fragColor;
     float2 uv : vertUVCOORDS;
-    MaterialId matID : meshTextureID;
+    MaterialId matID : spriteTextureID;
     float4 sv_pos : SV_Position;
 }
 

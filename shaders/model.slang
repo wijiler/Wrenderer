@@ -7,44 +7,63 @@ struct Transform
 struct Vertex
 {
     float3 pos;
-    float3 color;
+    float4 color;
     float2 uv;
 }
 struct MeshInstance
 {
-    Transform Transf;
+    float4x4 transformation;
 }
-
+struct Material
+{
+    uint32_t textureId;
+    uint32_t normalId;
+}
 struct Mesh
 {
     MeshInstance *instances;
     Vertex *vertices;
-    uint64_t textureId;
+    Material mat;
 }
 
-[vk_binding(0)]
+[vk_binding(0, 0)]
 Sampler2D textures[];
 
-[vk_push_constant]
-Mesh *meshes;
+[vk_binding(0, 1)]
+Sampler2D normals[];
 
-struct VertexShaderOutput
+[vk_push_constant]
+Mesh mesh;
+
+struct VertOutput
 {
     float4 pos : SV_Position;
-    float3 color : outColor;
+    float4 color : outColor;
     float2 uv : outUV;
+    Material mat : meshMaterialId;
 }
 
 [shader("vertex")]
-VertexShaderOutput vertMain()
+VertOutput vertMain(uint vertId: SV_VertexID, uint instId: SV_InstanceID)
 {
-    VertexShaderOutput output;
-    // something or something
+    VertOutput output;
+
+    output.pos = mul(mesh.instances[instId].transformation, float4(mesh.vertices[vertId].pos, 1));
+    output.color = mesh.vertices[vertId].color;
+    output.uv = mesh.vertices[vertId].uv;
+    output.mat = mesh.mat;
+
     return output;
 }
 
+struct fragOutput
+{
+    float4 albedoBuffer : SV_Target0;
+    float4 normalBuffer : SV_Target1;
+}
+
 [shader("fragment")]
-float4 fragMain()
+float4 fragMain(VertOutput input)
     : SV_Target
 {
     return float4(1.0f, 1.0f, 1.0f, 1.0f);

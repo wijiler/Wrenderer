@@ -48,6 +48,7 @@ void loop()
 void init()
 {
     initRenderer(&renderer);
+    loadMeshFromGLTF("assets/dcubes.gltf", &renderer);
     scene.Renderer = &renderer;
     initializeScene(&scene);
     initPerspCamera(&camera, &renderer, (cameraTransform){(vec3){0, 0, 0}, (vec2){0, 0}}, 90);
