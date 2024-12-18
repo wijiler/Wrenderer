@@ -318,21 +318,3 @@ void initializeScene2D(WREScene2D *scene)
 {
     initializePipelines(scene->Renderer, &scene->spritePipeline);
 }
-
-void updateCamera(WRECamera *cam, WREScene2D *scene)
-{
-    switch (cam->type)
-    {
-    case WRE_ORTHOGRAPHIC_CAM:
-    {
-        initOrthoCamera(cam, scene->Renderer, cam->position.pos, cam->position.rotation);
-    }
-    break;
-    case WRE_PERSPECTIVE_CAM:
-    {
-        initPerspCamera(cam, scene->Renderer, cam->position, cam->fov);
-    }
-    break;
-    }
-    memcpy(scene->camera, cam, sizeof(WRECamera));
-}

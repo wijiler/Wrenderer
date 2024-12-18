@@ -40,8 +40,8 @@ void initializePipelines3d(renderer_t *renderer, WREScene3D *scene)
         scene->gbufferPipeline.stencilTestEnable = VK_FALSE;
         scene->gbufferPipeline.alphaToCoverageEnable = VK_FALSE;
         scene->gbufferPipeline.rastSampleCount = VK_SAMPLE_COUNT_1_BIT;
-        scene->gbufferPipeline.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-        scene->gbufferPipeline.cullMode = VK_CULL_MODE_NONE;
+        scene->gbufferPipeline.frontFace = VK_FRONT_FACE_CLOCKWISE;
+        scene->gbufferPipeline.cullMode = VK_CULL_MODE_BACK_BIT;
         scene->gbufferPipeline.depthBoundsEnable = VK_FALSE;
         scene->gbufferPipeline.alphaToOneEnable = VK_TRUE;
         scene->gbufferPipeline.sampleMask = UINT32_MAX;

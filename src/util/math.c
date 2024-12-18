@@ -325,6 +325,22 @@ vec3 normalizeVec3(vec3 in)
     return divVec3Scalar(in, len);
 }
 
+vec3 Vec3Add(vec3 a, vec3 b)
+{
+    CHECKSIMDSUPPORT
+
+    if (SSE_SUPPORTED)
+    {
+        vec4 res = {0};
+        __m128 a1 = _mm_loadu_ps((float *)&a);
+        __m128 b1 = _mm_loadu_ps((float *)&b);
+
+        _mm_storeu_ps((float *)&res, _mm_add_ps(a1, b1));
+        return (vec3){res.x, res.y, res.z};
+    }
+    return (vec3){a.x + b.x, a.y + b.y, a.z + b.z};
+}
+
 // https://stackoverflow.com/questions/6996764/fastest-way-to-do-horizontal-sse-vector-sum-or-other-reduction ;)
 float horizontalSum(__m128 v)
 {
@@ -366,7 +382,10 @@ mat4x4 lookAtMatrix(vec3 pos, vec3 target, vec3 up)
         right.z, newUp.z, forward.z, 0,
         -vec3Dot(right, pos), -vec3Dot(newUp, pos), -vec3Dot(forward, pos), 1};
 }
-
+float degtoRad(float in)
+{
+    return in * (PI32 / 180);
+}
 mat4x4 fpsViewMatrix(vec3 pos, float pitch, float yaw)
 {
     mat4x4 tmat = identity4x4;

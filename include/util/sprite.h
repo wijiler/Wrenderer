@@ -68,6 +68,5 @@ void updateSpriteInstance(spriteInstance *sprite, transform2D transform, WREScen
 void removeSpriteInstance(spriteInstance *sprite, WREScene2D *scene);
 void deleteSpriteInstances(Sprite *sprite, WREScene2D *scene);
 void spritePass(renderer_t renderer, SpritePipeline *pipeline);
-void updateCamera(WRECamera *cam, WREScene2D *scene);
 
 #endif

@@ -28,14 +28,43 @@ void loop()
 {
     FrameIndex++;
     Index = FrameIndex % FRAMECOUNT;
+    camera.position.rotation.x = (WREMouseX / renderer.vkCore.extent.width);
+    camera.position.rotation.y = (WREMouseY / renderer.vkCore.extent.height);
+    updateCamera(&camera, &renderer);
     drawRenderer(&renderer, Index);
+}
+
+void inputCallback(int key, int action)
+{
+    switch (key)
+    {
+    case GLFW_KEY_W:
+        camera.position.pos.z -= 1;
+        break;
+    case GLFW_KEY_S:
+        camera.position.pos.z += 1;
+        break;
+    case GLFW_KEY_A:
+        camera.position.pos.x += 1;
+        break;
+    case GLFW_KEY_D:
+        camera.position.pos.x -= 1;
+        break;
+    case GLFW_KEY_SPACE:
+        camera.position.pos.y -= 1;
+        break;
+    case GLFW_KEY_LEFT_SHIFT:
+        camera.position.pos.y += 1;
+        break;
+    }
+
+    updateCamera(&camera, &renderer);
 }
 
 void init()
 {
     initRenderer(&renderer);
     renderer.rg = &builder;
-    Texture skib = loadImageFromPNG("assets/bnuyu.jpg", &renderer);
     initializeScene3D(&scene, &renderer);
     WREmesh mesh = loadMeshFromGLTF("assets/dcubes.gltf", &renderer);
     createMeshInstance(&mesh, &scene, &renderer, (vec3){0, 0, 0}, (vec3){0, 0, 0}, (vec3){1, 1, 1});
@@ -93,7 +122,7 @@ int main(void)
     wininfo.name = (char *)"Thing";
     wininfo.w = 1080;
     wininfo.h = 1080;
-    launch_window(wininfo, &renderer, loop, init);
+    launch_window(wininfo, &renderer, loop, init, inputCallback);
 
     destroyRenderer(&renderer);
 
