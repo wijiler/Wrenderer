@@ -18,6 +18,7 @@ VkImageView *WREswapChainImageViews = VK_NULL_HANDLE;
 WREDescriptor WREgBuffer = {0};
 Image WREalbedoBuffer = {0};
 Image WREnormalBuffer = {0};
+Image WREdepthBuffer = {0};
 
 typedef struct
 {
@@ -548,6 +549,12 @@ void recreateSwapchain(VulkanCore_t *core, int w, int h)
 
     WREnormalBuffer = createImage(*core, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TYPE_2D, core->extent.width, core->extent.height, VK_IMAGE_ASPECT_COLOR_BIT);
     writeDescriptorSet(*core, WREgBuffer, 1, 0, WREnormalBuffer.imgview, core->linearSampler);
+
+    vkDestroyImage(core->lDev, WREdepthBuffer.image, NULL);
+    vkDestroyImageView(core->lDev, WREdepthBuffer.imgview, NULL);
+    vkFreeMemory(core->lDev, WREdepthBuffer.memory, NULL);
+
+    WREdepthBuffer = createImage(*core, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_IMAGE_TYPE_2D, core->extent.width, core->extent.height, VK_IMAGE_ASPECT_DEPTH_BIT);
 }
 
 void create_CommandBuffers(VulkanCore_t *core)
@@ -942,6 +949,8 @@ void initRenderer(renderer_t *renderer)
     allocateDescriptorSets(renderer->vkCore, &WREgBuffer);
     writeDescriptorSet(renderer->vkCore, WREgBuffer, 0, 0, WREalbedoBuffer.imgview, renderer->vkCore.linearSampler);
     writeDescriptorSet(renderer->vkCore, WREgBuffer, 1, 0, WREnormalBuffer.imgview, renderer->vkCore.linearSampler);
+
+    WREdepthBuffer = createImage(renderer->vkCore, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_IMAGE_TYPE_2D, renderer->vkCore.extent.width, renderer->vkCore.extent.height, VK_IMAGE_ASPECT_DEPTH_BIT);
 
     Texture defaultNormal = loadImageFromPNG("assets/defaultNormal.png", renderer);
     submitNormal(renderer, &defaultNormal, renderer->vkCore.linearSampler);

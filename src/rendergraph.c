@@ -318,7 +318,7 @@ void addColorAttachment(Image *img, RenderPass *pass, VkClearValue *clear)
     addCatt(pass, img);
 }
 
-void setDepthStencilAttachment(Image *img, RenderPass *pass)
+void setDepthAttachment(Image *img, RenderPass *pass)
 {
     pass->depthAttachment = img;
 }
@@ -342,7 +342,7 @@ void addImageResource(RenderPass *pass, Image *image, ResourceUsageFlags_t usage
         res.access = ACCESS_DEPTHATTACHMENT;
         res.value.img.layout |= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
         res.value.img.accessMask |= ACCESS_DEPTHATTACHMENT;
-        setDepthStencilAttachment(image, pass);
+        setDepthAttachment(image, pass);
     }
     else if ((usage & USAGE_TRANSFER_SRC) != 0)
     {
@@ -452,6 +452,7 @@ void optimizePasses(RenderGraph *graph, Image *swapChainImg)
                 curPass.colorAttachments[cr.cAttIndex]->imgview = cr.value.img.handle->imgview;
             if (cr.value.swapChainImage == swapChainImg)
             {
+                cr.value.swapChainImage = swapChainImg;
                 rootResources = realloc(rootResources, sizeof(Resource) * (rootResourceCount + curPass.resourceCount));
                 memcpy(rootResources + rootResourceCount, curPass.resources, sizeof(Resource) * (curPass.resourceCount));
                 rootResourceCount += curPass.resourceCount;
@@ -711,8 +712,8 @@ void drawRenderer(renderer_t *renderer, int cBufIndex)
     viewport.y = 0;
     viewport.width = renderer->vkCore.extent.width + 1.0;
     viewport.height = renderer->vkCore.extent.height + 1.0;
-    viewport.minDepth = 0;
-    viewport.maxDepth = 1;
+    viewport.minDepth = 1;
+    viewport.maxDepth = 0;
     vkCmdSetViewportWithCount(gcbuf, 1, &viewport);
 
     executeGraph(&rg, renderer, cBufIndex);

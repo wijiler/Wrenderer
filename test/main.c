@@ -5,94 +5,87 @@
 #include <windowing.h>
 
 renderer_t renderer;
-WREScene2D scene = {0};
+WREScene3D scene = {0};
 WRECamera camera = {0};
 winf_t wininfo = {0};
 GraphBuilder builder = {0};
-spriteInstance birby1 = {0};
-spriteInstance birby2 = {0};
-spriteInstance birby3 = {0};
-spriteInstance birby4 = {0};
-spriteInstance birby5 = {0};
-pointLight2D light = {
-    {100.f, 0.f, 0.f},
-    {1, 0.996, 0.816, 3.f},
-    3.f,
-    true,
-    0,
-};
+// spriteInstance birby1 = {0};
+// spriteInstance birby2 = {0};
+// spriteInstance birby3 = {0};
+// spriteInstance birby4 = {0};
+// spriteInstance birby5 = {0};
+// pointLight2D light = {
+//     {0.f, 0.f, 0.f},
+//     {1, 0.996, 0.816, .2f},
+//     1.f,
+//     true,
+//     0,
+// };
 int ImageIndex = 0;
 int FrameIndex = 0;
 int Index = 0;
-float thing = 0;
-int mul = 1;
 void loop()
 {
     FrameIndex++;
     Index = FrameIndex % FRAMECOUNT;
-    thing += 0.001;
-    if (thing >= 6.28319)
-        thing = 0;
-    camera.position.rotation.x += .001;
-    updateLight(&light, &scene);
-    updateCamera(&camera, &scene);
-    updateSpriteInstance(&birby1, (transform2D){
-                                      {0, 0, 0},
-                                      {1, 1},
-                                      thing,
-                                  },
-                         &scene);
     drawRenderer(&renderer, Index);
 }
 
 void init()
 {
     initRenderer(&renderer);
-    loadMeshFromGLTF("assets/dcubes.gltf", &renderer);
-    scene.Renderer = &renderer;
-    initializeScene(&scene);
-    initPerspCamera(&camera, &renderer, (cameraTransform){(vec3){0, 0, 0}, (vec2){0, 0}}, 90);
-    scene.camera = &camera;
-
-    Sprite birb = createSprite("assets/birb.png", NULL, renderer.vkCore.nearestSampler, &renderer);
-    Sprite birb2 = createSprite("assets/Wrenderer.png", NULL, renderer.vkCore.nearestSampler, &renderer);
-    Sprite bnuyu = createSprite("assets/bnuyu.jpg", NULL, renderer.vkCore.linearSampler, &renderer);
-    birby1 = createNewSpriteInstance(&bnuyu, renderer, &scene);
-    birby2 = createNewSpriteInstance(&birb, renderer, &scene);
-    birby3 = createNewSpriteInstance(&birb, renderer, &scene);
-    birby4 = createNewSpriteInstance(&birb2, renderer, &scene);
-    birby5 = createNewSpriteInstance(&birb2, renderer, &scene);
-    updateSpriteInstance(&birby2, (transform2D){
-                                      {0, -100, 0},
-                                      {1, 1},
-                                      0,
-                                  },
-                         &scene);
-    updateSpriteInstance(&birby3, (transform2D){
-                                      {0, -50, 0},
-                                      {1, 1},
-                                      0,
-                                  },
-                         &scene);
-
-    updateSpriteInstance(&birby4, (transform2D){
-                                      {0, 50, 0},
-                                      {1, 1},
-                                      0,
-                                  },
-                         &scene);
-    updateSpriteInstance(&birby5, (transform2D){
-                                      {0, 100, 0},
-                                      {1, 1},
-                                      0,
-                                  },
-                         &scene);
-
-    addNewLight(&light, &scene);
-    setActiveScene(&scene);
-    spritePass(renderer, &scene.spritePipeline);
-    copyGraph(&scene.spritePipeline.builder, &builder);
     renderer.rg = &builder;
+    Texture skib = loadImageFromPNG("assets/bnuyu.jpg", &renderer);
+    initializeScene3D(&scene, &renderer);
+    WREmesh mesh = loadMeshFromGLTF("assets/dcubes.gltf", &renderer);
+    createMeshInstance(&mesh, &scene, &renderer, (vec3){0, 0, 0}, (vec3){0, 0, 0}, (vec3){1, 1, 1});
+    initPerspCamera(&camera, &renderer, (cameraTransform){(vec3){0, 0, 200}, (vec2){0, 0}}, 90);
+    setActiveCamera(&camera, renderer);
+    RenderPass pass = meshPass(&scene, &renderer);
+    addPass(renderer.rg, &pass);
+
+    // scene.Renderer = &renderer;
+    // initializeScene2D(&scene);
+    // scene.camera = &camera;
+
+    // Sprite birb = createSprite("assets/birb.png", NULL, renderer.vkCore.nearestSampler, &renderer);
+    // Sprite birb2 = createSprite("assets/Wrenderer.png", NULL, renderer.vkCore.nearestSampler, &renderer);
+    // Sprite bnuyu = createSprite("assets/bnuyu.jpg", NULL, renderer.vkCore.linearSampler, &renderer);
+    // birby1 = createNewSpriteInstance(&bnuyu, renderer, &scene);
+    // birby2 = createNewSpriteInstance(&birb, renderer, &scene);
+    // birby3 = createNewSpriteInstance(&birb, renderer, &scene);
+    // birby4 = createNewSpriteInstance(&birb2, renderer, &scene);
+    // birby5 = createNewSpriteInstance(&birb2, renderer, &scene);
+    // updateSpriteInstance(&birby2, (transform2D){
+    //                                   {0, -100, 0},
+    //                                   {1, 1},
+    //                                   0,
+    //                               },
+    //                      &scene);
+    // updateSpriteInstance(&birby3, (transform2D){
+    //                                   {0, -50, 0},
+    //                                   {1, 1},
+    //                                   0,
+    //                               },
+    //                      &scene);
+
+    // updateSpriteInstance(&birby4, (transform2D){
+    //                                   {0, 50, 0},
+    //                                   {1, 1},
+    //                                   0,
+    //                               },
+    //                      &scene);
+    // updateSpriteInstance(&birby5, (transform2D){
+    //                                   {0, 100, 0},
+    //                                   {1, 1},
+    //                                   0,
+    //                               },
+    //                      &scene);
+
+    // addNewLight(&light, &scene);
+    // setActiveScene2D(&scene);
+    // spritePass(renderer, &scene.spritePipeline);
+    // copyGraph(&scene.spritePipeline.builder, &builder);
 }
 
 int main(void)

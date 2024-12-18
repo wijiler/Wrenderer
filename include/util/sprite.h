@@ -59,8 +59,8 @@ typedef struct
 void addNewLight(pointLight2D *light, WREScene2D *scene);
 void updateLight(pointLight2D *light, WREScene2D *scene);
 void switchLight(pointLight2D *light, WREScene2D *scene);
-void setActiveScene(WREScene2D *scene);
-void initializeScene(WREScene2D *scene);
+void setActiveScene2D(WREScene2D *scene);
+void initializeScene2D(WREScene2D *scene);
 
 Sprite createSprite(char *texturePath, char *normalPath, VkSampler sampler, renderer_t *renderer);
 spriteInstance createNewSpriteInstance(Sprite *sprite, renderer_t renderer, WREScene2D *scene);

@@ -37,16 +37,6 @@ struct Camera
     float fov;
 }
 
-static const float4 vpositions[6] =
-    {
-        float4(.1f, .1f, 0.0f, 1.0f),
-        float4(.1f, -.1f, 0.0f, 1.0f),
-        float4(-.1f, -.1f, 0.0f, 1.0f),
-        float4(-.1f, -.1f, 0.0f, 1.0f),
-        float4(-.1f, .1f, 0.0f, 1.0f),
-        float4(.1f, .1f, 0.0f, 1.0f),
-    };
-
 float3 rot(float3 p, float3 o, float a)
 {
     return float3((p.x - o.x) * cos(a) - (p.y - o.y) * sin(a) + o.x, (p.x - o.x) * sin(a) + (p.y - o.y) * cos(a) + o.y, p.z);
@@ -93,7 +83,7 @@ pushConstants pc;
 VertOutput vertMain(uint vertID: SV_VertexID, uint instID: SV_InstanceID)
 {
     VertOutput output;
-    float4 pos = mul(pc.camera.perspective, mul(pc.camera.view, float4(transform(pc.instances[instID], vertID), 1.0f)));
+    float4 pos = pc.camera.perspective * pc.camera.view * float4(transform(pc.instances[instID], vertID), 1.0f);
     output.pos = pos;
     output.realPos = float3(pos.x, pos.y, pos.z);
     return output;

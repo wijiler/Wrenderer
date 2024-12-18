@@ -1,7 +1,7 @@
 #include <util/camera.h>
 
 bool cameraSet = false;
-Buffer activeCameraBuffer;
+Buffer activeCameraBuffer = {0};
 
 void initOrthoCamera(WRECamera *cam, renderer_t *renderer, vec3 pos, vec2 rotation)
 {
@@ -26,4 +26,18 @@ void initPerspCamera(WRECamera *cam, renderer_t *renderer, cameraTransform trans
 
     cam->perspective = transposeMat4x4(perspProjMatrix(fov, (float)renderer->vkCore.extent.width / renderer->vkCore.extent.height, 1, 0));
     cam->fov = fov;
+}
+
+void setActiveCamera(WRECamera *cam, renderer_t renderer)
+{
+    if (cameraSet == false)
+    {
+        BufferCreateInfo bci = {
+            sizeof(WRECamera),
+            BUFFER_USAGE_STORAGE_BUFFER,
+            CPU_ONLY,
+        };
+        createBuffer(renderer.vkCore, bci, &activeCameraBuffer);
+    }
+    pushDataToBuffer(cam, sizeof(WRECamera), activeCameraBuffer, 0);
 }

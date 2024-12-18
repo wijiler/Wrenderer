@@ -215,7 +215,7 @@ void switchLight(pointLight2D *light, WREScene2D *scene)
     pushDataToBuffer(scene->lights, sizeof(pointLight2D) * scene->lightCount, lightBuffer, 0);
 }
 
-void setActiveScene(WREScene2D *scene)
+void setActiveScene2D(WREScene2D *scene)
 {
     if (!cameraSet)
     {
@@ -236,8 +236,6 @@ void setActiveScene(WREScene2D *scene)
     pushDataToBuffer(scene->spritePipeline.spriteInstanceData, sizeof(transform2D) * scene->spritePipeline.spriteInstanceCount, spriteInstanceData, 0);
     pushDataToBuffer(scene->spritePipeline.textureIDs, sizeof(Material2D) * scene->spritePipeline.spriteInstanceCount, spriteTextureIDs, 0);
 }
-
-Image albedoBuffer2d = {0};
 
 void initializePipelines(renderer_t *renderer, SpritePipeline *pipeline)
 {
@@ -316,7 +314,7 @@ void initializePipelines(renderer_t *renderer, SpritePipeline *pipeline)
     }
 }
 
-void initializeScene(WREScene2D *scene)
+void initializeScene2D(WREScene2D *scene)
 {
     initializePipelines(scene->Renderer, &scene->spritePipeline);
 }

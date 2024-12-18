@@ -6,6 +6,7 @@
 
 ## high priority
 
+- [ ] merge 2d pipeline with 3d, and just instance a quad instead
 - [ ] metal backend
 - [ ] Mip levels
 - [ ] Reorder passes

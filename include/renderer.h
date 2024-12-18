@@ -344,7 +344,7 @@ extern "C"
     void addBufferResource(RenderPass *pass, Buffer buf, ResourceUsageFlags_t usage);
     void addArbitraryResource(RenderPass *pass, void *data);
     void addColorAttachment(Image *img, RenderPass *pass, VkClearValue *clear);
-    void setDepthStencilAttachment(Image *img, RenderPass *pass);
+    void setDepthAttachment(Image *img, RenderPass *pass);
     void setExecutionCallBack(RenderPass *pass, void (*callBack)(RenderPass pass, VkCommandBuffer cBuf));
 
     void addPass(GraphBuilder *builder, RenderPass *pass);
@@ -383,6 +383,7 @@ extern "C"
 
     extern Image WREalbedoBuffer;
     extern Image WREnormalBuffer;
+    extern Image WREdepthBuffer;
     extern WREDescriptor WREgBuffer;
 
 #ifdef __cplusplus

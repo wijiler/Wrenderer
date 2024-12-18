@@ -16,30 +16,41 @@ typedef struct
 
 typedef struct
 {
+    uint32_t id;
+    uint32_t indexCount;
     WREVertex3D *vertices;
     uint32_t *indices;
     Buffer vBuf;
     Buffer iBuf;
 
     WREMaterial3D material;
-    int instanceCount;
-    mat4x4 *transformations;
 } WREmesh;
 
 typedef struct
 {
-    WREmesh *parent;
-    transform3D transform;
-} WREmeshInstance;
+    mat4x4 transform;
+} WREMeshInstance;
 
 typedef struct
 {
-    graphicsPipeline gbufferPass;
-    graphicsPipeline lightingPass;
-
+    WREmesh mesh;
     uint32_t instanceCount;
-    WREmeshInstance *instances;
+    WREMeshInstance *instances;
+} WREMeshGroup;
+
+typedef struct
+{
+    graphicsPipeline gbufferPipeline;
+    graphicsPipeline lightingPipeline;
+
+    uint32_t maxMeshGroupCount;
+    uint32_t meshGroupCount;
+    uint32_t totalInstanceCount;
+    WREMeshGroup *MeshGroups;
 } WREScene3D;
 
 WREmesh loadMeshFromGLTF(char *filepath, renderer_t *renderer);
+RenderPass meshPass(WREScene3D *scene, renderer_t *renderer);
+void createMeshInstance(WREmesh *mesh, WREScene3D *scene, renderer_t *renderer, vec3 position, vec3 rot, vec3 scale);
+void initializeScene3D(WREScene3D *scene, renderer_t *renderer);
 #endif

@@ -91,7 +91,7 @@ VertOutput vertMain(uint32_t vertID: SV_VertexID, uint32_t instID: SV_InstanceID
 {
     VertOutput output;
 
-    output.sv_pos = mul(ptrs.camera.perspective, mul(ptrs.camera.view, float4(transform(ptrs.instances[instID], vertID), 1.0f)));
+    output.sv_pos = ptrs.camera.perspective * ptrs.camera.view * float4(transform(ptrs.instances[instID], vertID), 1.0f);
     output.color = float3(1.0f, 1.0f, 1.0f);
     output.matID = ptrs.ids[instID];
     output.uv = uvs[vertID];
