@@ -1,4 +1,5 @@
 static const int spriteScaleFactor = 100;
+static const int worldScaleFactor = 100;
 
 static const float4 spriteVPositions[6] =
     {

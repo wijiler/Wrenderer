@@ -5,6 +5,7 @@
 -Iinclude/ 
 -Iinclude/libs/ 
 -IC:/VulkanSDK/1.3.290.0/Include
+-I./include/libs/fastgltf/include/
 -L./libs/ 
 -lvulkan-1 
 -lglfw3 

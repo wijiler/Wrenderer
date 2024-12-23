@@ -1,22 +1,22 @@
 workspace "Wrenderer"
 configurations { "Debug", "Release"}
 project "Wrenderer"
-    language "C"
+    language "C++"
     targetname "Wrenderer"
     architecture "x64"
     kind "StaticLib"
     outputdir = "%{cfg.system}-%{cfg.architecture}/%{cfg.buildcfg}"
 
-    cdialect "C99"
+    cppdialect "C++17"
 
     targetdir("%{wks.location}/Binaries/" .. outputdir .. "/%{prj.name}")
     objdir("%{wks.location}/Binaries/Intermediates/" .. outputdir .. "/%{prj.name}")
-    files { "include/**.h", "src/**.c" }
+    files { "include/**.h", "src/**.c", "include/**.hpp", "src/**.cpp" }
     libdirs { "./libs/" }
     includedirs { "./include/" }
-    includedirs { "./include/libs/" }
+    includedirs { "./include/libs/", "./include/libs/fastgltf/include/" }
     includedirs { os.getenv("VULKAN_SDK") .. "/Include" }
-    links { "vulkan-1", "glfw3" }
+    links { "vulkan-1", "glfw3", "fastgltf" }
     removefiles { "test/**.**" }
     filter "configurations:Debug"
         defines { "DEBUG" }
@@ -61,12 +61,12 @@ project "Wrenderer"
 project "WrenTest"
         architecture "x64"
         kind "ConsoleApp"  
-        language "C"   
+        language "C++"   
 
-        files { "**.h", "test/**.c" }
+        files { "**.h", "**.hpp", "test/**.cpp" }
         outputdir = "%{cfg.system}-%{cfg.architecture}/%{cfg.buildcfg}"
 
-        cdialect "C99"
+        cppdialect "C++17"
     
         targetdir("%{wks.location}/Binaries/" .. outputdir .. "/%{prj.name}")
         objdir("%{wks.location}/Binaries/Intermediates/" .. outputdir .. "/%{prj.name}")
@@ -75,10 +75,10 @@ project "WrenTest"
             "compileShaders.bat"
         }
         libdirs { "./libs/" }
-        includedirs { "./include/", "./include/libs/" }
+        includedirs { "./include/", "./include/libs/", "./include/libs/fastgltf/include/" }
         includedirs { os.getenv("VULKAN_SDK") .. "/Include" }
         links { "Wrenderer" }
-        links { "vulkan-1", "glfw3" }
+        links { "vulkan-1", "glfw3" , "fastgltf"}
 
         filter "configurations:Debug"
             defines { "DEBUG" }

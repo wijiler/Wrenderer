@@ -44,7 +44,7 @@ void launch_window(winf_t wininfo, renderer_t *renderer, void (*update)(), void 
         glfwTerminate();
         exit(EXIT_FAILURE);
     }
-    // glfwSetInputMode(renderer->window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetInputMode(renderer->window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     start();
     glfwSetWindowUserPointer(renderer->window, (void *)renderer);
     glfwSetWindowSizeCallback(renderer->window, resizeCallback);

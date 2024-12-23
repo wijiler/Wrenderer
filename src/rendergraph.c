@@ -710,10 +710,10 @@ void drawRenderer(renderer_t *renderer, int cBufIndex)
 
     viewport.x = 0;
     viewport.y = 0;
-    viewport.width = renderer->vkCore.extent.width + 1.0;
-    viewport.height = renderer->vkCore.extent.height + 1.0;
-    viewport.minDepth = 1;
-    viewport.maxDepth = 0;
+    viewport.width = renderer->vkCore.extent.width;
+    viewport.height = renderer->vkCore.extent.height;
+    viewport.minDepth = 0;
+    viewport.maxDepth = 1;
     vkCmdSetViewportWithCount(gcbuf, 1, &viewport);
 
     executeGraph(&rg, renderer, cBufIndex);

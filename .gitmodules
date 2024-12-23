@@ -4,3 +4,6 @@
 [submodule "include/libs/cgltf"]
 	path = include/libs/cgltf
 	url = https://github.com/jkuhlmann/cgltf.git
+[submodule "include/libs/fastgltf"]
+	path = include/libs/fastgltf
+	url = https://github.com/spnda/fastgltf.git
