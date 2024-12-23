@@ -40,10 +40,10 @@ void inputCallback(int key, int action)
     switch (key)
     {
     case GLFW_KEY_W:
-        movementWish.y -= 100;
+        movementWish.z -= 100;
         break;
     case GLFW_KEY_S:
-        movementWish.y += 100;
+        movementWish.z += 100;
         break;
     case GLFW_KEY_A:
         movementWish.x += 100;
@@ -52,10 +52,10 @@ void inputCallback(int key, int action)
         movementWish.x -= 100;
         break;
     case GLFW_KEY_SPACE:
-        movementWish.z += 100;
+        movementWish.y += 100;
         break;
     case GLFW_KEY_LEFT_SHIFT:
-        movementWish.z -= 100;
+        movementWish.y -= 100;
         break;
     case GLFW_KEY_ESCAPE:
         exit(0);
@@ -71,7 +71,7 @@ void init()
     initRenderer(&renderer);
     renderer.rg = &builder;
     initializeScene3D(&scene, &renderer);
-    WREScene3D mesh = loadSceneGLTF("assets/dcubes.gltf", &renderer);
+    WREScene3D mesh = loadSceneGLTF("assets/SM_Deccer_Cubes_Colored.glb", &renderer);
     initPerspCamera(&camera, &renderer, {{0, 0, 200}, {0, 0}}, 90);
     setActiveCamera(&camera, renderer);
     RenderPass pass = meshPass(&mesh, &renderer);

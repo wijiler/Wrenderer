@@ -85,5 +85,5 @@ VertOutput vertMain(uint vertId: SV_VertexID, uint instId: SV_InstanceID)
 float4 fragMain(VertOutput input)
     : SV_Target
 {
-    return textures[input.mat.textureId].Sample(input.uv) * float4(1);
+    return textures[input.mat.textureId].Sample(input.uv) * input.color;
 }

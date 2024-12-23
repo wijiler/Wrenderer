@@ -1,6 +1,7 @@
 #include <fastgltf/core.hpp>
 #include <fastgltf/tools.hpp>
 #include <fastgltf/types.hpp>
+#include <filesystem>
 #include <stdio.h>
 #include <string>
 #include <util/camera.hpp>
@@ -191,106 +192,6 @@ char *getParentDirectory(char *filepath)
     return dir;
 }
 
-WREmesh loadMeshFromGLTF(char *filepath, renderer_t *renderer)
-{
-    if (maxMeshCount == 0)
-    {
-        {
-            BufferCreateInfo bci = {
-                sizeof(gpuMesh) * 100,
-                BUFFER_USAGE_STORAGE_BUFFER,
-                CPU_ONLY,
-            };
-            createBuffer(renderer->vkCore, bci, &meshBuff);
-            bci.dataSize = sizeof(WREMeshInstance) * 100;
-            createBuffer(renderer->vkCore, bci, &sceneInstanceBuff);
-        }
-        maxMeshCount = 100;
-        maxInstanceCount = 100;
-    }
-
-    WREmesh mesh{};
-    fastgltf::Parser parser;
-
-    auto data = fastgltf::GltfDataBuffer::FromPath(filepath);
-    if (data.error() != fastgltf::Error::None)
-        return mesh;
-
-    char *path = getParentDirectory(filepath);
-    auto asset = parser.loadGltf(data.get(), path, fastgltf::Options::LoadExternalBuffers | fastgltf::Options::LoadExternalImages);
-    if (auto error = asset.error(); error != fastgltf::Error::None)
-        return mesh;
-
-    if (asset->meshes.empty())
-        return mesh;
-    auto &meshGltf = asset->meshes[0];
-    fastgltf::Primitive &prim = meshGltf.primitives[0];
-    if (prim.indicesAccessor.has_value())
-    {
-        fastgltf::Accessor &indexAccessor = asset->accessors[prim.indicesAccessor.value()];
-        mesh.indices = (uint32_t *)malloc(sizeof(uint32_t) * indexAccessor.count);
-        mesh.indexCount = indexAccessor.count;
-        fastgltf::iterateAccessorWithIndex<uint32_t>(asset.get(), indexAccessor, [&](std::uint32_t index, size_t idx)
-                                                     { mesh.indices[idx] = index; });
-        int vertcount = 0;
-        fastgltf::Attribute *positionIt = prim.findAttribute("POSITION");
-        if (positionIt->accessorIndex < asset->accessors.size())
-        {
-            fastgltf::Accessor &positionAccessor = asset->accessors[positionIt->accessorIndex];
-            mesh.vertices = (WREVertex3D *)malloc(sizeof(WREVertex3D) * positionAccessor.count);
-            {
-                BufferCreateInfo bci{
-                    (int)(sizeof(WREVertex3D) * positionAccessor.count),
-                    BUFFER_USAGE_STORAGE_BUFFER,
-                    CPU_ONLY,
-                };
-                createBuffer(renderer->vkCore, bci, &mesh.vBuf);
-            }
-            fastgltf::iterateAccessorWithIndex<fastgltf::math::fvec3>(asset.get(), positionAccessor, [&](fastgltf::math::fvec3 pos, size_t idx)
-                                                                      { 
-                                                    mesh.vertices[idx].pos.x = pos.x(); 
-                                                    mesh.vertices[idx].pos.y = pos.y(); 
-                                                    mesh.vertices[idx].pos.z = pos.z(); 
-                                                    mesh.vertices->color = {1,1,1,1};
-                                                    mesh.vertices->uv = {0,0}; });
-            vertcount = positionAccessor.count;
-        }
-        fastgltf::Attribute *colorIt = prim.findAttribute("COLOR_0");
-        if (colorIt->accessorIndex < asset->accessors.size())
-        {
-            fastgltf::Accessor &colorAccessor = asset->accessors[colorIt->accessorIndex];
-            fastgltf::iterateAccessorWithIndex<fastgltf::math::fvec4>(asset.get(), colorAccessor, [&](fastgltf::math::fvec4 color, size_t idx)
-                                                                      { 
-                                                                        mesh.vertices[idx].color.x = color.x();
-                                                                        mesh.vertices[idx].color.y = color.y();
-                                                                        mesh.vertices[idx].color.z = color.z();
-                                                                        mesh.vertices[idx].color.w = color.w(); });
-        }
-        fastgltf::Attribute *uvIt = prim.findAttribute("TEXCOORD_0");
-        if (uvIt->accessorIndex < asset->accessors.size())
-        {
-            fastgltf::Accessor &uvAccessor = asset->accessors[uvIt->accessorIndex];
-            fastgltf::iterateAccessorWithIndex<fastgltf::math::fvec2>(asset.get(), uvAccessor, [&](fastgltf::math::fvec2 uv, size_t idx)
-                                                                      { 
-                                                                    mesh.vertices[idx].uv.x = uv.x();
-                                                                    mesh.vertices[idx].uv.y = uv.y(); });
-        }
-        pushDataToBuffer(mesh.vertices, sizeof(WREVertex3D) * vertcount, mesh.vBuf, 0);
-    }
-    fastgltf::Image &imageGltf = asset->images[0];
-    {
-        char *texPath = (char *)malloc(sizeof(char) * (strlen(path) + imageGltf.name.length() + 5));
-        sprintf(texPath, "%s%s%s", path, imageGltf.name.c_str(), ".png");
-        Texture tex = loadImageFromPNG(texPath, renderer);
-        submitTexture(renderer, &tex, renderer->vkCore.linearSampler);
-        mesh.material.AlbedoMap = tex;
-        mesh.material.NormalMap = {{}, 0};
-        free(texPath);
-    }
-    allocateMesh(&mesh, renderer);
-    return mesh;
-}
-
 void createMeshInstance(WREmesh *mesh, WREScene3D *scene, renderer_t *renderer, vec3 position, vec3 rot, vec3 scale)
 {
     if (maxMeshCount > scene->maxMeshGroupCount)
@@ -444,6 +345,35 @@ RenderPass meshPass(WREScene3D *scene, renderer_t *renderer)
     return gPass;
 }
 
+mat4x4 fgltfToNative(fastgltf::math::fmat4x4 in)
+{
+    mat4x4 out;
+    fastgltf::math::fvec4 row1 = in.row(0);
+    fastgltf::math::fvec4 row2 = in.row(1);
+    fastgltf::math::fvec4 row3 = in.row(2);
+    fastgltf::math::fvec4 row4 = in.row(3);
+    out._11 = row1.x();
+    out._12 = row1.y();
+    out._13 = row1.z();
+    out._14 = row1.w();
+
+    out._21 = row2.x();
+    out._22 = row2.y();
+    out._23 = row2.z();
+    out._24 = row2.w();
+
+    out._31 = row3.x();
+    out._32 = row3.y();
+    out._33 = row3.z();
+    out._34 = row3.w();
+
+    out._41 = row4.x();
+    out._42 = row4.y();
+    out._43 = row4.z();
+    out._44 = row4.w();
+    return out;
+}
+
 WREScene3D loadSceneGLTF(char *filepath, renderer_t *renderer)
 {
     if (maxMeshCount == 0)
@@ -464,7 +394,6 @@ WREScene3D loadSceneGLTF(char *filepath, renderer_t *renderer)
     WREScene3D scene{};
     initializeScene3D(&scene, renderer);
 
-    WREmesh mesh{};
     fastgltf::Parser parser;
 
     auto data = fastgltf::GltfDataBuffer::FromPath(filepath);
@@ -478,19 +407,30 @@ WREScene3D loadSceneGLTF(char *filepath, renderer_t *renderer)
 
     if (asset->meshes.empty())
         return scene;
-    int counter = 0;
     std::vector<Texture> textures;
     for (fastgltf::Image &imageGltf : asset->images)
     {
         char *texPath = (char *)malloc(sizeof(char) * (strlen(path) + imageGltf.name.length() + 5));
         sprintf(texPath, "%s%s%s", path, imageGltf.name.c_str(), ".png");
-        Texture tex = loadImageFromPNG(texPath, renderer);
-        submitTexture(renderer, &tex, renderer->vkCore.linearSampler);
-        textures.push_back(tex);
+        if (std::filesystem::exists(texPath))
+        {
+            Texture tex = loadImageFromPNG(texPath, renderer);
+            submitTexture(renderer, &tex, renderer->vkCore.linearSampler);
+            textures.push_back(tex);
+        }
+        else
+        {
+            textures.push_back(WREMissingTexture);
+        }
         free(texPath);
     }
+    std::vector<WREmesh> meshes;
     for (auto &meshGltf : asset->meshes)
     {
+        WREmesh mesh{};
+        mesh.material.AlbedoMap = WREDefaultTexture;
+        mesh.material.NormalMap = WREDefaultNormal;
+
         fastgltf::Primitive &prim = meshGltf.primitives[0];
         if (prim.indicesAccessor.has_value())
         {
@@ -571,49 +511,14 @@ WREScene3D loadSceneGLTF(char *filepath, renderer_t *renderer)
             }
         }
         allocateMesh(&mesh, renderer);
-        mat4x4 transform = identity4x4;
-        for (fastgltf::Node &node : asset->nodes)
-        {
-            if (node.meshIndex == counter)
-            {
-                if (auto *trs = std::get_if<fastgltf::TRS>(&node.transform))
-                {
-                    vec3 translation = {trs->translation.x(), trs->translation.y(), trs->translation.z()};
-                    vec3 scale = {trs->scale.x(), trs->scale.y(), trs->scale.z()};
-                    Quat rot = {trs->rotation.x(), trs->rotation.y(), trs->rotation.z(), trs->rotation.w()};
-                    createMeshInstanceQuat(&mesh, &scene, renderer, translation, rot, scale);
-                }
-                else if (auto *mat = std::get_if<fastgltf::math::fmat4x4>(&node.transform))
-                {
-                    fastgltf::math::fvec4 row1 = mat->col(0);
-                    fastgltf::math::fvec4 row2 = mat->col(1);
-                    fastgltf::math::fvec4 row3 = mat->col(2);
-                    fastgltf::math::fvec4 row4 = mat->col(3);
-                    transform._11 = row1.x();
-                    transform._12 = row1.y();
-                    transform._13 = row1.z();
-                    transform._14 = row1.w();
-
-                    transform._21 = row2.x();
-                    transform._22 = row2.y();
-                    transform._23 = row2.z();
-                    transform._24 = row2.w();
-
-                    transform._31 = row3.x();
-                    transform._32 = row3.y();
-                    transform._33 = row3.z();
-                    transform._34 = row3.w();
-
-                    transform._41 = row4.x();
-                    transform._42 = row4.y();
-                    transform._43 = row4.z();
-                    transform._44 = row4.w();
-                    createMeshInstanceTransform(&mesh, &scene, renderer, transform);
-                }
-            }
-        }
-        counter += 1;
+        meshes.push_back(mesh);
     }
-
+    fastgltf::iterateSceneNodes(asset.get(), 0, fastgltf::math::fmat4x4(), [&](fastgltf::Node &node, fastgltf::math::fmat4x4 matrix)
+                                {
+                                    if(node.meshIndex.has_value()) 
+                                    {
+                                        mat4x4 transform = fgltfToNative(matrix);
+                                        createMeshInstanceTransform(&meshes[node.meshIndex.value()], &scene, renderer, transposeMat4x4(transform));
+                                    } });
     return scene;
 }

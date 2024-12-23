@@ -19,6 +19,9 @@ WREDescriptor WREgBuffer = {0};
 Image WREalbedoBuffer = {0};
 Image WREnormalBuffer = {0};
 Image WREdepthBuffer = {0};
+Texture WREDefaultNormal = {0};
+Texture WREDefaultTexture = {0};
+Texture WREMissingTexture = {0};
 
 typedef struct
 {
@@ -952,8 +955,12 @@ void initRenderer(renderer_t *renderer)
 
     WREdepthBuffer = createImage(renderer->vkCore, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_IMAGE_TYPE_2D, renderer->vkCore.extent.width, renderer->vkCore.extent.height, VK_IMAGE_ASPECT_DEPTH_BIT);
 
-    Texture defaultNormal = loadImageFromPNG("assets/defaultNormal.png", renderer);
-    submitNormal(renderer, &defaultNormal, renderer->vkCore.linearSampler);
+    WREDefaultNormal = loadImageFromPNG("assets/defaultNormal.png", renderer);
+    submitNormal(renderer, &WREDefaultNormal, renderer->vkCore.linearSampler);
+    WREDefaultTexture = loadImageFromPNG("assets/defaultTexture.png", renderer);
+    submitTexture(renderer, &WREDefaultTexture, renderer->vkCore.linearSampler);
+    WREMissingTexture = loadImageFromPNG("assets/defaultMissing.png", renderer);
+    submitTexture(renderer, &WREMissingTexture, renderer->vkCore.linearSampler);
 }
 
 void bindGraphicsPipeline(graphicsPipeline pline, RenderPass pass, VkCommandBuffer cBuf)

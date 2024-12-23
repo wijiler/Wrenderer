@@ -49,7 +49,6 @@ typedef struct
     WREMeshGroup *MeshGroups;
 } WREScene3D;
 
-WREmesh loadMeshFromGLTF(char *filepath, renderer_t *renderer);
 WREScene3D loadSceneGLTF(char *filepath, renderer_t *renderer);
 RenderPass meshPass(WREScene3D *scene, renderer_t *renderer);
 void createMeshInstance(WREmesh *mesh, WREScene3D *scene, renderer_t *renderer, vec3 position, vec3 rot, vec3 scale);

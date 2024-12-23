@@ -478,7 +478,7 @@ float degtoRad(float in)
 mat4x4 fpsViewMatrix(vec3 pos, float pitch, float yaw)
 {
     mat4x4 tmat = mat4x4Translate(divVec3Scalar(pos, 100), identity4x4);
-    mat4x4 rot = mat4x4RotateQuat(eulerToQuaternion({yaw, 0, pitch}));
+    mat4x4 rot = mat4x4RotateQuat(eulerToQuaternion({0, yaw, pitch}));
 
     return transposeMat4x4(mat4x4Mul(tmat, rot));
 }

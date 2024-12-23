@@ -385,6 +385,9 @@ extern "C"
     extern Image WREnormalBuffer;
     extern Image WREdepthBuffer;
     extern WREDescriptor WREgBuffer;
+    extern Texture WREDefaultTexture;
+    extern Texture WREMissingTexture;
+    extern Texture WREDefaultNormal;
 
 #ifdef __cplusplus
 }
