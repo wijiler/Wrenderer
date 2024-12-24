@@ -71,8 +71,8 @@ void init()
     initRenderer(&renderer);
     renderer.rg = &builder;
     initializeScene3D(&scene, &renderer);
-    WREScene3D mesh = loadSceneGLTF("assets/SM_Deccer_Cubes_Colored.glb", &renderer);
-    initPerspCamera(&camera, &renderer, {{0, 0, 200}, {0, 0}}, 90);
+    WREScene3D mesh = loadSceneGLTF("assets/dcubes.gltf", &renderer);
+    initPerspCamera(&camera, &renderer, {{0, 0, 0}, {0, 0}}, 90);
     setActiveCamera(&camera, renderer);
     RenderPass pass = meshPass(&mesh, &renderer);
     addPass(renderer.rg, &pass);

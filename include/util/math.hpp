@@ -74,7 +74,7 @@ mat4x4 mat4x4MulScalar(mat4x4 a, float b);
 mat4x4 lookAtMatrix(vec3 pos, vec3 target, vec3 up);
 mat4x4 fpsViewMatrix(vec3 pos, float pitch, float yaw);
 mat4x4 orthoProjMatrix(float near, float far, float top, float bottom, float left, float right);
-mat4x4 perspProjMatrix(float vertical_fov, float aspect_ratio, float n, float f);
+mat4x4 perspProjMatrix(float vertical_fov, float aspect_ratio, float n);
 //
 vec3 divVec3Scalar(vec3 a, float b);
 vec3 divV3V3(vec3 a, vec3 b);

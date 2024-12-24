@@ -501,15 +501,15 @@ mat4x4 transposeMat4x4(mat4x4 in)
 }
 
 // modified from https://www.vincentparizet.com/blog/posts/vulkan_perspective_matrix/
-mat4x4 perspProjMatrix(float vertical_fov, float aspect_ratio, float n, float f)
+mat4x4 perspProjMatrix(float vertical_fov, float aspect_ratio, float n)
 {
     float fov_rad = vertical_fov * 2.0f * PI32 / 360.0f;
     float focal_length = 1.0f / tanf(fov_rad / 2.0f);
 
     float x = focal_length / aspect_ratio;
     float y = -focal_length;
-    float A = n / (f - n);
-    float B = f * A;
+    float A = 0;
+    float B = n;
 
     return {
         x, 0.0f, 0.0f, 0.0f,

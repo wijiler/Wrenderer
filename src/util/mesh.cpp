@@ -50,8 +50,8 @@ void initializePipelines3d(renderer_t *renderer, WREScene3D *scene)
         scene->gbufferPipeline.sampleMask = UINT32_MAX;
         scene->gbufferPipeline.depthCompareOp = VK_COMPARE_OP_GREATER_OR_EQUAL;
         scene->gbufferPipeline.depthWriteEnable = VK_TRUE;
-        scene->gbufferPipeline.maxDepth = 0;
-        scene->gbufferPipeline.minDepth = 1;
+        scene->gbufferPipeline.maxDepth = 1;
+        scene->gbufferPipeline.minDepth = 0;
         typedef struct
         {
             VkDeviceAddress MeshBuffer;
