@@ -392,8 +392,9 @@ extern "C"
     typedef struct
     {
         uint64_t *timeStampValues;
+        float gpuRenderingTime;
         float deltaTime;
-        float avgFPS;
+        int avgFPS;
     } WREDebuginfo;
     extern WREDebuginfo WREstats;
 

@@ -36,7 +36,7 @@ void loop()
 
 void inputCallback(int key, int action)
 {
-    float speed = 1000 * WREstats.deltaTime;
+    float speed = 10 * WREstats.deltaTime;
     if (action != GLFW_RELEASE)
     {
         switch (key)

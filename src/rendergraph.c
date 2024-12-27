@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <windows.h>
 
 // courtesy of https://github.com/haipome/fnv/blob/master/fnv.c <- even if its public domain it deserves credit :)
 uint64_t fnv_64a_str(char *str, uint64_t hval)
@@ -640,7 +641,9 @@ float elapsed = {0};
 uint64_t frames = 0;
 void drawRenderer(renderer_t *renderer, int cBufIndex)
 {
-    clock_t initTime = clock();
+    LARGE_INTEGER startTime, endTime, freq;
+    frames += 1;
+    QueryPerformanceCounter(&startTime);
     VkCommandBuffer gcbuf = renderer->vkCore.commandBuffers[cBufIndex];
     VkCommandBuffer ccbuf = renderer->vkCore.computeCommandBuffers[cBufIndex];
     {
@@ -830,17 +833,20 @@ void drawRenderer(renderer_t *renderer, int cBufIndex)
     vkGetPhysicalDeviceProperties(WREPhysicalDevice, &devProps);
     if (WREstats.timeStampValues[3] != 0)
     {
-        WREstats.deltaTime = (float)(WREstats.timeStampValues[2] - WREstats.timeStampValues[0]) * devProps.limits.timestampPeriod / 1000000.0f;
-        elapsed += ((clock() - initTime) * 1000.f / CLOCKS_PER_SEC) + WREstats.deltaTime;
+        WREstats.gpuRenderingTime = (float)(WREstats.timeStampValues[2] - WREstats.timeStampValues[0]) * devProps.limits.timestampPeriod / 1000000.0f;
     }
-    frames += 1;
+    QueryPerformanceCounter(&endTime);
+    QueryPerformanceFrequency(&freq);
+    WREstats.deltaTime = ((float)(endTime.QuadPart - startTime.QuadPart) / (float)freq.QuadPart) * 1000.f + WREstats.gpuRenderingTime;
+    elapsed += WREstats.deltaTime;
+
     if (elapsed >= 1000)
     {
         WREstats.avgFPS = frames;
         frames = 0;
         elapsed = 0;
     }
-    printf("[INFO] FPS: %f FRAMETIME: %f ms\n", WREstats.avgFPS, WREstats.deltaTime);
+    printf("[INFO] FPS: %i FRAMETIME: %f ms\n", WREstats.avgFPS, WREstats.deltaTime);
     // destroyRenderGraph(&rg);
 }
 

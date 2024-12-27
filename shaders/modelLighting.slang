@@ -21,8 +21,9 @@ struct Camera
 struct Light
 {
     float radius;
-    float4 color;
+    bool on;
     float3 position;
+    float4 color;
 }
 
 struct PushConstants
@@ -61,10 +62,24 @@ float4 findWorldPos(uint2 uv, float depthNDC)
 
 [shader("compute")]
 [numthreads(32, 32)]
-float4 computeMain(uint2 threadId: SV_DispatchThreadID)
+void computeMain(uint2 threadId: SV_DispatchThreadID)
 {
     float4 depthImg = depth[threadId];
     float depthNDC = (depthImg.x + depthImg.y + depthImg.z + depthImg.w);
 
-    float4 fragPos = findWorldPos(threadId, depthNDC);
+    float4 pos = findWorldPos(threadId, depthNDC);
+    float4 color = float4(0, 0, 0, 0);
+    for (uint i = 0; i < constants.lightCount; i++)
+    {
+        Light light = constants.lights[i];
+        if (!light.on)
+            continue;
+        float3 lightPos = light.position / spriteScaleFactor;
+        float3 ambient = light.color.xyz * 0.1f;
+
+        float3 lightDir = lightPos - pos.xyz;
+        float lightDist = length(lightDir);
+        float atten = (1.0 / (lightDist * lightDist)) - 1 / light.radius;
+        float3 lightColor = light.color.xyz * (light.color.w * atten + (max(dot(float3(normal[uint2(threadId / constants.screenExtent)].xyz), lightDir), 0)));
+    }
 }
