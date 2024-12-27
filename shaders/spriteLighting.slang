@@ -76,6 +76,7 @@ Texture2D<float4> gBuffer[];
 
 static const Texture2D<float4> albedo = gBuffer[0];
 static const Texture2D<float4> normal = gBuffer[1];
+static const Texture2D<float4> depth = gBuffer[2];
 
 [vk_push_constant]
 pushConstants pc;

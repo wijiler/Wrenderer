@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-
+#include <windows.h>
 // courtesy of https://github.com/haipome/fnv/blob/master/fnv.c <- even if its public domain it deserves credit :)
 uint64_t fnv_64a_str(char *str, uint64_t hval)
 {
@@ -677,6 +677,7 @@ void drawRenderer(renderer_t *renderer, int cBufIndex)
     vkResetCommandBuffer(ccbuf, 0);
     vkBeginCommandBuffer(gcbuf, &cBufBeginInf);
     vkBeginCommandBuffer(ccbuf, &cBufBeginInf);
+    vkCmdResetQueryPool(gcbuf, renderer->vkCore.timestampPool, 0, 2);
 
     RenderGraph rg = buildGraph(renderer->rg, renderer->vkCore.currentScImg);
 
@@ -715,8 +716,9 @@ void drawRenderer(renderer_t *renderer, int cBufIndex)
     viewport.minDepth = 0;
     viewport.maxDepth = 1;
     vkCmdSetViewportWithCount(gcbuf, 1, &viewport);
-
+    vkCmdWriteTimestamp(gcbuf, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, renderer->vkCore.timestampPool, 0);
     executeGraph(&rg, renderer, cBufIndex);
+    vkCmdWriteTimestamp(gcbuf, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, renderer->vkCore.timestampPool, 1);
 
     imgMemoryBarrier.srcAccessMask = renderer->vkCore.currentScImg->accessMask;
     imgMemoryBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
@@ -820,7 +822,15 @@ void drawRenderer(renderer_t *renderer, int cBufIndex)
             swapchainCorrect = false;
         }
     }
-
+    vkGetQueryPoolResults(renderer->vkCore.lDev, renderer->vkCore.timestampPool, 0, 2, 4 * sizeof(uint64_t), WREstats.timeStampValues, 2 * sizeof(uint64_t), VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WITH_AVAILABILITY_BIT);
+    VkPhysicalDeviceProperties devProps = {0};
+    vkGetPhysicalDeviceProperties(WREPhysicalDevice, &devProps);
+    if (WREstats.timeStampValues[3] != 0)
+    {
+        WREstats.deltaTime = (float)(WREstats.timeStampValues[2] - WREstats.timeStampValues[0]) * devProps.limits.timestampPeriod / 1000000.0f;
+        WREstats.avgFPS = 1000 / WREstats.deltaTime;
+    }
+    printf("[INFO] FPS: %f FRAMETIME: %f\n", WREstats.avgFPS, WREstats.deltaTime);
     destroyRenderGraph(&rg);
 }
 

@@ -1,30 +1,5 @@
 import constants;
 
-struct Light
-{
-    float3 position;
-    float4 color;
-    float radius;
-    bool on;
-    uint id;
-}
-
-struct Vertex
-{
-    float3 pos;
-    float4 color;
-    float2 uv;
-}
-struct MeshInstance
-{
-    float4x4 transformation;
-}
-struct Material
-{
-    uint32_t textureId;
-    uint32_t normalId;
-}
-
 enum WRECAMERATYPE
 {
     WRE_ORTHOGRAPHIC_CAM,
@@ -39,72 +14,57 @@ struct cameraTransform
 
 struct Camera
 {
-    WRECAMERATYPE type;
-    float4x4 perspective;
-    float4x4 view;
-    cameraTransform position;
-    float fov;
-}
-struct Mesh
-{
-    Vertex *vBuf;
-    uint32_t *iBuf;
-    Material material;
+    float4x4 invPerspective;
+    float4x4 invView;
 }
 
-struct pushConstants
+struct Light
 {
-    uint32_t lightCount;
+    float radius;
+    float4 color;
+    float3 position;
+}
+
+struct PushConstants
+{
+    Camera *cam;
+    uint lightCount;
     Light *lights;
-    Mesh *meshes;
-    MeshInstance *instances;
-    Camera *camera;
+    uint2 screenExtent;
 }
 
-struct VertOutput
-{
-    float4 pos : SV_Position;
-    float3 realPos : REAL_POS;
-}
+[vk_push_constant]
+PushConstants constants;
 
 [vk_binding(0, 0)]
 Texture2D<float4> gBuffer[];
 
 static const Texture2D<float4> albedo = gBuffer[0];
 static const Texture2D<float4> normal = gBuffer[1];
+static const Texture2D<float4> depth = gBuffer[2];
 
-[vk_push_constant]
-pushConstants pc;
-[shader("vertex")]
-VertOutput vertMain(uint vertID: SV_VertexID, uint instID: SV_InstanceID)
+[vk_binding(1, 0)]
+RWTexture2D<float4> output;
+
+float4 findWorldPos(uint2 uv, float depthNDC)
 {
-    MeshInstance instance = pc.instances[instID];
-    VertOutput output;
-    float4 pos = pc.camera.perspective * pc.camera.view * instance.transformation * float4(pc.meshes[instance.], 1.0);
-    output.pos = pos;
-    output.realPos = float3(pos.x, pos.y, pos.z);
-    return output;
+    float2 ndcXY = float2(uv / constants.screenExtent) * 2.0 - 1.0;
+    float4 ndcPos = float4(ndcXY, depthNDC, 1.0f);
+
+    float4 viewPos = ndcPos * constants.cam.invView;
+    viewPos /= viewPos.w;
+
+    float4 worldPos = viewPos * constants.cam.invPerspective;
+
+    return worldPos;
 }
 
-[shader("fragment")]
-float4 fragMain(VertOutput input)
-    : SV_Target
+[shader("compute")]
+[numthreads(32, 32)]
+float4 computeMain(uint2 threadId: SV_DispatchThreadID)
 {
-    float4 color = albedo[uint2(input.pos.xy)];
-    float3 diffuse = float3(0, 0, 0);
-    for (uint i = 0; i < pc.lightCount; i++)
-    {
-        Light light = pc.lights[i];
-        if (!light.on)
-            continue;
-        float3 lightPos = light.position / spriteScaleFactor;
-        float3 ambient = light.color.xyz * 0.1f;
+    float4 depthImg = depth[threadId];
+    float depthNDC = (depthImg.x + depthImg.y + depthImg.z + depthImg.w);
 
-        float3 lightDir = lightPos - input.realPos;
-        float lightDist = length(lightDir);
-        float atten = (1.0 / (lightDist * lightDist)) - 1 / light.radius;
-        float3 lightColor = light.color.xyz * (light.color.w * atten + (max(dot(float3(normal[uint2(input.pos.xy)].xyz), lightDir), 0)));
-        diffuse = lightColor;
-    }
-    return float4(diffuse, 1.0f) * color;
+    float4 fragPos = findWorldPos(threadId, depthNDC);
 }

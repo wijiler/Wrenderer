@@ -486,7 +486,7 @@ WREScene3D loadSceneGLTF(char *filepath, renderer_t *renderer)
                 if (uvAccessor.bufferViewIndex.has_value())
                 {
                     fastgltf::iterateAccessorWithIndex<fastgltf::math::fvec2>(asset.get(), uvAccessor, [&](fastgltf::math::fvec2 uv, size_t idx)
-                                                                              { 
+                                                                              {
                                                                     mesh.vertices[idx].uv.x = uv.x();
                                                                     mesh.vertices[idx].uv.y = uv.y(); });
                 }

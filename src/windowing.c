@@ -27,7 +27,7 @@ static void glfwMouseCallback(GLFWwindow *window, double xpos, double ypos)
     WREMouseX = xpos;
     WREMouseY = ypos;
 }
-
+uint64_t accum = 0;
 void launch_window(winf_t wininfo, renderer_t *renderer, void (*update)(), void (*start)(), void (*input)(int key, int action))
 {
     glfwVulkanSupported();
@@ -44,7 +44,7 @@ void launch_window(winf_t wininfo, renderer_t *renderer, void (*update)(), void 
         glfwTerminate();
         exit(EXIT_FAILURE);
     }
-    glfwSetInputMode(renderer->window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    // glfwSetInputMode(renderer->window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     start();
     glfwSetWindowUserPointer(renderer->window, (void *)renderer);
     glfwSetWindowSizeCallback(renderer->window, resizeCallback);
@@ -53,7 +53,13 @@ void launch_window(winf_t wininfo, renderer_t *renderer, void (*update)(), void 
     inputcallback = input;
     while (!glfwWindowShouldClose(renderer->window))
     {
-        glfwPollEvents();
-        update();
+        {
+            glfwPollEvents();
+            update();
+            accum -= (1 / 60) * 1000;
+            if (accum < 0)
+                accum = 0;
+        }
+        accum += WREstats.deltaTime;
     }
 }

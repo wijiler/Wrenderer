@@ -23,6 +23,8 @@ Texture WREDefaultNormal = {0};
 Texture WREDefaultTexture = {0};
 Texture WREMissingTexture = {0};
 
+WREDebuginfo WREstats = {0};
+
 typedef struct
 {
     uint32_t *width, *height;
@@ -204,12 +206,12 @@ VkPhysicalDevice find_valid_device(int deviceCount, VkPhysicalDevice devices[], 
             vkGetPhysicalDeviceSurfaceSupportKHR(devices[i], j, surface, &supports_present);
             // we want the graphics queue on the present queue, its faster, AKA
             // Exclusive Mode
-            if (qfamProps[j].queueFlags & VK_QUEUE_GRAPHICS_BIT && supports_present == VK_TRUE)
+            if (qfamProps[j].queueFlags & VK_QUEUE_GRAPHICS_BIT && supports_present == VK_TRUE && qfamProps[j].timestampValidBits != 0)
             {
                 gfami = j;
                 break;
             }
-            if (qfamProps[j].queueFlags & VK_QUEUE_COMPUTE_BIT && qfamProps[j].queueFlags & VK_QUEUE_GRAPHICS_BIT)
+            if (qfamProps[j].queueFlags & VK_QUEUE_COMPUTE_BIT && qfamProps[j].queueFlags & VK_QUEUE_GRAPHICS_BIT && qfamProps[j].timestampValidBits != 0)
             {
                 cfami = j;
                 break;
@@ -223,10 +225,11 @@ VkPhysicalDevice find_valid_device(int deviceCount, VkPhysicalDevice devices[], 
             vertAttrDivFeats.vertexAttributeInstanceRateZeroDivisor == VK_TRUE && devFeat12.descriptorBindingPartiallyBound == VK_TRUE &&
             devFeat12.runtimeDescriptorArray == VK_TRUE && devFeat12.descriptorBindingSampledImageUpdateAfterBind == VK_TRUE && devFeat2.features.shaderInt64 &&
             devFeat12.scalarBlockLayout == VK_TRUE && devFeat11.variablePointers == VK_TRUE && devFeat11.variablePointersStorageBuffer == VK_TRUE &&
-            devFeat2.features.samplerAnisotropy == VK_TRUE && devFeat2.features.shaderInt16 && devFeat13.synchronization2 && devFeat12.timelineSemaphore == VK_TRUE)
+            devFeat2.features.samplerAnisotropy == VK_TRUE && devFeat2.features.shaderInt16 && devFeat13.synchronization2 && devFeat12.timelineSemaphore == VK_TRUE &&
+            devProps.limits.timestampPeriod != 0)
         {
-            graphicsFamilyIndex = &gfami;
-            computeFamilyIndex = &cfami;
+            *graphicsFamilyIndex = gfami;
+            *computeFamilyIndex = cfami;
             return devices[i];
         }
     }
@@ -557,7 +560,8 @@ void recreateSwapchain(VulkanCore_t *core, int w, int h)
     vkDestroyImageView(core->lDev, WREdepthBuffer.imgview, NULL);
     vkFreeMemory(core->lDev, WREdepthBuffer.memory, NULL);
 
-    WREdepthBuffer = createImage(*core, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_IMAGE_TYPE_2D, core->extent.width, core->extent.height, VK_IMAGE_ASPECT_DEPTH_BIT);
+    WREdepthBuffer = createImage(*core, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_IMAGE_TYPE_2D, core->extent.width, core->extent.height, VK_IMAGE_ASPECT_DEPTH_BIT);
+    writeDescriptorSet(*core, WREgBuffer, 2, 0, WREdepthBuffer.imgview, core->linearSampler);
 }
 
 void create_CommandBuffers(VulkanCore_t *core)
@@ -906,6 +910,20 @@ void destroyRenderer(renderer_t *renderer)
 
     vkDestroyInstance(WREVulkinstance, NULL);
 }
+void createTimestampQueryPool(VulkanCore_t *core)
+{
+    VkQueryPoolCreateInfo queryPoolCI = {0};
+    queryPoolCI.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+    queryPoolCI.pNext = NULL;
+
+    queryPoolCI.queryType = VK_QUERY_TYPE_TIMESTAMP;
+    queryPoolCI.queryCount = 2;
+    if (vkCreateQueryPool(core->lDev, &queryPoolCI, NULL, &core->timestampPool) != VK_SUCCESS)
+    {
+        printf("Could not create the timestamp query pool");
+        exit(1);
+    }
+}
 
 void initRenderer(renderer_t *renderer)
 {
@@ -945,22 +963,28 @@ void initRenderer(renderer_t *renderer)
     renderer->vkCore.textureDescriptorSet = renderer->vkCore.textureDescriptor.sets[0].set;
     renderer->vkCore.normalDescriptorSet = renderer->vkCore.textureDescriptor.sets[1].set;
     createSamplers(&renderer->vkCore);
+    createTimestampQueryPool(&renderer->vkCore);
+    WREstats.timeStampValues = malloc(sizeof(uint64_t) * 4);
+    WREstats.timeStampValues[0] = 0;
+    WREstats.timeStampValues[1] = 0;
+    WREstats.deltaTime = 0;
+    WREstats.avgFPS = 0;
 
-    initializeDescriptor(renderer->vkCore, &WREgBuffer, 1, 2, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, SHADER_STAGE_ALL, true);
+    initializeDescriptor(renderer->vkCore, &WREgBuffer, 1, 3, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, SHADER_STAGE_ALL, true);
     WREalbedoBuffer = createImage(renderer->vkCore, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TYPE_2D, renderer->vkCore.extent.width, renderer->vkCore.extent.height, VK_IMAGE_ASPECT_COLOR_BIT);
     WREnormalBuffer = createImage(renderer->vkCore, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TYPE_2D, renderer->vkCore.extent.width, renderer->vkCore.extent.height, VK_IMAGE_ASPECT_COLOR_BIT);
+    WREdepthBuffer = createImage(renderer->vkCore, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_IMAGE_TYPE_2D, renderer->vkCore.extent.width, renderer->vkCore.extent.height, VK_IMAGE_ASPECT_DEPTH_BIT);
     allocateDescriptorSets(renderer->vkCore, &WREgBuffer);
     writeDescriptorSet(renderer->vkCore, WREgBuffer, 0, 0, WREalbedoBuffer.imgview, renderer->vkCore.linearSampler);
     writeDescriptorSet(renderer->vkCore, WREgBuffer, 1, 0, WREnormalBuffer.imgview, renderer->vkCore.linearSampler);
-
-    WREdepthBuffer = createImage(renderer->vkCore, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_IMAGE_TYPE_2D, renderer->vkCore.extent.width, renderer->vkCore.extent.height, VK_IMAGE_ASPECT_DEPTH_BIT);
+    writeDescriptorSet(renderer->vkCore, WREgBuffer, 2, 0, WREdepthBuffer.imgview, renderer->vkCore.linearSampler);
 
     WREDefaultNormal = loadImageFromPNG("assets/defaultNormal.png", renderer);
-    submitNormal(renderer, &WREDefaultNormal, renderer->vkCore.linearSampler);
+    submitNormal(renderer, &WREDefaultNormal, renderer->vkCore.nearestSampler);
     WREDefaultTexture = loadImageFromPNG("assets/defaultTexture.png", renderer);
-    submitTexture(renderer, &WREDefaultTexture, renderer->vkCore.linearSampler);
+    submitTexture(renderer, &WREDefaultTexture, renderer->vkCore.nearestSampler);
     WREMissingTexture = loadImageFromPNG("assets/defaultMissing.png", renderer);
-    submitTexture(renderer, &WREMissingTexture, renderer->vkCore.linearSampler);
+    submitTexture(renderer, &WREMissingTexture, renderer->vkCore.nearestSampler);
 }
 
 void bindGraphicsPipeline(graphicsPipeline pline, RenderPass pass, VkCommandBuffer cBuf)

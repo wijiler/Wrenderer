@@ -297,7 +297,7 @@ extern "C"
 
         VkSampler linearSampler;
         VkSampler nearestSampler;
-
+        VkQueryPool timestampPool;
     } VulkanCore_t;
 
     typedef struct
@@ -388,6 +388,13 @@ extern "C"
     extern Texture WREDefaultTexture;
     extern Texture WREMissingTexture;
     extern Texture WREDefaultNormal;
+    typedef struct
+    {
+        uint64_t *timeStampValues;
+        float deltaTime;
+        float avgFPS;
+    } WREDebuginfo;
+    extern WREDebuginfo WREstats;
 
 #ifdef __cplusplus
 }

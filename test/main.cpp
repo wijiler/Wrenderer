@@ -36,32 +36,34 @@ void loop()
 
 void inputCallback(int key, int action)
 {
-    vec3 movementWish = {0, 0, 0};
-    switch (key)
+    float speed = 1000 * WREstats.deltaTime;
+    if (action != GLFW_RELEASE)
     {
-    case GLFW_KEY_W:
-        movementWish.z -= 100;
-        break;
-    case GLFW_KEY_S:
-        movementWish.z += 100;
-        break;
-    case GLFW_KEY_A:
-        movementWish.x += 100;
-        break;
-    case GLFW_KEY_D:
-        movementWish.x -= 100;
-        break;
-    case GLFW_KEY_SPACE:
-        movementWish.y += 100;
-        break;
-    case GLFW_KEY_LEFT_SHIFT:
-        movementWish.y -= 100;
-        break;
-    case GLFW_KEY_ESCAPE:
-        exit(0);
-        break;
+        switch (key)
+        {
+        case GLFW_KEY_W:
+            camera.position.pos.z -= speed;
+            break;
+        case GLFW_KEY_S:
+            camera.position.pos.z += speed;
+            break;
+        case GLFW_KEY_A:
+            camera.position.pos.x += speed;
+            break;
+        case GLFW_KEY_D:
+            camera.position.pos.x -= speed;
+            break;
+        case GLFW_KEY_SPACE:
+            camera.position.pos.y += speed;
+            break;
+        case GLFW_KEY_LEFT_SHIFT:
+            camera.position.pos.y -= speed;
+            break;
+        case GLFW_KEY_ESCAPE:
+            exit(0);
+            break;
+        }
     }
-    camera.position.pos = Vec3Add(camera.position.pos, movementWish);
 
     updateCamera(&camera, &renderer);
 }
@@ -71,7 +73,7 @@ void init()
     initRenderer(&renderer);
     renderer.rg = &builder;
     initializeScene3D(&scene, &renderer);
-    WREScene3D mesh = loadSceneGLTF("assets/dcubes.gltf", &renderer);
+    WREScene3D mesh = loadSceneGLTF("assets/testScenes/gltf/deccers/dcubes.gltf", &renderer);
     initPerspCamera(&camera, &renderer, {{0, 0, 0}, {0, 0}}, 90);
     setActiveCamera(&camera, renderer);
     RenderPass pass = meshPass(&mesh, &renderer);
