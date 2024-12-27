@@ -254,12 +254,15 @@ extern "C"
     {
         int passCount;
         RenderPass *passes;
+        RenderGraph graph;
     } GraphBuilder;
     // ----------------------------------------- RGEND
     extern VkInstance WREVulkinstance;
     extern VkPhysicalDevice WREPhysicalDevice;
     extern VkSwapchainKHR WREswapChain;
     extern VkImage *WREswapChainImages;
+    extern uint32_t currentSCImageIndex;
+    extern Image *currentScImg;
     extern VkImageView *WREswapChainImageViews;
 
     typedef struct
@@ -275,8 +278,6 @@ extern "C"
         VkSurfaceFormatKHR sFormat;
         VkPresentModeKHR sPresentMode;
         unsigned int imgCount;
-        uint32_t currentImageIndex;
-        Image *currentScImg;
 
         VkSemaphore graphicsTimeline;
         VkSemaphore computeTimeline;

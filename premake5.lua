@@ -16,14 +16,16 @@ project "Wrenderer"
     includedirs { "./include/" }
     includedirs { "./include/libs/", "./include/libs/fastgltf/include/" }
     includedirs { os.getenv("VULKAN_SDK") .. "/Include" }
-    links { "vulkan-1", "glfw3", "fastgltf" }
+    links { "vulkan-1", "glfw3" }
     removefiles { "test/**.**" }
     filter "configurations:Debug"
         defines { "DEBUG" }
         symbols "On"
+        links {"fastgltfDEBUG"}
     filter ""
     filter "configurations:Release"
-        optimize "On"
+        symbols "On"
+        links {"fastgltfDEBUG"}
     filter ""
     filter "system:windows"
         defines { "VK_USE_PLATFORM_WIN32_KHR" }
@@ -78,14 +80,16 @@ project "WrenTest"
         includedirs { "./include/", "./include/libs/", "./include/libs/fastgltf/include/" }
         includedirs { os.getenv("VULKAN_SDK") .. "/Include" }
         links { "Wrenderer" }
-        links { "vulkan-1", "glfw3" , "fastgltf"}
+        links { "vulkan-1", "glfw3" }
 
         filter "configurations:Debug"
-            defines { "DEBUG" }
+            defines {"DEBUG"}
             symbols "On"
+            links {"fastgltfDEBUG"}
         filter ""
         filter "configurations:Release"
-            optimize "On"
+            symbols "On"
+            links {"fastgltfDEBUG"}
         filter ""
         filter "system:windows"
             defines { "VK_USE_PLATFORM_WIN32_KHR" }

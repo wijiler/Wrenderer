@@ -64,8 +64,6 @@ void inputCallback(int key, int action)
             break;
         }
     }
-
-    updateCamera(&camera, &renderer);
 }
 
 void init()

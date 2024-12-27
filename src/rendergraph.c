@@ -3,7 +3,8 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-#include <windows.h>
+#include <time.h>
+
 // courtesy of https://github.com/haipome/fnv/blob/master/fnv.c <- even if its public domain it deserves credit :)
 uint64_t fnv_64a_str(char *str, uint64_t hval)
 {
@@ -292,10 +293,10 @@ void addSwapchainImageResource(RenderPass *pass, renderer_t renderer)
 {
     Resource res = {0};
     res.type = RES_TYPE_Image;
-    res.value.swapChainImage = renderer.vkCore.currentScImg;
+    res.value.swapChainImage = currentScImg;
     res.usage = USAGE_COLORATTACHMENT;
     addResource(pass, res);
-    addColorAttachment(renderer.vkCore.currentScImg, pass, NULL);
+    addColorAttachment(currentScImg, pass, NULL);
 }
 
 const VkColorComponentFlags colorFlags = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
@@ -419,13 +420,6 @@ void setComputePipeline(computePipeline pl, RenderPass *pass)
 void setExecutionCallBack(RenderPass *pass, void (*callBack)(struct RenderPass, VkCommandBuffer cBuf))
 {
     pass->callBack = callBack;
-}
-
-void addPass(GraphBuilder *builder, RenderPass *pass)
-{
-    builder->passes = realloc(builder->passes, sizeof(RenderPass) * (builder->passCount + 1));
-    builder->passes[builder->passCount] = *pass;
-    builder->passCount += 1;
 }
 
 void optimizePasses(RenderGraph *graph, Image *swapChainImg)
@@ -594,6 +588,14 @@ RenderGraph buildGraph(GraphBuilder *builder, Image *scImage)
     return rg;
 }
 
+void addPass(GraphBuilder *builder, RenderPass *pass)
+{
+    builder->passes = realloc(builder->passes, sizeof(RenderPass) * (builder->passCount + 1));
+    builder->passes[builder->passCount] = *pass;
+    builder->passCount += 1;
+    builder->graph = buildGraph(builder, currentScImg);
+}
+
 void executeGraph(RenderGraph *graph, renderer_t *renderer, uint32_t cBufIndex)
 {
     for (int i = 0; i < graph->passCount; i++)
@@ -621,8 +623,6 @@ void executeGraph(RenderGraph *graph, renderer_t *renderer, uint32_t cBufIndex)
                 cb.imgMemBarriers,
             };
             vkCmdPipelineBarrier2(cbuffer, &depInfo);
-            free(cb.bufMemBarriers);
-            free(cb.imgMemBarriers);
         }
         recordPass(&graph->passes[i], renderer, cbuffer);
     }
@@ -636,8 +636,11 @@ void destroyRenderGraph(RenderGraph *graph)
 const VkClearColorValue clearValue = {{0.0f, 0.0f, 0.0f, 0.0f}};
 bool swapchainCorrect = true;
 uint64_t submitValue = 0;
+float elapsed = {0};
+uint64_t frames = 0;
 void drawRenderer(renderer_t *renderer, int cBufIndex)
 {
+    clock_t initTime = clock();
     VkCommandBuffer gcbuf = renderer->vkCore.commandBuffers[cBufIndex];
     VkCommandBuffer ccbuf = renderer->vkCore.computeCommandBuffers[cBufIndex];
     {
@@ -656,16 +659,16 @@ void drawRenderer(renderer_t *renderer, int cBufIndex)
     VkResult result;
     if (swapchainCorrect)
     {
-        result = vkAcquireNextImageKHR(renderer->vkCore.lDev, WREswapChain, UINT64_MAX, renderer->vkCore.imageAvailable[cBufIndex], VK_NULL_HANDLE, &renderer->vkCore.currentImageIndex);
+        result = vkAcquireNextImageKHR(renderer->vkCore.lDev, WREswapChain, UINT64_MAX, renderer->vkCore.imageAvailable[cBufIndex], VK_NULL_HANDLE, &currentSCImageIndex);
         if (result == VK_ERROR_OUT_OF_DATE_KHR)
             swapchainCorrect = false;
     }
     if (!swapchainCorrect)
         return;
 
-    *renderer->vkCore.currentScImg = (Image){
-        WREswapChainImages[renderer->vkCore.currentImageIndex],
-        WREswapChainImageViews[renderer->vkCore.currentImageIndex],
+    *currentScImg = (Image){
+        WREswapChainImages[currentSCImageIndex],
+        WREswapChainImageViews[currentSCImageIndex],
         VK_IMAGE_LAYOUT_UNDEFINED,
         VK_IMAGE_ASPECT_COLOR_BIT,
         VK_FORMAT_R8G8B8A8_SRGB,
@@ -679,7 +682,7 @@ void drawRenderer(renderer_t *renderer, int cBufIndex)
     vkBeginCommandBuffer(ccbuf, &cBufBeginInf);
     vkCmdResetQueryPool(gcbuf, renderer->vkCore.timestampPool, 0, 2);
 
-    RenderGraph rg = buildGraph(renderer->rg, renderer->vkCore.currentScImg);
+    RenderGraph rg = renderer->rg->graph;
 
     VkImageMemoryBarrier imgMemoryBarrier = {
         VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
@@ -690,14 +693,14 @@ void drawRenderer(renderer_t *renderer, int cBufIndex)
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         VK_QUEUE_FAMILY_IGNORED,
         VK_QUEUE_FAMILY_IGNORED,
-        renderer->vkCore.currentScImg->image,
+        currentScImg->image,
         imgSRR,
     };
     vkCmdPipelineBarrier(gcbuf, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, NULL, 0, NULL, 1, &imgMemoryBarrier);
-    renderer->vkCore.currentScImg->CurrentLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    renderer->vkCore.currentScImg->accessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    currentScImg->CurrentLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    currentScImg->accessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 
-    vkCmdClearColorImage(gcbuf, renderer->vkCore.currentScImg->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearValue, 1, &imgSRR);
+    vkCmdClearColorImage(gcbuf, currentScImg->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearValue, 1, &imgSRR);
 
     VkRect2D scissor = {0};
     scissor.offset.x = 0;
@@ -720,14 +723,14 @@ void drawRenderer(renderer_t *renderer, int cBufIndex)
     executeGraph(&rg, renderer, cBufIndex);
     vkCmdWriteTimestamp(gcbuf, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, renderer->vkCore.timestampPool, 1);
 
-    imgMemoryBarrier.srcAccessMask = renderer->vkCore.currentScImg->accessMask;
+    imgMemoryBarrier.srcAccessMask = currentScImg->accessMask;
     imgMemoryBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-    imgMemoryBarrier.oldLayout = renderer->vkCore.currentScImg->CurrentLayout;
+    imgMemoryBarrier.oldLayout = currentScImg->CurrentLayout;
     imgMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
     vkCmdPipelineBarrier(gcbuf, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 0, NULL, 0, NULL, 1, &imgMemoryBarrier);
-    renderer->vkCore.currentScImg->CurrentLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-    renderer->vkCore.currentScImg->accessMask = VK_ACCESS_MEMORY_READ_BIT;
+    currentScImg->CurrentLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    currentScImg->accessMask = VK_ACCESS_MEMORY_READ_BIT;
 
     vkEndCommandBuffer(gcbuf);
     vkEndCommandBuffer(ccbuf);
@@ -778,7 +781,7 @@ void drawRenderer(renderer_t *renderer, int cBufIndex)
         VkSemaphoreSubmitInfo graphicsSemaphoreSubmitInfo = {
             VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
             NULL,
-            renderer->vkCore.renderFinished[renderer->vkCore.currentImageIndex],
+            renderer->vkCore.renderFinished[currentSCImageIndex],
             0,
             VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
             0,
@@ -810,11 +813,11 @@ void drawRenderer(renderer_t *renderer, int cBufIndex)
         presentInfo.pNext = NULL;
 
         presentInfo.waitSemaphoreCount = 1;
-        presentInfo.pWaitSemaphores = &renderer->vkCore.renderFinished[renderer->vkCore.currentImageIndex];
+        presentInfo.pWaitSemaphores = &renderer->vkCore.renderFinished[currentSCImageIndex];
 
         presentInfo.swapchainCount = 1;
         presentInfo.pSwapchains = &WREswapChain;
-        presentInfo.pImageIndices = &renderer->vkCore.currentImageIndex;
+        presentInfo.pImageIndices = &currentSCImageIndex;
 
         result = 0;
         if ((result = vkQueuePresentKHR(renderer->vkCore.pQueue, &presentInfo)) == VK_ERROR_OUT_OF_DATE_KHR)
@@ -828,10 +831,17 @@ void drawRenderer(renderer_t *renderer, int cBufIndex)
     if (WREstats.timeStampValues[3] != 0)
     {
         WREstats.deltaTime = (float)(WREstats.timeStampValues[2] - WREstats.timeStampValues[0]) * devProps.limits.timestampPeriod / 1000000.0f;
-        WREstats.avgFPS = 1000 / WREstats.deltaTime;
+        elapsed += ((clock() - initTime) * 1000.f / CLOCKS_PER_SEC) + WREstats.deltaTime;
     }
-    printf("[INFO] FPS: %f FRAMETIME: %f\n", WREstats.avgFPS, WREstats.deltaTime);
-    destroyRenderGraph(&rg);
+    frames += 1;
+    if (elapsed >= 1000)
+    {
+        WREstats.avgFPS = frames;
+        frames = 0;
+        elapsed = 0;
+    }
+    printf("[INFO] FPS: %f FRAMETIME: %f ms\n", WREstats.avgFPS, WREstats.deltaTime);
+    // destroyRenderGraph(&rg);
 }
 
 void copyGraph(GraphBuilder *src, GraphBuilder *dst)

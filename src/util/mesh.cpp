@@ -271,6 +271,7 @@ void createMeshInstanceQuat(WREmesh *mesh, WREScene3D *scene, renderer_t *render
 
 void createMeshInstanceTransform(WREmesh *mesh, WREScene3D *scene, renderer_t *renderer, mat4x4 mat)
 {
+    scene->totalInstanceCount += 1;
     if (maxMeshCount > scene->maxMeshGroupCount)
     {
         scene->MeshGroups = (WREMeshGroup *)realloc(scene->MeshGroups, sizeof(WREMeshGroup) * maxMeshCount);
@@ -301,7 +302,6 @@ void createMeshInstanceTransform(WREmesh *mesh, WREScene3D *scene, renderer_t *r
         sceneInstanceBuff = newBuf;
     }
     group->instanceCount += 1;
-    scene->totalInstanceCount += 1;
 }
 
 void meshGPass(RenderPass self, VkCommandBuffer cBuf)

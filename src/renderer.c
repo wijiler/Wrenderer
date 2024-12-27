@@ -15,6 +15,9 @@ VkSwapchainKHR WREswapChain = VK_NULL_HANDLE;
 VkImage *WREswapChainImages = VK_NULL_HANDLE;
 VkImageView *WREswapChainImageViews = VK_NULL_HANDLE;
 
+uint32_t currentSCImageIndex = 0;
+Image *currentScImg = 0;
+
 WREDescriptor WREgBuffer = {0};
 Image WREalbedoBuffer = {0};
 Image WREnormalBuffer = {0};
@@ -944,8 +947,8 @@ void initRenderer(renderer_t *renderer)
         glfwGetFramebufferSize(renderer->window, &w, &h);
         create_swapchain(&renderer->vkCore, w, h);
     }
-    renderer->vkCore.currentScImg = malloc(sizeof(Image));
-    *renderer->vkCore.currentScImg = (Image){
+    currentScImg = malloc(sizeof(Image));
+    *currentScImg = (Image){
         WREswapChainImages[0],
         WREswapChainImageViews[0],
         VK_IMAGE_LAYOUT_UNDEFINED,
@@ -954,7 +957,7 @@ void initRenderer(renderer_t *renderer)
         0,
         NULL,
     };
-    renderer->vkCore.currentImageIndex = 0;
+    currentSCImageIndex = 0;
     create_CommandBuffers(&renderer->vkCore);
     // create_dsp(&renderer->vkCore);
     // allocate_textureDescriptorSet(&renderer->vkCore);
