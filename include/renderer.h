@@ -396,6 +396,7 @@ extern "C"
         float cpuTime;
         float deltaTime;
         int avgFPS;
+        int targetFPS;
     } WREDebuginfo;
     extern WREDebuginfo WREstats;
 

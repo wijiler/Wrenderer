@@ -36,7 +36,7 @@ void loop()
 
 void inputCallback(int key, int action)
 {
-    float speed = 10 * WREstats.deltaTime;
+    float speed = 100 * WREstats.deltaTime;
     if (action != GLFW_RELEASE)
     {
         switch (key)
@@ -48,10 +48,10 @@ void inputCallback(int key, int action)
             camera.position.pos.z += speed;
             break;
         case GLFW_KEY_A:
-            camera.position.pos.x += speed;
+            camera.position.pos.x -= speed;
             break;
         case GLFW_KEY_D:
-            camera.position.pos.x -= speed;
+            camera.position.pos.x += speed;
             break;
         case GLFW_KEY_SPACE:
             camera.position.pos.y += speed;
@@ -68,6 +68,7 @@ void inputCallback(int key, int action)
 
 void init()
 {
+    WREstats.targetFPS = INT32_MAX;
     initRenderer(&renderer);
     renderer.rg = &builder;
     initializeScene3D(&scene, &renderer);

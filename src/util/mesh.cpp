@@ -13,6 +13,7 @@ uint32_t maxMeshCount = 0;
 uint32_t maxInstanceCount = 0;
 Buffer meshBuff{};
 Buffer sceneInstanceBuff{};
+Image WREOutputImage{};
 
 typedef struct
 {
@@ -108,6 +109,10 @@ void initializePipelines3d(renderer_t *renderer, WREScene3D *scene)
 
 void initializeScene3D(WREScene3D *scene, renderer_t *renderer)
 {
+    if (WREOutputImage.image == NULL)
+    {
+        createImage(renderer->vkCore, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_TYPE_2D, renderer->vkCore.extent.width, renderer->vkCore.extent.height, VK_IMAGE_ASPECT_COLOR_BIT);
+    }
     if (maxMeshCount == 0)
     {
         {

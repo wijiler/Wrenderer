@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <windowing.h>
+#include <windows.h>
 
 double WREMouseX = 0;
 double WREMouseY = 0;
@@ -27,6 +28,11 @@ static void glfwMouseCallback(GLFWwindow *window, double xpos, double ypos)
     WREMouseX = xpos;
     WREMouseY = ypos;
 }
+LARGE_INTEGER lastTime, currentTime, freq;
+LARGE_INTEGER lastUpdate;
+float limaccum = 0.f;
+float fpsaccum = 0.f;
+int frames = 0;
 void launch_window(winf_t wininfo, renderer_t *renderer, void (*update)(), void (*start)(), void (*input)(int key, int action))
 {
     glfwVulkanSupported();
@@ -50,9 +56,31 @@ void launch_window(winf_t wininfo, renderer_t *renderer, void (*update)(), void 
     glfwSetKeyCallback(renderer->window, glfwInputCallback);
     glfwSetCursorPosCallback(renderer->window, glfwMouseCallback);
     inputcallback = input;
+    QueryPerformanceCounter(&lastTime);
+    QueryPerformanceCounter(&lastUpdate);
     while (!glfwWindowShouldClose(renderer->window))
     {
-        glfwPollEvents();
-        update();
+        QueryPerformanceFrequency(&freq);
+        QueryPerformanceCounter(&currentTime);
+        WREstats.cpuTime = ((float)(currentTime.QuadPart - lastTime.QuadPart) / (float)freq.QuadPart) * 1000.f;
+        lastTime = currentTime;
+        limaccum += WREstats.cpuTime;
+        fpsaccum += WREstats.cpuTime;
+        if (limaccum >= 930.f / WREstats.targetFPS)
+        {
+            WREstats.deltaTime = ((float)(currentTime.QuadPart - lastUpdate.QuadPart) / (float)freq.QuadPart) * 1000.f;
+            lastUpdate = currentTime;
+            glfwPollEvents();
+            update();
+            limaccum = 0;
+            frames += 1;
+            printf("[INFO] FPS: %i FRAMETIME: %f ms\n", WREstats.avgFPS, WREstats.deltaTime);
+        }
+        if (fpsaccum >= 1000)
+        {
+            WREstats.avgFPS = frames;
+            fpsaccum = 0;
+            frames = 0;
+        }
     }
 }

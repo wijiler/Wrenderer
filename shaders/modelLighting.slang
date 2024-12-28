@@ -68,7 +68,7 @@ void computeMain(uint2 threadId: SV_DispatchThreadID)
     float depthNDC = (depthImg.x + depthImg.y + depthImg.z + depthImg.w);
 
     float4 pos = findWorldPos(threadId, depthNDC);
-    float4 color = float4(0, 0, 0, 0);
+    float4 color = float4(0, 0, 0, 1);
     for (uint i = 0; i < constants.lightCount; i++)
     {
         Light light = constants.lights[i];
@@ -81,5 +81,9 @@ void computeMain(uint2 threadId: SV_DispatchThreadID)
         float lightDist = length(lightDir);
         float atten = (1.0 / (lightDist * lightDist)) - 1 / light.radius;
         float3 lightColor = light.color.xyz * (light.color.w * atten + (max(dot(float3(normal[uint2(threadId / constants.screenExtent)].xyz), lightDir), 0)));
+        color += float4(lightColor, 0);
     }
+    float4 finalColor = albedo[threadId] * color;
+    output[threadId] = finalColor;
 }
+

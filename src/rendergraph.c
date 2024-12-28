@@ -3,7 +3,6 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-#include <time.h>
 #include <windows.h>
 
 // courtesy of https://github.com/haipome/fnv/blob/master/fnv.c <- even if its public domain it deserves credit :)
@@ -588,12 +587,20 @@ RenderGraph buildGraph(GraphBuilder *builder, Image *scImage)
 
     return rg;
 }
-
+void destroyRenderGraph(RenderGraph *graph)
+{
+    free(graph->barriers);
+    free(graph->passes);
+}
 void addPass(GraphBuilder *builder, RenderPass *pass)
 {
     builder->passes = realloc(builder->passes, sizeof(RenderPass) * (builder->passCount + 1));
     builder->passes[builder->passCount] = *pass;
     builder->passCount += 1;
+    if (builder->graph.passes != NULL)
+    {
+        destroyRenderGraph(&builder->graph);
+    }
     builder->graph = buildGraph(builder, currentScImg);
 }
 
@@ -629,21 +636,11 @@ void executeGraph(RenderGraph *graph, renderer_t *renderer, uint32_t cBufIndex)
     }
 }
 
-void destroyRenderGraph(RenderGraph *graph)
-{
-    free(graph->barriers);
-    free(graph->passes);
-}
 const VkClearColorValue clearValue = {{0.0f, 0.0f, 0.0f, 0.0f}};
 bool swapchainCorrect = true;
 uint64_t submitValue = 0;
-float elapsed = {0};
-uint64_t frames = 0;
 void drawRenderer(renderer_t *renderer, int cBufIndex)
 {
-    LARGE_INTEGER startTime, endTime, freq;
-    frames += 1;
-    QueryPerformanceCounter(&startTime);
     VkCommandBuffer gcbuf = renderer->vkCore.commandBuffers[cBufIndex];
     VkCommandBuffer ccbuf = renderer->vkCore.computeCommandBuffers[cBufIndex];
     {
@@ -835,20 +832,6 @@ void drawRenderer(renderer_t *renderer, int cBufIndex)
     {
         WREstats.gpuRenderingTime = (float)(WREstats.timeStampValues[2] - WREstats.timeStampValues[0]) * devProps.limits.timestampPeriod / 1000000.0f;
     }
-    QueryPerformanceCounter(&endTime);
-    QueryPerformanceFrequency(&freq);
-    WREstats.cpuTime = ((float)(endTime.QuadPart - startTime.QuadPart) / (float)freq.QuadPart) * 1000.f;
-    WREstats.deltaTime = WREstats.cpuTime + WREstats.gpuRenderingTime;
-    elapsed += WREstats.deltaTime;
-
-    if (elapsed >= 1000)
-    {
-        WREstats.avgFPS = frames;
-        frames = 0;
-        elapsed = 0;
-    }
-    printf("[INFO] FPS: %i FRAMETIME: %f ms\n", WREstats.avgFPS, WREstats.deltaTime);
-    // destroyRenderGraph(&rg);
 }
 
 void copyGraph(GraphBuilder *src, GraphBuilder *dst)
