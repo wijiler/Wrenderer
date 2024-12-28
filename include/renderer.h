@@ -393,6 +393,7 @@ extern "C"
     {
         uint64_t *timeStampValues;
         float gpuRenderingTime;
+        float cpuTime;
         float deltaTime;
         int avgFPS;
     } WREDebuginfo;

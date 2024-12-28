@@ -6,6 +6,7 @@
 #include <string>
 #include <util/camera.hpp>
 #include <util/mesh.hpp>
+#include <variant>
 
 uint32_t meshCount = 0;
 uint32_t maxMeshCount = 0;
@@ -401,7 +402,7 @@ WREScene3D loadSceneGLTF(char *filepath, renderer_t *renderer)
         return scene;
 
     char *path = getParentDirectory(filepath);
-    auto asset = parser.loadGltf(data.get(), path, fastgltf::Options::LoadExternalBuffers | fastgltf::Options::LoadExternalImages | fastgltf::Options::GenerateMeshIndices | fastgltf::Options::DecomposeNodeMatrices);
+    auto asset = parser.loadGltf(data.get(), path, fastgltf::Options::LoadExternalBuffers | fastgltf::Options::GenerateMeshIndices | fastgltf::Options::DecomposeNodeMatrices);
     if (auto error = asset.error(); error != fastgltf::Error::None)
         return scene;
 
@@ -410,19 +411,37 @@ WREScene3D loadSceneGLTF(char *filepath, renderer_t *renderer)
     std::vector<Texture> textures;
     for (fastgltf::Image &imageGltf : asset->images)
     {
-        char *texPath = (char *)malloc(sizeof(char) * (strlen(path) + imageGltf.name.length() + 5));
-        sprintf(texPath, "%s%s%s", path, imageGltf.name.c_str(), ".png");
-        if (std::filesystem::exists(texPath))
+        if (auto p = std::get_if<fastgltf::sources::URI>(&imageGltf.data))
         {
-            Texture tex = loadImageFromPNG(texPath, renderer);
-            submitTexture(renderer, &tex, renderer->vkCore.linearSampler);
-            textures.push_back(tex);
+            char *texPath = (char *)malloc(sizeof(char) * (strlen(path) + p->uri.string().length()));
+            sprintf(texPath, "%s%s", path, p->uri.c_str());
+
+            if (std::filesystem::exists(texPath))
+            {
+                Texture tex = loadImageFromPNG(texPath, renderer);
+                submitTexture(renderer, &tex, renderer->vkCore.linearSampler);
+                textures.push_back(tex);
+            }
+            else
+            {
+                textures.push_back(WREMissingTexture);
+            }
         }
         else
         {
-            textures.push_back(WREMissingTexture);
+            char *texPath = (char *)malloc(sizeof(char) * (strlen(path) + imageGltf.name.length() + 5));
+            sprintf(texPath, "%s%s%s", path, imageGltf.name.c_str(), ".png");
+            if (std::filesystem::exists(texPath))
+            {
+                Texture tex = loadImageFromPNG(texPath, renderer);
+                submitTexture(renderer, &tex, renderer->vkCore.linearSampler);
+                textures.push_back(tex);
+            }
+            else
+            {
+                textures.push_back(WREMissingTexture);
+            }
         }
-        free(texPath);
     }
     std::vector<WREmesh> meshes;
     for (auto &meshGltf : asset->meshes)
@@ -465,32 +484,34 @@ WREScene3D loadSceneGLTF(char *filepath, renderer_t *renderer)
                     vertcount = positionAccessor.count;
                 }
             }
-            fastgltf::Attribute *colorIt = prim.findAttribute("COLOR_0");
-            if (colorIt->accessorIndex < asset->accessors.size())
+            for (fastgltf::Attribute &attrib : prim.attributes)
             {
-                fastgltf::Accessor &colorAccessor = asset->accessors[colorIt->accessorIndex];
-                if (colorAccessor.bufferViewIndex.has_value())
+                if (attrib.name == "COLOR_0")
                 {
-                    fastgltf::iterateAccessorWithIndex<fastgltf::math::fvec3>(asset.get(), colorAccessor, [&](fastgltf::math::fvec3 color, size_t idx)
-                                                                              {
+                    fastgltf::Accessor &colorAccessor = asset->accessors[attrib.accessorIndex];
+                    if (colorAccessor.bufferViewIndex.has_value())
+                    {
+                        fastgltf::iterateAccessorWithIndex<fastgltf::math::fvec3>(asset.get(), colorAccessor, [&](fastgltf::math::fvec3 color, size_t idx)
+                                                                                  {
                                                                         mesh.vertices[idx].color.x = color.x();
                                                                         mesh.vertices[idx].color.y = color.y();
                                                                         mesh.vertices[idx].color.z = color.z();
                                                                         mesh.vertices[idx].color.w = 1; });
+                    }
                 }
-            }
-            fastgltf::Attribute *uvIt = prim.findAttribute("TEXCOORD_0");
-            if (uvIt->accessorIndex < asset->accessors.size())
-            {
-                fastgltf::Accessor &uvAccessor = asset->accessors[uvIt->accessorIndex];
-                if (uvAccessor.bufferViewIndex.has_value())
+                else if (attrib.name == "TEXCOORD_0")
                 {
-                    fastgltf::iterateAccessorWithIndex<fastgltf::math::fvec2>(asset.get(), uvAccessor, [&](fastgltf::math::fvec2 uv, size_t idx)
-                                                                              {
+                    fastgltf::Accessor &uvAccessor = asset->accessors[attrib.accessorIndex];
+                    if (uvAccessor.bufferViewIndex.has_value())
+                    {
+                        fastgltf::iterateAccessorWithIndex<fastgltf::math::fvec2>(asset.get(), uvAccessor, [&](fastgltf::math::fvec2 uv, size_t idx)
+                                                                                  {
                                                                     mesh.vertices[idx].uv.x = uv.x();
-                                                                    mesh.vertices[idx].uv.y = uv.y(); });
+                                                                    mesh.vertices[idx].uv.y = -uv.y(); });
+                    }
                 }
             }
+
             pushDataToBuffer(mesh.vertices, sizeof(WREVertex3D) * vertcount, mesh.vBuf, 0);
         }
         for (uint32_t i = 0; i < meshGltf.primitives.size(); i++)

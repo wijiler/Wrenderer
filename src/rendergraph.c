@@ -837,7 +837,8 @@ void drawRenderer(renderer_t *renderer, int cBufIndex)
     }
     QueryPerformanceCounter(&endTime);
     QueryPerformanceFrequency(&freq);
-    WREstats.deltaTime = ((float)(endTime.QuadPart - startTime.QuadPart) / (float)freq.QuadPart) * 1000.f + WREstats.gpuRenderingTime;
+    WREstats.cpuTime = ((float)(endTime.QuadPart - startTime.QuadPart) / (float)freq.QuadPart) * 1000.f;
+    WREstats.deltaTime = WREstats.cpuTime + WREstats.gpuRenderingTime;
     elapsed += WREstats.deltaTime;
 
     if (elapsed >= 1000)

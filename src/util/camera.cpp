@@ -21,7 +21,7 @@ void initPerspCamera(WRECamera *cam, renderer_t *renderer, cameraTransform trans
 {
     cam->type = WRE_PERSPECTIVE_CAM;
 
-    cam->view = transposeMat4x4(fpsViewMatrix(transform.pos, -transform.rotation.y, transform.rotation.x));
+    cam->view = transposeMat4x4(fpsViewMatrix(transform.pos, transform.rotation.y, transform.rotation.x));
 
     cam->position.pos = transform.pos;
     cam->position.rotation = transform.rotation;

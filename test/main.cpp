@@ -71,7 +71,7 @@ void init()
     initRenderer(&renderer);
     renderer.rg = &builder;
     initializeScene3D(&scene, &renderer);
-    WREScene3D mesh = loadSceneGLTF("assets/testScenes/gltf/deccers/dcubes.gltf", &renderer);
+    WREScene3D mesh = loadSceneGLTF("assets/testScenes/gltf/standard/helm/DamagedHelmet.gltf", &renderer);
     initPerspCamera(&camera, &renderer, {{0, 0, 0}, {0, 0}}, 90);
     setActiveCamera(&camera, renderer);
     RenderPass pass = meshPass(&mesh, &renderer);
