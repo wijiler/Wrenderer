@@ -489,7 +489,6 @@ WREScene3D loadSceneGLTF(char *filepath, renderer_t *renderer)
             if (std::filesystem::exists(texPath))
             {
                 Texture tex = loadImageFromPNG(texPath, renderer);
-                submitTexture(renderer, &tex, renderer->vkCore.linearSampler);
                 textures.push_back(tex);
             }
             else
@@ -592,10 +591,20 @@ WREScene3D loadSceneGLTF(char *filepath, renderer_t *renderer)
                 fastgltf::Material &mat = asset->materials[prim.materialIndex.value()];
                 if (mat.pbrData.baseColorTexture.has_value())
                 {
-                    auto &tex = asset->textures[mat.pbrData.baseColorTexture->textureIndex];
+                    fastgltf::Texture &tex = asset->textures[mat.pbrData.baseColorTexture->textureIndex];
                     if (tex.imageIndex.has_value())
                     {
+                        submitTexture(renderer, &textures[tex.imageIndex.value()], renderer->vkCore.linearSampler);
                         mesh.material.AlbedoMap = textures[tex.imageIndex.value()];
+                    }
+                }
+                if (mat.normalTexture.has_value())
+                {
+                    fastgltf::Texture &tex = asset->textures[mat.normalTexture->textureIndex];
+                    if (tex.imageIndex.has_value())
+                    {
+                        submitNormal(renderer, &textures[tex.imageIndex.value()], renderer->vkCore.linearSampler);
+                        mesh.material.NormalMap = textures[tex.imageIndex.value()];
                     }
                 }
                 break;
