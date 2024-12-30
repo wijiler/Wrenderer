@@ -41,6 +41,40 @@ uint64_t passTypeToVulkanStage(passType type)
     };
     return stages[type];
 }
+VkAccessFlags imageLayoutToAccessMask(VkImageLayout layout)
+{
+    switch (layout)
+    {
+    case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
+    {
+        return ACCESS_COLORATTACHMENT;
+        break;
+    }
+    case VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL:
+    {
+        return ACCESS_DEPTHATTACHMENT;
+        break;
+    }
+    case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
+    {
+        return ACCESS_TRANSFER_READ;
+        break;
+    }
+    case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
+    {
+        return ACCESS_TRANSFER_WRITE;
+        break;
+    }
+    case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
+    {
+        return ACCESS_READ;
+        break;
+    }
+    default:
+        return 0x0;
+    }
+}
+
 #define CATTINFO(i)                                   \
     {                                                 \
         VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,  \
@@ -221,11 +255,13 @@ void recordPass(RenderPass *pass, renderer_t *renderer, VkCommandBuffer cBuf)
         frameBuf.pStencilAttachment = NULL;
     }
 
-    vkCmdBeginRendering(cBuf, &frameBuf);
+    if (pass->type != PASS_TYPE_BLIT && pass->type != PASS_TYPE_TRANSFER)
+        vkCmdBeginRendering(cBuf, &frameBuf);
 
     pass->callBack(*pass, cBuf);
 
-    vkCmdEndRendering(cBuf);
+    if (pass->type != PASS_TYPE_BLIT && pass->type != PASS_TYPE_TRANSFER)
+        vkCmdEndRendering(cBuf);
 }
 
 bool resEq(Resource rhs, Resource lhs)
@@ -260,10 +296,9 @@ const VkCommandBufferBeginInfo bInf = {
 
 void addResource(RenderPass *pass, Resource res)
 {
-    Resource t = res;
-    t.stage = pass->type;
+    res.stage = pass->type;
     pass->resources = realloc(pass->resources, sizeof(Resource) * (pass->resourceCount + 1));
-    pass->resources[pass->resourceCount] = t;
+    pass->resources[pass->resourceCount] = res;
     pass->resourceCount += 1;
 }
 
@@ -335,35 +370,35 @@ void addImageResource(RenderPass *pass, Image *image, ResourceUsageFlags_t usage
         res.access = ACCESS_COLORATTACHMENT;
         res.value.img.layout |= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
         res.cAttIndex = pass->cAttCount;
-        res.value.img.handle->accessMask |= ACCESS_COLORATTACHMENT;
+        res.value.img.accessMask |= ACCESS_COLORATTACHMENT;
         addColorAttachment(image, pass, NULL);
     }
-    else if ((usage & USAGE_DEPTHSTENCILATTACHMENT) != 0)
+    if ((usage & USAGE_DEPTHSTENCILATTACHMENT) != 0)
     {
         res.access = ACCESS_DEPTHATTACHMENT;
         res.value.img.layout |= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
         res.value.img.accessMask |= ACCESS_DEPTHATTACHMENT;
         setDepthAttachment(image, pass);
     }
-    else if ((usage & USAGE_TRANSFER_SRC) != 0)
+    if ((usage & USAGE_TRANSFER_SRC) != 0)
     {
         res.access = ACCESS_TRANSFER_READ;
         res.value.img.layout |= VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
         res.value.img.accessMask |= ACCESS_TRANSFER_READ;
     }
-    else if ((usage & USAGE_TRANSFER_DST) != 0)
+    if ((usage & USAGE_TRANSFER_DST) != 0)
     {
         res.access = ACCESS_TRANSFER_WRITE;
         res.value.img.layout |= VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
         res.value.img.accessMask |= ACCESS_TRANSFER_WRITE;
     }
-    else if ((usage & USAGE_SAMPLED) != 0)
+    if ((usage & USAGE_SAMPLED) != 0)
     {
         res.access = ACCESS_READ;
         res.value.img.layout |= VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         res.value.img.accessMask |= ACCESS_READ;
     }
-    else if ((usage & USAGE_UNDEFINED) != 0)
+    if ((usage & USAGE_UNDEFINED) != 0)
     {
         res.access = 0;
         res.value.img.layout |= VK_IMAGE_LAYOUT_UNDEFINED;
@@ -399,11 +434,11 @@ void addBufferResource(RenderPass *pass, Buffer buf, ResourceUsageFlags_t usage)
     addResource(pass, res);
 }
 
-void addArbitraryResource(RenderPass *pass, void *data)
+void addArbitraryResource(RenderPass *pass, const void *data)
 {
     Resource res = {0};
     res.type = RES_TYPE_Arb;
-    res.value.arbitrary = data;
+    res.value.arbitrary = (void *)data;
 
     addResource(pass, res);
 }
@@ -482,9 +517,9 @@ void optimizePasses(RenderGraph *graph, Image *swapChainImg)
                             icBar.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 
                             icBar.srcStageMask = passTypeToVulkanStage(cr.stage);
-                            icBar.srcAccessMask = cr.access;
+                            icBar.srcAccessMask = cr.value.img.accessMask;
                             icBar.dstStageMask = passTypeToVulkanStage(oldImg.stage);
-                            icBar.dstAccessMask = oldImg.access;
+                            icBar.dstAccessMask = oldImg.value.img.accessMask;
 
                             imgMemBarriers = realloc(imgMemBarriers, sizeof(VkImageMemoryBarrier2) * (imgBrrCount + 1));
                             imgMemBarriers[imgBrrCount] = icBar;
@@ -597,11 +632,6 @@ void addPass(GraphBuilder *builder, RenderPass *pass)
     builder->passes = realloc(builder->passes, sizeof(RenderPass) * (builder->passCount + 1));
     builder->passes[builder->passCount] = *pass;
     builder->passCount += 1;
-    if (builder->graph.passes != NULL)
-    {
-        destroyRenderGraph(&builder->graph);
-    }
-    builder->graph = buildGraph(builder, currentScImg);
 }
 
 void executeGraph(RenderGraph *graph, renderer_t *renderer, uint32_t cBufIndex)
@@ -631,6 +661,8 @@ void executeGraph(RenderGraph *graph, renderer_t *renderer, uint32_t cBufIndex)
                 cb.imgMemBarriers,
             };
             vkCmdPipelineBarrier2(cbuffer, &depInfo);
+            free(cb.bufMemBarriers);
+            free(cb.imgMemBarriers);
         }
         recordPass(&graph->passes[i], renderer, cbuffer);
     }
@@ -682,7 +714,7 @@ void drawRenderer(renderer_t *renderer, int cBufIndex)
     vkBeginCommandBuffer(ccbuf, &cBufBeginInf);
     vkCmdResetQueryPool(gcbuf, renderer->vkCore.timestampPool, 0, 2);
 
-    RenderGraph rg = renderer->rg->graph;
+    RenderGraph rg = buildGraph(renderer->rg, currentScImg);
 
     VkImageMemoryBarrier imgMemoryBarrier = {
         VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
@@ -699,8 +731,12 @@ void drawRenderer(renderer_t *renderer, int cBufIndex)
     vkCmdPipelineBarrier(gcbuf, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, NULL, 0, NULL, 1, &imgMemoryBarrier);
     currentScImg->CurrentLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
     currentScImg->accessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    transitionLayout(gcbuf, &WREalbedoBuffer, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, ACCESS_TRANSFER_WRITE, VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_PIPELINE_STAGE_2_TRANSFER_BIT);
+    transitionLayout(gcbuf, &WREnormalBuffer, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, ACCESS_TRANSFER_WRITE, VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_PIPELINE_STAGE_2_TRANSFER_BIT);
 
     vkCmdClearColorImage(gcbuf, currentScImg->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearValue, 1, &imgSRR);
+    vkCmdClearColorImage(gcbuf, WREalbedoBuffer.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearValue, 1, &imgSRR);
+    vkCmdClearColorImage(gcbuf, WREnormalBuffer.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearValue, 1, &imgSRR);
 
     VkRect2D scissor = {0};
     scissor.offset.x = 0;
@@ -832,6 +868,7 @@ void drawRenderer(renderer_t *renderer, int cBufIndex)
     {
         WREstats.gpuRenderingTime = (float)(WREstats.timeStampValues[2] - WREstats.timeStampValues[0]) * devProps.limits.timestampPeriod / 1000000.0f;
     }
+    destroyRenderGraph(&rg);
 }
 
 void copyGraph(GraphBuilder *src, GraphBuilder *dst)

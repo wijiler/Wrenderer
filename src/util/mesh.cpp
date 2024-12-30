@@ -111,7 +111,7 @@ void initializeScene3D(WREScene3D *scene, renderer_t *renderer)
 {
     if (WREOutputImage.image == NULL)
     {
-        createImage(renderer->vkCore, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_TYPE_2D, renderer->vkCore.extent.width, renderer->vkCore.extent.height, VK_IMAGE_ASPECT_COLOR_BIT);
+        WREOutputImage = createImage(renderer->vkCore, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TYPE_2D, renderer->vkCore.extent.width, renderer->vkCore.extent.height, VK_IMAGE_ASPECT_COLOR_BIT);
     }
     if (maxMeshCount == 0)
     {
@@ -312,7 +312,7 @@ void createMeshInstanceTransform(WREmesh *mesh, WREScene3D *scene, renderer_t *r
 
 void meshGPass(RenderPass self, VkCommandBuffer cBuf)
 {
-    WREScene3D *scene = (WREScene3D *)self.resources[1].value.arbitrary;
+    WREScene3D *scene = (WREScene3D *)self.resources[3].value.arbitrary;
     typedef struct
     {
         VkDeviceAddress InstanceBuffer;
@@ -338,15 +338,80 @@ void meshGPass(RenderPass self, VkCommandBuffer cBuf)
     }
 }
 
+const VkClearColorValue opclearValue = {{0.0f, 0.0f, 0.0f, 0.0f}};
+const VkImageSubresourceRange cimgSRR = {
+    VK_IMAGE_ASPECT_COLOR_BIT,
+    0,
+    VK_REMAINING_MIP_LEVELS,
+    0,
+    VK_REMAINING_ARRAY_LAYERS,
+};
+void meshBlitPass(RenderPass self, VkCommandBuffer cBuf)
+{
+    VkImageBlit2 meshBlit = {
+        VK_STRUCTURE_TYPE_IMAGE_BLIT_2,
+        NULL,
+        {
+            VK_IMAGE_ASPECT_COLOR_BIT,
+            0,
+            0,
+            1,
+        },
+        {{0, 0, 0}, {1080, 1080, 1}},
+        {
+            VK_IMAGE_ASPECT_COLOR_BIT,
+            0,
+            0,
+            1,
+        },
+        {{0, 0, 0}, {1080, 1080, 1}},
+    };
+    VkBlitImageInfo2 blitInf = {
+        VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2,
+        NULL,
+        WREOutputImage.image,
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        self.resources[1].value.swapChainImage->image,
+        self.resources[1].value.swapChainImage->CurrentLayout,
+        1,
+        &meshBlit,
+        VK_FILTER_LINEAR,
+    };
+    vkCmdBlitImage2(cBuf, &blitInf);
+
+    transitionLayout(cBuf, &WREOutputImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, ACCESS_TRANSFER_WRITE, VK_PIPELINE_STAGE_2_BLIT_BIT, VK_PIPELINE_STAGE_2_TRANSFER_BIT);
+    vkCmdClearColorImage(cBuf, WREOutputImage.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &opclearValue, 1, &cimgSRR);
+    transitionLayout(cBuf, &WREOutputImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, ACCESS_TRANSFER_READ, VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_PIPELINE_STAGE_2_TRANSFER_BIT);
+}
+
 RenderPass meshPass(WREScene3D *scene, renderer_t *renderer)
 {
-    std::string passName = "Meshpass";
-    RenderPass gPass = newPass((char *)passName.c_str(), PASS_TYPE_GRAPHICS);
+    // std::string clearPassName = "MeshClear";
+    // RenderPass clearPass = newPass((char *)clearPassName.c_str(), PASS_TYPE_TRANSFER);
+    // clearPass.gPl = scene->gbufferPipeline;
+    // addImageResource(&clearPass, &WREOutputImage, USAGE_TRANSFER_DST);
+    // setExecutionCallBack(&clearPass, meshClearPass);
+    // addPass(renderer->rg, &clearPass);
+
+    std::string gpassName = "Meshpass";
+    RenderPass gPass = newPass((char *)gpassName.c_str(), PASS_TYPE_GRAPHICS);
     gPass.gPl = scene->gbufferPipeline;
-    addSwapchainImageResource(&gPass, *renderer);
+    addImageResource(&gPass, &WREOutputImage, USAGE_COLORATTACHMENT);
+    addImageResource(&gPass, &WREalbedoBuffer, USAGE_COLORATTACHMENT);
+    addImageResource(&gPass, &WREnormalBuffer, USAGE_COLORATTACHMENT);
     setDepthAttachment(&WREdepthBuffer, &gPass);
     addArbitraryResource(&gPass, scene);
     setExecutionCallBack(&gPass, meshGPass);
+    addPass(renderer->rg, &gPass);
+
+    std::string bpassName = "MeshBlit";
+
+    RenderPass blitPass = newPass((char *)bpassName.c_str(), PASS_TYPE_BLIT);
+    blitPass.gPl = scene->gbufferPipeline;
+    addImageResource(&blitPass, &WREOutputImage, USAGE_TRANSFER_SRC);
+    addSwapchainImageResource(&blitPass, *renderer);
+    setExecutionCallBack(&blitPass, meshBlitPass);
+    addPass(renderer->rg, &blitPass);
 
     return gPass;
 }

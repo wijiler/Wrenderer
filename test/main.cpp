@@ -36,7 +36,7 @@ void loop()
 
 void inputCallback(int key, int action)
 {
-    float speed = 100 * WREstats.deltaTime;
+    float speed = 1 * WREstats.deltaTime;
     if (action != GLFW_RELEASE)
     {
         switch (key)
@@ -68,15 +68,15 @@ void inputCallback(int key, int action)
 
 void init()
 {
-    WREstats.targetFPS = INT32_MAX;
+    WREstats.targetFPS = 160;
     initRenderer(&renderer);
     renderer.rg = &builder;
     initializeScene3D(&scene, &renderer);
-    WREScene3D mesh = loadSceneGLTF("assets/testScenes/gltf/standard/helm/DamagedHelmet.gltf", &renderer);
+    scene = loadSceneGLTF("assets/testScenes/gltf/standard/helm/DamagedHelmet.gltf", &renderer);
     initPerspCamera(&camera, &renderer, {{0, 0, 0}, {0, 0}}, 90);
     setActiveCamera(&camera, renderer);
-    RenderPass pass = meshPass(&mesh, &renderer);
-    addPass(renderer.rg, &pass);
+    RenderPass pass = meshPass(&scene, &renderer);
+    // addPass(renderer.rg, &pass);
 
     // scene.Renderer = &renderer;
     // initializeScene2D(&scene);

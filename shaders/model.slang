@@ -81,9 +81,25 @@ VertOutput vertMain(uint vertId: SV_VertexID, uint instId: SV_InstanceID)
     return output;
 }
 
+struct fragOutput
+{
+    float4 OutputImage : SV_Target0;
+    float4 Albedo : SV_Target1;
+    float4 Normal : SV_Target2;
+}
+
 [shader("fragment")]
-float4 fragMain(VertOutput input)
+fragOutput fragMain(VertOutput input)
     : SV_Target
 {
-    return textures[input.mat.textureId].Sample(input.uv) * input.color;
+    fragOutput output;
+
+    float4 albedo = textures[input.mat.textureId].Sample(input.uv) * input.color;
+    float4 normal = normals[input.mat.normalId].Sample(input.uv);
+
+    output.OutputImage = albedo;
+    output.Albedo = albedo;
+    output.Normal = normal;
+
+    return output;
 }

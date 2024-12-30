@@ -254,7 +254,6 @@ extern "C"
     {
         int passCount;
         RenderPass *passes;
-        RenderGraph graph;
     } GraphBuilder;
     // ----------------------------------------- RGEND
     extern VkInstance WREVulkinstance;
@@ -343,7 +342,7 @@ extern "C"
     void addImageResource(RenderPass *pass, Image *image, ResourceUsageFlags_t usage);
     void addSwapchainImageResource(RenderPass *pass, renderer_t renderer);
     void addBufferResource(RenderPass *pass, Buffer buf, ResourceUsageFlags_t usage);
-    void addArbitraryResource(RenderPass *pass, void *data);
+    void addArbitraryResource(RenderPass *pass, const void *data);
     void addColorAttachment(Image *img, RenderPass *pass, VkClearValue *clear);
     void setDepthAttachment(Image *img, RenderPass *pass);
     void setExecutionCallBack(RenderPass *pass, void (*callBack)(RenderPass pass, VkCommandBuffer cBuf));
@@ -365,7 +364,7 @@ extern "C"
     void submitNormalMap(VulkanCore_t core, VkImageView texture);
     void markImageResizable(Image *img, uint32_t *width, uint32_t *height, VkImageUsageFlags usage, VkImageLayout wantedLayout);
     Texture loadImageFromPNG(char *path, renderer_t *renderer);
-    void transitionLayout(VkCommandBuffer cBuf, Image *img, VkImageLayout oldLayout, VkImageLayout newLayout, VkAccessFlags dstAccess, VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage);
+    void transitionLayout(VkCommandBuffer cBuf, Image *img, VkImageLayout oldLayout, VkImageLayout newLayout, VkAccessFlags dstAccess, VkPipelineStageFlags2 srcStage, VkPipelineStageFlags2 dstStage);
     void submitNormal(renderer_t *renderer, Texture *tex, VkSampler sampler);
     // ----------------------------------------- IMGUTILEND
 

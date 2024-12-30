@@ -24,8 +24,9 @@ project "Wrenderer"
         links {"fastgltfDEBUG"}
     filter ""
     filter "configurations:Release"
+        optimize "On"
         symbols "On"
-        links {"fastgltfDEBUG"}
+        links {"fastgltfRELEASE"}
     filter ""
     filter "system:windows"
         defines { "VK_USE_PLATFORM_WIN32_KHR" }
@@ -88,8 +89,9 @@ project "WrenTest"
             links {"fastgltfDEBUG"}
         filter ""
         filter "configurations:Release"
+            optimize "On"
             symbols "On"
-            links {"fastgltfDEBUG"}
+            links {"fastgltfRELEASE"}
         filter ""
         filter "system:windows"
             defines { "VK_USE_PLATFORM_WIN32_KHR" }

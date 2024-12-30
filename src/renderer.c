@@ -974,8 +974,8 @@ void initRenderer(renderer_t *renderer)
     WREstats.avgFPS = 0;
 
     initializeDescriptor(renderer->vkCore, &WREgBuffer, 1, 3, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, SHADER_STAGE_ALL, true);
-    WREalbedoBuffer = createImage(renderer->vkCore, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TYPE_2D, renderer->vkCore.extent.width, renderer->vkCore.extent.height, VK_IMAGE_ASPECT_COLOR_BIT);
-    WREnormalBuffer = createImage(renderer->vkCore, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TYPE_2D, renderer->vkCore.extent.width, renderer->vkCore.extent.height, VK_IMAGE_ASPECT_COLOR_BIT);
+    WREalbedoBuffer = createImage(renderer->vkCore, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TYPE_2D, renderer->vkCore.extent.width, renderer->vkCore.extent.height, VK_IMAGE_ASPECT_COLOR_BIT);
+    WREnormalBuffer = createImage(renderer->vkCore, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TYPE_2D, renderer->vkCore.extent.width, renderer->vkCore.extent.height, VK_IMAGE_ASPECT_COLOR_BIT);
     WREdepthBuffer = createImage(renderer->vkCore, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_IMAGE_TYPE_2D, renderer->vkCore.extent.width, renderer->vkCore.extent.height, VK_IMAGE_ASPECT_DEPTH_BIT);
     allocateDescriptorSets(renderer->vkCore, &WREgBuffer);
     writeDescriptorSet(renderer->vkCore, WREgBuffer, 0, 0, WREalbedoBuffer.imgview, renderer->vkCore.linearSampler);

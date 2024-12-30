@@ -142,31 +142,41 @@ void immediateSubmitEnd(VulkanCore_t core)
     vkQueueSubmit(core.gQueue, 1, &submitInfo, core.immediateFence);
 }
 
-void transitionLayout(VkCommandBuffer cBuf, Image *img, VkImageLayout oldLayout, VkImageLayout newLayout, VkAccessFlags dstAccess, VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage)
+void transitionLayout(VkCommandBuffer cBuf, Image *img, VkImageLayout oldLayout, VkImageLayout newLayout, VkAccessFlags dstAccess, VkPipelineStageFlags2 srcStage, VkPipelineStageFlags2 dstStage)
 {
-    VkImageMemoryBarrier memBarrier = {0};
-    memBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    memBarrier.pNext = NULL;
+    VkImageMemoryBarrier2 memBarrier = {
+        VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+        NULL,
+        srcStage,
+        img->accessMask,
+        dstStage,
+        dstAccess,
+        oldLayout,
+        newLayout,
+        VK_QUEUE_FAMILY_IGNORED,
+        VK_QUEUE_FAMILY_IGNORED,
+        img->image,
+        (VkImageSubresourceRange){
+            img->aspectMask,
+            0,
+            1,
+            0,
+            1,
 
-    memBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    memBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-
-    memBarrier.oldLayout = oldLayout;
-    memBarrier.newLayout = newLayout;
-
-    memBarrier.srcAccessMask = img->accessMask;
-    memBarrier.dstAccessMask = dstAccess;
-
-    memBarrier.subresourceRange = (VkImageSubresourceRange){
-        img->aspectMask,
-        0,
-        1,
-        0,
-        1,
+        },
     };
-
-    memBarrier.image = img->image;
-    vkCmdPipelineBarrier(cBuf, srcStage, dstStage, 0, 0, NULL, 0, NULL, 1, &memBarrier);
+    VkDependencyInfo inf = {
+        VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+        NULL,
+        0,
+        0,
+        NULL,
+        0,
+        NULL,
+        1,
+        &memBarrier,
+    };
+    vkCmdPipelineBarrier2(cBuf, &inf);
     img->CurrentLayout = newLayout;
     img->accessMask = dstAccess;
 }

@@ -68,19 +68,19 @@ void launch_window(winf_t wininfo, renderer_t *renderer, void (*update)(), void 
         fpsaccum += WREstats.cpuTime;
         if (limaccum >= 930.f / WREstats.targetFPS)
         {
+            frames += 1;
             WREstats.deltaTime = ((float)(currentTime.QuadPart - lastUpdate.QuadPart) / (float)freq.QuadPart) * 1000.f;
             lastUpdate = currentTime;
             glfwPollEvents();
             update();
             limaccum = 0;
-            frames += 1;
-            printf("[INFO] FPS: %i FRAMETIME: %f ms\n", WREstats.avgFPS, WREstats.deltaTime);
         }
         if (fpsaccum >= 1000)
         {
             WREstats.avgFPS = frames;
             fpsaccum = 0;
             frames = 0;
+            printf("[INFO] FPS: %i FRAMETIME: %f ms\n", WREstats.avgFPS, WREstats.deltaTime);
         }
     }
 }
