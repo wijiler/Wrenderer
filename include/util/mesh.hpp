@@ -1,5 +1,6 @@
+#include <WREmath.h>
 #include <renderer.h>
-#include <util/math.hpp>
+
 #ifndef WRE_MESH_H__
 #define WRE_MESH_H__
 typedef struct
@@ -41,7 +42,7 @@ typedef struct
 typedef struct
 {
     graphicsPipeline gbufferPipeline;
-    graphicsPipeline lightingPipeline;
+    computePipeline lightingPipeline;
 
     uint32_t maxMeshGroupCount;
     uint32_t meshGroupCount;
@@ -50,7 +51,7 @@ typedef struct
 } WREScene3D;
 
 WREScene3D loadSceneGLTF(char *filepath, renderer_t *renderer);
-RenderPass meshPass(WREScene3D *scene, renderer_t *renderer);
+void meshPass(WREScene3D *scene, renderer_t *renderer);
 void createMeshInstance(WREmesh *mesh, WREScene3D *scene, renderer_t *renderer, vec3 position, vec3 rot, vec3 scale);
 void initializeScene3D(WREScene3D *scene, renderer_t *renderer);
 #endif

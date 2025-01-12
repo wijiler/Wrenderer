@@ -1,6 +1,5 @@
 #include <inttypes.h>
 #include <renderer.h>
-#include <stdio.h>
 #include <util/util.hpp>
 #include <windowing.h>
 
@@ -9,24 +8,12 @@ WREScene3D scene = {};
 WRECamera camera = {};
 winf_t wininfo = {};
 GraphBuilder builder = {};
-// spriteInstance birby1 = {};
-// spriteInstance birby2 = {};
-// spriteInstance birby3 = {};
-// spriteInstance birby4 = {};
-// spriteInstance birby5 = {};
-// pointLight2D light = {
-//     {0.f, 0.f, 0.f},
-//     {1, 0.996, 0.816, .2f},
-//     1.f,
-//     true,
-//     0,
-// };
+
 int ImageIndex = 0;
 int FrameIndex = 0;
 int Index = 0;
 void loop()
 {
-    FrameIndex++;
     Index = FrameIndex % FRAMECOUNT;
     camera.position.rotation.x = (WREMouseX / renderer.vkCore.extent.width) * 10;
     camera.position.rotation.y = (WREMouseY / renderer.vkCore.extent.height) * 10;
@@ -36,7 +23,7 @@ void loop()
 
 void inputCallback(int key, int action)
 {
-    float speed = 1 * WREstats.deltaTime;
+    float speed = 100 * WREstats.deltaTime;
     if (action != GLFW_RELEASE)
     {
         switch (key)
@@ -72,54 +59,10 @@ void init()
     initRenderer(&renderer);
     renderer.rg = &builder;
     initializeScene3D(&scene, &renderer);
-    scene = loadSceneGLTF("assets/testScenes/gltf/standard/helm/DamagedHelmet.gltf", &renderer);
+    scene = loadSceneGLTF("assets/testScenes/gltf/standard/the_utah_teapot/scene.gltf", &renderer);
     initPerspCamera(&camera, &renderer, {{0, 0, 0}, {0, 0}}, 90);
     setActiveCamera(&camera, renderer);
-    RenderPass pass = meshPass(&scene, &renderer);
-    // addPass(renderer.rg, &pass);
-
-    // scene.Renderer = &renderer;
-    // initializeScene2D(&scene);
-    // scene.camera = &camera;
-
-    // Sprite birb = createSprite("assets/birb.png", NULL, renderer.vkCore.nearestSampler, &renderer);
-    // Sprite birb2 = createSprite("assets/Wrenderer.png", NULL, renderer.vkCore.nearestSampler, &renderer);
-    // Sprite bnuyu = createSprite("assets/bnuyu.jpg", NULL, renderer.vkCore.linearSampler, &renderer);
-    // birby1 = createNewSpriteInstance(&bnuyu, renderer, &scene);
-    // birby2 = createNewSpriteInstance(&birb, renderer, &scene);
-    // birby3 = createNewSpriteInstance(&birb, renderer, &scene);
-    // birby4 = createNewSpriteInstance(&birb2, renderer, &scene);
-    // birby5 = createNewSpriteInstance(&birb2, renderer, &scene);
-    // updateSpriteInstance(&birby2, {
-    //                                   {0, -100, 0},
-    //                                   {1, 1},
-    //                                   0,
-    //                               },
-    //                      &scene);
-    // updateSpriteInstance(&birby3, {
-    //                                   {0, -50, 0},
-    //                                   {1, 1},
-    //                                   0,
-    //                               },
-    //                      &scene);
-
-    // updateSpriteInstance(&birby4, {
-    //                                   {0, 50, 0},
-    //                                   {1, 1},
-    //                                   0,
-    //                               },
-    //                      &scene);
-    // updateSpriteInstance(&birby5, {
-    //                                   {0, 100, 0},
-    //                                   {1, 1},
-    //                                   0,
-    //                               },
-    //                      &scene);
-
-    // addNewLight(&light, &scene);
-    // setActiveScene2D(&scene);
-    // spritePass(renderer, &scene.spritePipeline);
-    // copyGraph(&scene.spritePipeline.builder, &builder);
+    meshPass(&scene, &renderer);
 }
 
 int main(void)

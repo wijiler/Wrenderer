@@ -1,7 +1,7 @@
 # <p style="text-align:center">Wrenderer - a simple c99 vulkan renderer</p>  
 
 <div align="center">
-<img src="assets/birb.png" alt="wren"></img>
+<img src="assets/testImages/birb.png" alt="wren"></img>
 </div>
 
 ## Goals of writing a vulkan renderer
@@ -31,7 +31,7 @@ Then hop on into vs and ctrl+b and it should build the project
 ```sh
 $ premake5.exe gmake
 
-$ make config=debug/release/lib
+$ make config=debug/release
 ```
 
 ## Mac

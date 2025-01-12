@@ -62,7 +62,7 @@ float4 findWorldPos(uint2 uv, float depthNDC)
 
 [shader("compute")]
 [numthreads(32, 32)]
-void computeMain(uint2 threadId: SV_DispatchThreadID)
+void compMain(uint2 threadId: SV_DispatchThreadID)
 {
     float4 depthImg = depth[threadId];
     float depthNDC = (depthImg.x + depthImg.y + depthImg.z + depthImg.w);

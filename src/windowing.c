@@ -66,12 +66,12 @@ void launch_window(winf_t wininfo, renderer_t *renderer, void (*update)(), void 
         lastTime = currentTime;
         limaccum += WREstats.cpuTime;
         fpsaccum += WREstats.cpuTime;
-        if (limaccum >= 930.f / WREstats.targetFPS)
+        glfwPollEvents();
+        if (limaccum >= 1000.f / WREstats.targetFPS)
         {
             frames += 1;
             WREstats.deltaTime = ((float)(currentTime.QuadPart - lastUpdate.QuadPart) / (float)freq.QuadPart) * 1000.f;
             lastUpdate = currentTime;
-            glfwPollEvents();
             update();
             limaccum = 0;
         }

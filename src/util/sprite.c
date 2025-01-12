@@ -1,22 +1,22 @@
 #include <stdbool.h>
-#include <string>
-#include <util/sprite.hpp>
+#include <string.h>
+#include <util/sprite.h>
 
 uint32_t spriteInstanceCount = 0;
 uint32_t lightCount = 0;
 
-Buffer spriteInstanceData{};
-Buffer spriteTextureIDs{};
-Buffer lightBuffer{};
+Buffer spriteInstanceData = {0};
+Buffer spriteTextureIDs = {0};
+Buffer lightBuffer = {0};
 static const int spriteIncrementAmount = 100;
 
 Sprite createSprite(char *texturePath, char *normalPath, VkSampler sampler, renderer_t *renderer)
 {
-    Sprite sp{};
+    Sprite sp = {0};
     Texture tex = loadImageFromPNG(texturePath, renderer);
     submitTexture(renderer, &tex, sampler);
     if (normalPath == NULL)
-        sp.normal = {{}, 0};
+        sp.normal = WREDefaultNormal;
     else
     {
         Texture normal = loadImageFromPNG(normalPath, renderer);
@@ -57,7 +57,7 @@ spriteInstance createNewSpriteInstance(Sprite *sprite, renderer_t renderer, WRES
                 CPU_ONLY,
             };
             {
-                Buffer newBuf{};
+                Buffer newBuf = {0};
                 createBuffer(renderer.vkCore, bci, &newBuf);
                 copyBuf(renderer.vkCore, spriteInstanceData, newBuf, sizeof(transform2D) * (spriteInstanceCount), 0, 0);
                 destroyBuffer(spriteInstanceData, renderer.vkCore);
@@ -65,7 +65,7 @@ spriteInstance createNewSpriteInstance(Sprite *sprite, renderer_t renderer, WRES
             }
             {
                 bci.dataSize = sizeof(Material2D) * (spriteInstanceCount + spriteIncrementAmount);
-                Buffer newBuf{};
+                Buffer newBuf = {0};
                 createBuffer(renderer.vkCore, bci, &newBuf);
                 copyBuf(renderer.vkCore, spriteTextureIDs, newBuf, sizeof(Material2D) * (spriteInstanceCount), 0, 0);
                 destroyBuffer(spriteTextureIDs, renderer.vkCore);
@@ -73,9 +73,9 @@ spriteInstance createNewSpriteInstance(Sprite *sprite, renderer_t renderer, WRES
             }
         }
     }
-    scene->spritePipeline.textureIDs[scene->spritePipeline.spriteInstanceCount] = {sprite->image.index, sprite->normal.index};
+    scene->spritePipeline.textureIDs[scene->spritePipeline.spriteInstanceCount] = (Material2D){sprite->image.index, sprite->normal.index};
     instance.id = spriteInstanceCount;
-    instance.transform = {
+    instance.transform = (transform2D){
         {0, 0, 0},
         {1, 1},
         0,
@@ -166,8 +166,8 @@ void lightPassCallback(RenderPass self, VkCommandBuffer cBuf)
 void spritePass(renderer_t renderer, SpritePipeline *pipeline)
 {
     {
-        std::string name = "gbufferPass2D";
-        RenderPass sPass = newPass((char *)name.c_str(), PASS_TYPE_GRAPHICS);
+        char *name = "gbufferPass2D";
+        RenderPass sPass = newPass(name, PASS_TYPE_GRAPHICS);
         sPass.gPl = pipeline->gbufferPipeline;
         addImageResource(&sPass, &WREalbedoBuffer, USAGE_COLORATTACHMENT);
         addImageResource(&sPass, &WREnormalBuffer, USAGE_COLORATTACHMENT);
@@ -175,8 +175,8 @@ void spritePass(renderer_t renderer, SpritePipeline *pipeline)
         addPass(&pipeline->builder, &sPass);
     }
     {
-        std::string name = "lightPass2D";
-        RenderPass lightPass = newPass((char *)name.c_str(), PASS_TYPE_GRAPHICS);
+        char *name = "lightPass2D";
+        RenderPass lightPass = newPass(name, PASS_TYPE_GRAPHICS);
         lightPass.gPl = pipeline->lightPipeline;
         addSwapchainImageResource(&lightPass, renderer);
         addImageResource(&lightPass, &WREalbedoBuffer, USAGE_SAMPLED);

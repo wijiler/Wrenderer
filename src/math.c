@@ -1,7 +1,7 @@
+#include <WREmath.h>
 #include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <util/math.hpp>
 
 #ifdef _MSC_VER
 #include <intrin.h>
@@ -157,7 +157,7 @@ mat4x4 mat4x4Mul(mat4x4 a, mat4x4 b)
 
             _mm_storeu_ps(&resultMat[12], resultLineFour);
         }
-        return {
+        return (mat4x4){
             resultMat[0], resultMat[1], resultMat[2], resultMat[3],
             resultMat[4], resultMat[5], resultMat[6], resultMat[7],
             resultMat[8], resultMat[9], resultMat[10], resultMat[11],
@@ -205,11 +205,11 @@ vec3 divV3V3(vec3 a, vec3 b)
         vec4 result = {0};
         __m128 res = _mm_div_ps(vecA, vecB);
         _mm_storeu_ps((float *)&result, res);
-        return {result.x, result.y, result.z};
+        return (vec3){result.x, result.y, result.z};
     }
     else
     {
-        return {a.x / b.x, a.y / b.y, a.z / b.z};
+        return (vec3){a.x / b.x, a.y / b.y, a.z / b.z};
     }
 }
 
@@ -228,11 +228,11 @@ vec3 divVec3Scalar(vec3 a, float b)
         vec4 result = {0};
         __m128 res = _mm_div_ps(vecA, vecB);
         _mm_storeu_ps((float *)&result, res);
-        return {result.x, result.y, result.z};
+        return (vec3){result.x, result.y, result.z};
     }
     else
     {
-        return {a.x / b, a.y / b, a.z / b};
+        return (vec3){a.x / b, a.y / b, a.z / b};
     }
 }
 
@@ -269,11 +269,11 @@ vec3 subtractVec3(vec3 a, vec3 b)
         __m128 vecB = _mm_loadu_ps((float *)&b4);
         vec4 result = {0};
         _mm_storeu_ps((float *)&result, _mm_sub_ps(vecA, vecB));
-        return {result.x, result.y, result.z};
+        return (vec3){result.x, result.y, result.z};
     }
     else
     {
-        return {a.x - b.x, a.y - b.y, a.z - b.z};
+        return (vec3){a.x - b.x, a.y - b.y, a.z - b.z};
     }
 }
 
@@ -296,7 +296,7 @@ vec3 vec3Cross(vec3 a, vec3 b)
 
         vec4 result = {0};
         _mm_storeu_ps((float *)&result, _mm_sub_ps(col1, col2));
-        return {result.x, result.y, result.z};
+        return (vec3){result.x, result.y, result.z};
     }
     if (SSE_SUPPORTED)
     {
@@ -314,9 +314,9 @@ vec3 vec3Cross(vec3 a, vec3 b)
 
         vec4 result = {0};
         _mm_storeu_ps((float *)&result, _mm_sub_ps(res1, res2));
-        return {result.x, result.y, result.z};
+        return (vec3){result.x, result.y, result.z};
     }
-    return {
+    return (vec3){
         (a.y * b.z) - (a.z * b.y),
         (a.z * b.x) - (a.x * b.z),
         (a.x * b.y) - (a.y * b.x),
@@ -340,9 +340,9 @@ vec3 Vec3Add(vec3 a, vec3 b)
         __m128 b1 = _mm_loadu_ps((float *)&b);
 
         _mm_storeu_ps((float *)&res, _mm_add_ps(a1, b1));
-        return {res.x, res.y, res.z};
+        return (vec3){res.x, res.y, res.z};
     }
-    return {a.x + b.x, a.y + b.y, a.z + b.z};
+    return (vec3){a.x + b.x, a.y + b.y, a.z + b.z};
 }
 
 mat4x4 mat4x4MulScalar(mat4x4 a, float b)
@@ -368,7 +368,7 @@ mat4x4 mat4x4MulScalar(mat4x4 a, float b)
         _mm_storeu_ps((float *)&result + 12, a4);
         return result;
     }
-    return {
+    return (mat4x4){
         a._11 * b, a._12 * b, a._13 * b, a._14 * b,
         a._12 * b, a._22 * b, a._23 * b, a._24 * b,
         a._13 * b, a._32 * b, a._33 * b, a._34 * b,
@@ -465,7 +465,7 @@ mat4x4 lookAtMatrix(vec3 pos, vec3 target, vec3 up)
 
     vec3 newUp = vec3Cross(forward, right);
 
-    return {
+    return (mat4x4){
         right.x, newUp.x, forward.x, 0,
         right.y, newUp.y, forward.y, 0,
         right.z, newUp.z, forward.z, 0,
@@ -477,23 +477,23 @@ float degtoRad(float in)
 }
 mat4x4 fpsViewMatrix(vec3 pos, float pitch, float yaw)
 {
-    mat4x4 tmat = mat4x4Translate(divVec3Scalar({pos.x, -pos.y, pos.z}, 100), identity4x4);
-    mat4x4 rot = mat4x4RotateQuat(eulerToQuaternion({0, yaw, pitch}));
+    mat4x4 tmat = mat4x4Translate(divVec3Scalar((vec3){pos.x, -pos.y, pos.z}, 100), identity4x4);
+    mat4x4 rot = mat4x4RotateQuat(eulerToQuaternion((vec3){0, yaw, pitch}));
 
     return transposeMat4x4(mat4x4Mul(tmat, rot));
 }
 
 mat4x4 orthoProjMatrix(float near, float far, float top, float bottom, float left, float right)
 {
-    return {2 / (right - left), 0, 0, 0,
-            0, 2 / (top - bottom), 0, 0,
-            0, 0, -1 / (far - near), 0,
-            -(right + left) / (right - left), -(top + bottom) / (top - bottom), -far / (far - near), 1};
+    return (mat4x4){2 / (right - left), 0, 0, 0,
+                    0, 2 / (top - bottom), 0, 0,
+                    0, 0, -1 / (far - near), 0,
+                    -(right + left) / (right - left), -(top + bottom) / (top - bottom), -far / (far - near), 1};
 }
 
 mat4x4 transposeMat4x4(mat4x4 in)
 {
-    return {
+    return (mat4x4){
         in._11, in._21, in._31, in._41,
         in._12, in._22, in._32, in._42,
         in._13, in._23, in._33, in._43,
@@ -511,9 +511,89 @@ mat4x4 perspProjMatrix(float vertical_fov, float aspect_ratio, float n)
     float A = 0;
     float B = n;
 
-    return {
+    return (mat4x4){
         x, 0.0f, 0.0f, 0.0f,
         0.0f, y, 0.0f, 0.0f,
         0.0f, 0.0f, A, B,
         0.0f, 0.0f, 1.0f, 1.0f};
+}
+
+mat4x4 inverseMat4x4(mat4x4 in)
+{
+    mat4x4 out = identity4x4;
+
+    CHECKSIMDSUPPORT
+    if (SSE_SUPPORTED)
+    {
+        float t[6];
+        float det;
+        __m128 a = _mm_set_ps(in._33, in._43, in._32, in._42);
+        __m128 b = _mm_set_ps(in._44, in._34, in._44, in._34);
+
+        __m128 c = _mm_set_ps(in._32, in._42, in._31, in._41);
+        __m128 d = _mm_set_ps(in._43, in._33, in._44, in._34);
+
+        __m128 e = _mm_set_ps(in._31, in._41, in._31, in._41);
+        __m128 f = _mm_set_ps(in._43, in._33, in._42, in._32);
+
+        __m128 t01 = _mm_mul_ps(a, b);
+        __m128 t12 = _mm_mul_ps(c, d);
+        __m128 t34 = _mm_mul_ps(e, f);
+    }
+    else
+    {
+        // ty cglm :)
+        float t[6];
+        float det;
+        float a = in._11, b = in._12, c = in._13, d = in._14,
+              e = in._21, f = in._22, g = in._23, h = in._24,
+              i = in._31, j = in._32, k = in._33, l = in._34,
+              m = in._41, n = in._42, o = in._43, p = in._44;
+
+        t[0] = k * p - o * l;
+        t[1] = j * p - n * l;
+        t[2] = j * o - n * k;
+        t[3] = i * p - m * l;
+        t[4] = i * o - m * k;
+        t[5] = i * n - m * j;
+
+        out._11 = f * t[0] - g * t[1] + h * t[2];
+        out._21 = -(e * t[0] - g * t[3] + h * t[4]);
+        out._31 = e * t[1] - f * t[3] + h * t[5];
+        out._41 = -(e * t[2] - f * t[4] + g * t[5]);
+
+        out._12 = -(b * t[0] - c * t[1] + d * t[2]);
+        out._22 = a * t[0] - c * t[3] + d * t[4];
+        out._32 = -(a * t[1] - b * t[3] + d * t[5]);
+        out._42 = a * t[2] - b * t[4] + c * t[5];
+
+        t[0] = g * p - o * h;
+        t[1] = f * p - n * h;
+        t[2] = f * o - n * g;
+        t[3] = e * p - m * h;
+        t[4] = e * o - m * g;
+        t[5] = e * n - m * f;
+
+        out._13 = b * t[0] - c * t[1] + d * t[2];
+        out._23 = -(a * t[0] - c * t[3] + d * t[4]);
+        out._33 = a * t[1] - b * t[3] + d * t[5];
+        out._43 = -(a * t[2] - b * t[4] + c * t[5]);
+
+        t[0] = g * l - k * h;
+        t[1] = f * l - j * h;
+        t[2] = f * k - j * g;
+        t[3] = e * l - i * h;
+        t[4] = e * k - i * g;
+        t[5] = e * j - i * f;
+
+        out._14 = -(b * t[0] - c * t[1] + d * t[2]);
+        out._24 = a * t[0] - c * t[3] + d * t[4];
+        out._34 = -(a * t[1] - b * t[3] + d * t[5]);
+        out._44 = a * t[2] - b * t[4] + c * t[5];
+
+        det = 1.0f / (a * out._11 + b * out._21 + c * out._31 + d * out._41);
+
+        out = mat4x4MulScalar(out, det);
+    }
+    return out;
 }

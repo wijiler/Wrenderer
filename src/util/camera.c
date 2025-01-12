@@ -1,8 +1,8 @@
 #include <math.h>
-#include <util/camera.hpp>
+#include <util/camera.h>
 
 bool cameraSet = false;
-Buffer activeCameraBuffer{};
+Buffer activeCameraBuffer = {0};
 WRECamera *activeCam = NULL;
 
 void initOrthoCamera(WRECamera *cam, renderer_t *renderer, vec3 pos, vec2 rotation)
@@ -68,5 +68,5 @@ vec3 getCameraForward(WRECamera *cam)
 {
     float pitch = cam->position.rotation.y;
     float yaw = cam->position.rotation.x;
-    return {sinf(pitch) * sinf(yaw), -sinf(pitch), cosf(pitch) * cosf(yaw)};
+    return (vec3){sinf(pitch) * sinf(yaw), -sinf(pitch), cosf(pitch) * cosf(yaw)};
 }

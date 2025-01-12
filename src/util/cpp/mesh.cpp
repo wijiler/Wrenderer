@@ -4,7 +4,7 @@
 #include <filesystem>
 #include <stdio.h>
 #include <string>
-#include <util/camera.hpp>
+#include <util/camera.h>
 #include <util/mesh.hpp>
 #include <variant>
 
@@ -68,43 +68,27 @@ void initializePipelines3d(renderer_t *renderer, WREScene3D *scene)
 
         createPipelineLayout(renderer->vkCore, &scene->gbufferPipeline);
     }
-    // {
-    //     uint64_t Len = 0;
-    //     uint32_t *Shader = NULL;
+    {
+        uint64_t Len = 0;
+        uint32_t *Shader = NULL;
 
-    //     readShaderSPRV("./shaders/modelLighting.spv", &Len, &Shader);
-    //     scene->lightingPipeline.logicOpEnable = VK_FALSE;
-    //     scene->lightingPipeline.reasterizerDiscardEnable = VK_FALSE;
-    //     scene->lightingPipeline.polyMode = VK_POLYGON_MODE_FILL;
-    //     scene->lightingPipeline.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-    //     scene->lightingPipeline.primitiveRestartEnable = VK_FALSE;
-    //     scene->lightingPipeline.depthBiasEnable = VK_FALSE;
-    //     scene->lightingPipeline.depthTestEnable = VK_TRUE;
-    //     scene->lightingPipeline.depthClampEnable = VK_FALSE;
-    //     scene->lightingPipeline.depthClipEnable = VK_FALSE;
-    //     scene->lightingPipeline.stencilTestEnable = VK_FALSE;
-    //     scene->lightingPipeline.alphaToCoverageEnable = VK_FALSE;
-    //     scene->lightingPipeline.rastSampleCount = VK_SAMPLE_COUNT_1_BIT;
-    //     scene->lightingPipeline.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-    //     scene->lightingPipeline.cullMode = VK_CULL_MODE_NONE;
-    //     scene->lightingPipeline.depthBoundsEnable = VK_FALSE;
-    //     scene->lightingPipeline.alphaToOneEnable = VK_TRUE;
-    //     scene->lightingPipeline.sampleMask = UINT32_MAX;
-    //     typedef struct
-    //     {
-    //         uint32_t lightCount;
-    //         VkDeviceAddress MeshBuf;
-    //         VkDeviceAddress instanceBuf;
-    //         VkDeviceAddress cameraBuf;
-    //     } pc;
-    //     setPushConstantRange(&scene->lightingPipeline, sizeof(pc), SHADER_STAGE_ALL, 0);
-    //     addDescriptorSetToGPL(&WREgBuffer.sets[0].set, &WREgBuffer.layout, &scene->lightingPipeline);
-    //     addDescriptorSetToGPL(&WREgBuffer.sets[1].set, &WREgBuffer.layout, &scene->lightingPipeline);
+        readShaderSPRV("./shaders/modelLighting.spv", &Len, &Shader);
 
-    //     setShaderSLSPRV(renderer->vkCore, &scene->lightingPipeline, Shader, Len);
+        typedef struct
+        {
+            VkDeviceAddress cameraBuf;
+            uint32_t lightCount;
+            VkDeviceAddress lightBuffer;
+            VkExtent2D screenSize;
+        } pc;
+        setComputePushConstantRange(&scene->lightingPipeline, sizeof(pc));
+        addDescriptorSetToCPL(&WREgBuffer.sets[0].set, &WREgBuffer.layout, &scene->lightingPipeline);
+        addDescriptorSetToCPL(&WREgBuffer.sets[1].set, &WREgBuffer.layout, &scene->lightingPipeline);
 
-    //     createPipelineLayout(renderer->vkCore, &scene->lightingPipeline);
-    // }
+        setCompShaderSPRV(renderer->vkCore, &scene->lightingPipeline, Shader, Len);
+
+        createComputePipelineLayout(renderer->vkCore, &scene->lightingPipeline);
+    }
 }
 
 void initializeScene3D(WREScene3D *scene, renderer_t *renderer)
@@ -312,7 +296,7 @@ void createMeshInstanceTransform(WREmesh *mesh, WREScene3D *scene, renderer_t *r
 
 void meshGPass(RenderPass self, VkCommandBuffer cBuf)
 {
-    WREScene3D *scene = (WREScene3D *)self.resources[3].value.arbitrary;
+    WREScene3D *scene = (WREScene3D *)self.resources[0].value.arbitrary;
     typedef struct
     {
         VkDeviceAddress InstanceBuffer;
@@ -383,8 +367,19 @@ void meshBlitPass(RenderPass self, VkCommandBuffer cBuf)
     vkCmdClearColorImage(cBuf, WREOutputImage.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &opclearValue, 1, &cimgSRR);
     transitionLayout(cBuf, &WREOutputImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, ACCESS_TRANSFER_READ, VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_PIPELINE_STAGE_2_TRANSFER_BIT);
 }
+void meshLightPass(RenderPass self, VkCommandBuffer cBuf)
+{
+    typedef struct
+    {
+        VkDeviceAddress cameraBuf;
+        uint32_t lightCount;
+        VkDeviceAddress lightBuffer;
+        VkExtent2D screenSize;
+    } pc;
+    pc constants = {};
+}
 
-RenderPass meshPass(WREScene3D *scene, renderer_t *renderer)
+void meshPass(WREScene3D *scene, renderer_t *renderer)
 {
     // std::string clearPassName = "MeshClear";
     // RenderPass clearPass = newPass((char *)clearPassName.c_str(), PASS_TYPE_TRANSFER);
@@ -396,13 +391,23 @@ RenderPass meshPass(WREScene3D *scene, renderer_t *renderer)
     std::string gpassName = "Meshpass";
     RenderPass gPass = newPass((char *)gpassName.c_str(), PASS_TYPE_GRAPHICS);
     gPass.gPl = scene->gbufferPipeline;
+    addArbitraryResource(&gPass, scene);
     addImageResource(&gPass, &WREOutputImage, USAGE_COLORATTACHMENT);
     addImageResource(&gPass, &WREalbedoBuffer, USAGE_COLORATTACHMENT);
     addImageResource(&gPass, &WREnormalBuffer, USAGE_COLORATTACHMENT);
     setDepthAttachment(&WREdepthBuffer, &gPass);
-    addArbitraryResource(&gPass, scene);
     setExecutionCallBack(&gPass, meshGPass);
     addPass(renderer->rg, &gPass);
+
+    // std::string lpassName = "MeshLightingPass";
+    // RenderPass lPass = newPass((char *)lpassName.c_str(), PASS_TYPE_GRAPHICS);
+    // lPass.gPl = scene->gbufferPipeline;
+    // addImageResource(&lPass, &WREOutputImage, USAGE_COLORATTACHMENT);
+    // addImageResource(&lPass, &WREalbedoBuffer, USAGE_SAMPLED);
+    // addImageResource(&lPass, &WREnormalBuffer, USAGE_SAMPLED);
+    // addArbitraryResource(&lPass, scene);
+    // setExecutionCallBack(&lPass, meshLightPass);
+    // addPass(renderer->rg, &lPass);
 
     std::string bpassName = "MeshBlit";
 
@@ -412,8 +417,6 @@ RenderPass meshPass(WREScene3D *scene, renderer_t *renderer)
     addSwapchainImageResource(&blitPass, *renderer);
     setExecutionCallBack(&blitPass, meshBlitPass);
     addPass(renderer->rg, &blitPass);
-
-    return gPass;
 }
 
 mat4x4 fgltfToNative(fastgltf::math::fmat4x4 in)
@@ -594,7 +597,8 @@ WREScene3D loadSceneGLTF(char *filepath, renderer_t *renderer)
                     fastgltf::Texture &tex = asset->textures[mat.pbrData.baseColorTexture->textureIndex];
                     if (tex.imageIndex.has_value())
                     {
-                        submitTexture(renderer, &textures[tex.imageIndex.value()], renderer->vkCore.linearSampler);
+                        if (textures[tex.imageIndex.value()].img.image != WREMissingTexture.img.image && textures[tex.imageIndex.value()].img.image != WREDefaultTexture.img.image)
+                            submitTexture(renderer, &textures[tex.imageIndex.value()], renderer->vkCore.linearSampler);
                         mesh.material.AlbedoMap = textures[tex.imageIndex.value()];
                     }
                 }
