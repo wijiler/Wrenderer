@@ -1,0 +1,7 @@
+Renderer/Renderer
+Test/Test
+.vs/
+**.sln
+**.vcxproj
+**.vcxproj.filters
+Binaries/
