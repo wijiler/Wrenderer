@@ -1,5 +1,7 @@
+#include <backends/vulkan/debug.h>
 #include <backends/vulkan/intialization.h>
 #include <stdio.h>
+
 #define INSTEXTCOUNT 4
 #define DEVEXTCOUNT 4
 
@@ -319,7 +321,9 @@ void createCommandBuffers(RendererCoreContext *objects, RendererWindowContext *w
             0,
         };
         vkCreateSemaphore(WREDevice, &createInfo, NULL, &objects->graphicsTimeline);
+        setVkDebugName("WREGraphicsTimeline", VK_OBJECT_TYPE_SEMAPHORE, (uint64_t)objects->graphicsTimeline);
         vkCreateSemaphore(WREDevice, &createInfo, NULL, &objects->computeTimeline);
+        setVkDebugName("WREComputeTimeline", VK_OBJECT_TYPE_SEMAPHORE, (uint64_t)objects->computeTimeline);
     }
     // binary sema's
     {
@@ -330,11 +334,13 @@ void createCommandBuffers(RendererCoreContext *objects, RendererWindowContext *w
         for (uint32_t i = 0; i < FramesInFlightCount; i++)
         {
             vkCreateSemaphore(WREDevice, &semaphoreCI, NULL, &objects->imgAvailable[i]);
+            setVkDebugName("WREImgAvailableSema", VK_OBJECT_TYPE_SEMAPHORE, (uint64_t)objects->imgAvailable[i]);
         }
         objects->renderFinished = malloc(sizeof(VkSemaphore) * windowContext->SCImgCount);
         for (uint32_t i = 0; i < windowContext->SCImgCount; i++)
         {
             vkCreateSemaphore(WREDevice, &semaphoreCI, NULL, &objects->renderFinished[i]);
+            setVkDebugName("WRERenFinishedSema", VK_OBJECT_TYPE_SEMAPHORE, (uint64_t)objects->renderFinished[i]);
         }
     }
     {
@@ -349,6 +355,7 @@ void createCommandBuffers(RendererCoreContext *objects, RendererWindowContext *w
                 printf("WRERen ERROR: Could not create commandPool\n");
                 exit(1);
             }
+            setVkDebugName("WRECommandPool", VK_OBJECT_TYPE_COMMAND_POOL, (uint64_t)WREcommandPool);
         }
         VkCommandBufferAllocateInfo commandBufferAllocInf = {0};
         commandBufferAllocInf.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -359,7 +366,13 @@ void createCommandBuffers(RendererCoreContext *objects, RendererWindowContext *w
         commandBufferAllocInf.commandBufferCount = FramesInFlightCount;
         VkResult gCbuf, cCbuf;
         gCbuf = vkAllocateCommandBuffers(WREDevice, &commandBufferAllocInf, objects->graphicsCommandBuffers);
+        setVkDebugName("WREGCBuf1", VK_OBJECT_TYPE_COMMAND_BUFFER, (uint64_t)objects->graphicsCommandBuffers[0]);
+        setVkDebugName("WREGCBuf2", VK_OBJECT_TYPE_COMMAND_BUFFER, (uint64_t)objects->graphicsCommandBuffers[1]);
+        setVkDebugName("WREGCBuf3", VK_OBJECT_TYPE_COMMAND_BUFFER, (uint64_t)objects->graphicsCommandBuffers[2]);
         cCbuf = vkAllocateCommandBuffers(WREDevice, &commandBufferAllocInf, objects->computeCommandBuffers);
+        setVkDebugName("WRECCBuf1", VK_OBJECT_TYPE_COMMAND_BUFFER, (uint64_t)objects->computeCommandBuffers[0]);
+        setVkDebugName("WRECCBuf2", VK_OBJECT_TYPE_COMMAND_BUFFER, (uint64_t)objects->computeCommandBuffers[1]);
+        setVkDebugName("WRECCBuf3", VK_OBJECT_TYPE_COMMAND_BUFFER, (uint64_t)objects->computeCommandBuffers[2]);
         if (gCbuf != VK_SUCCESS)
         {
             printf("WRERen ERROR: could not allocate graphics command buffers\n");
@@ -388,8 +401,22 @@ void initializeVulkan(RendererCoreContext *objects, RendererWindowContext *windo
     if (WREPDevice == NULL)
     {
         createDevice(windowContext->surface);
+        setVkDebugName("WrendererVulkanInstance", VK_OBJECT_TYPE_INSTANCE, (uint64_t)WREVulkinstance);
+        setVkDebugName("WrendererWindowSurface", VK_OBJECT_TYPE_SURFACE_KHR, (uint64_t)windowContext->surface);
+        setVkDebugName("WrendererPhysicalDevice", VK_OBJECT_TYPE_PHYSICAL_DEVICE, (uint64_t)WREPDevice);
+        setVkDebugName("WrendererDevice", VK_OBJECT_TYPE_DEVICE, (uint64_t)WREDevice);
+        setVkDebugName("WrendererGQueue", VK_OBJECT_TYPE_QUEUE, (uint64_t)WREgraphicsQueue);
+        setVkDebugName("WrendererPQueue", VK_OBJECT_TYPE_QUEUE, (uint64_t)WREpresentQueue);
+        setVkDebugName("WrendererCQueue", VK_OBJECT_TYPE_QUEUE, (uint64_t)WREcomputeQueue);
+        setVkDebugName("WrendererTQueue", VK_OBJECT_TYPE_QUEUE, (uint64_t)WREtransferQueue);
     }
     createSwapchain(windowContext, NULL);
+    setVkDebugName("WrenderSwapchain", VK_OBJECT_TYPE_SWAPCHAIN_KHR, (uint64_t)windowContext->swapChain);
+    for (uint32_t i = 0; i < windowContext->SCImgCount; i++)
+    {
+        setVkDebugName("WrenderSCImg", VK_OBJECT_TYPE_IMAGE, (uint64_t)windowContext->SCImgs[i].img);
+        setVkDebugName("WrenderSCImgView", VK_OBJECT_TYPE_IMAGE_VIEW, (uint64_t)windowContext->SCImgs[i].imgview);
+    }
     createCommandBuffers(objects, windowContext);
 }
 

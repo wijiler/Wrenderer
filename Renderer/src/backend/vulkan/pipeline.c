@@ -1,3 +1,4 @@
+#include <backends/vulkan/debug.h>
 #include <backends/vulkan/globals.h>
 #include <backends/vulkan/pipeline.h>
 #include <stdio.h>
@@ -105,6 +106,7 @@ WREpipeline createPipeline(char *Name, WREvertexFormat vertFormat, WREShader *sh
     {
         printf("Wreren: Error: could not create pipeline %s\n", Name);
     }
+    setVkDebugName(Name, VK_OBJECT_TYPE_PIPELINE, (uint64_t)pipeline.gpuObjects.pipeline);
 
     return pipeline;
 }

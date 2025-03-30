@@ -8,4 +8,5 @@ extern VkPhysicalDevice WREPDevice;
 extern VkDevice WREDevice;
 extern VkCommandPool WREcommandPool;
 extern VkQueue WREgraphicsQueue, WREpresentQueue, WREcomputeQueue, WREtransferQueue;
+
 #endif

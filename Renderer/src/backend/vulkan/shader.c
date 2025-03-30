@@ -1,3 +1,4 @@
+#include <backends/vulkan/debug.h>
 #include <backends/vulkan/globals.h>
 #include <backends/vulkan/shader.h>
 #include <stdio.h>
@@ -45,6 +46,7 @@ WREShader createShader(char *Filename, WREshaderStage shaderStage)
     shaderCI.codeSize = len;
     shaderCI.pCode = (uint32_t *)data;
     vkCreateShaderModule(WREDevice, &shaderCI, NULL, &shader.shaderObjects.Shader);
+    setVkDebugName(Filename, VK_OBJECT_TYPE_SHADER_MODULE, (uint64_t)shader.shaderObjects.Shader);
 
     if ((shaderStage & WRE_SHADER_STAGE_COMPUTE) != 0)
     {
