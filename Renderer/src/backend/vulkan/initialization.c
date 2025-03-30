@@ -1,7 +1,7 @@
 #include <backends/vulkan/intialization.h>
 #include <stdio.h>
 #define INSTEXTCOUNT 4
-#define DEVEXTCOUNT 3
+#define DEVEXTCOUNT 4
 
 VkInstance WREVulkinstance = VK_NULL_HANDLE;
 VkPhysicalDevice WREPDevice = VK_NULL_HANDLE;
@@ -24,6 +24,7 @@ const char *deviceExtensions[DEVEXTCOUNT] = {
     VK_KHR_SWAPCHAIN_EXTENSION_NAME,
     VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
     VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
+    VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME,
 };
 
 char *messageSevToString(VkDebugUtilsMessageSeverityFlagBitsEXT severity)
@@ -57,7 +58,7 @@ void createVulkanInstance()
 
     appInfo.applicationVersion = VK_MAKE_VERSION(0, 0, 1);
     appInfo.engineVersion = VK_MAKE_VERSION(0, 0, 1);
-    appInfo.apiVersion = VK_MAKE_API_VERSION(0, 1, 3, 294);
+    appInfo.apiVersion = VK_MAKE_API_VERSION(0, 1, 3, 290);
     appInfo.pEngineName = "Wrenderer";
     appInfo.pApplicationName = "Wrenderer";
 
@@ -111,8 +112,11 @@ void createDevice(VkSurfaceKHR surface)
 
         VkPhysicalDeviceProperties devProp;
 
+        VkPhysicalDeviceExtendedDynamicState3FeaturesEXT extDynState = {0};
+        extDynState.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT;
         VkPhysicalDeviceVulkan13Features devFeat13 = {0};
         devFeat13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+        devFeat13.pNext = &extDynState;
         VkPhysicalDeviceVulkan12Features devFeat12 = {0};
         devFeat12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
         devFeat12.pNext = &devFeat13;
@@ -125,7 +129,9 @@ void createDevice(VkSurfaceKHR surface)
 
         if (devProp.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && devFeat12.timelineSemaphore == VK_TRUE &&
             devProp.limits.timestampPeriod != 0 && devFeat12.bufferDeviceAddress == VK_TRUE &&
-            devFeat13.synchronization2 == VK_TRUE && devFeat13.dynamicRendering == VK_TRUE)
+            devFeat13.synchronization2 == VK_TRUE && devFeat13.dynamicRendering == VK_TRUE &&
+            extDynState.extendedDynamicState3ColorBlendEnable == VK_TRUE && extDynState.extendedDynamicState3ColorWriteMask == VK_TRUE &&
+            extDynState.extendedDynamicState3ColorBlendEquation == VK_TRUE)
         {
             WREPDevice = device;
             break;
@@ -155,8 +161,11 @@ void createDevice(VkSurfaceKHR surface)
         }
     }
     free(physicalDevices);
+    VkPhysicalDeviceExtendedDynamicState3FeaturesEXT extDynState = {0};
+    extDynState.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT;
     VkPhysicalDeviceVulkan13Features devFeat13 = {0};
     devFeat13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+    devFeat13.pNext = &extDynState;
     VkPhysicalDeviceVulkan12Features devFeat12 = {0};
     devFeat12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
     devFeat12.pNext = &devFeat13;
@@ -168,6 +177,10 @@ void createDevice(VkSurfaceKHR surface)
     devFeat12.timelineSemaphore = VK_TRUE;
     devFeat13.dynamicRendering = VK_TRUE;
     devFeat13.synchronization2 = VK_TRUE;
+    extDynState.extendedDynamicState3ColorBlendEnable = VK_TRUE;
+    extDynState.extendedDynamicState3ColorBlendEquation = VK_TRUE;
+    extDynState.extendedDynamicState3ColorWriteMask = VK_TRUE;
+
     float queuePriority = 1.0f;
     VkDeviceQueueCreateInfo queueCreateInfo = {0};
     queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
@@ -195,8 +208,6 @@ void createDevice(VkSurfaceKHR surface)
     WREpresentQueue = WREgraphicsQueue;
     WREcomputeQueue = WREgraphicsQueue;
     WREtransferQueue = WREgraphicsQueue;
-
-    VkImage *images;
 }
 
 void createSwapchain(RendererWindowContext *windowContext, VkSwapchainKHR swapChain)

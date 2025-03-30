@@ -10,4 +10,5 @@ void initializeRenderer(WRErenderer *renderer)
 {
     initializeVulkan(&renderer->core, &renderer->window.context, renderer->window.window);
 }
+
 #endif

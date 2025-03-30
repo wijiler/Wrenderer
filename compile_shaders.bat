@@ -1,0 +1,1 @@
+slangc.exe Test/shader/test.slang -o Test/shader/test.spv -fvk-use-entrypoint-name

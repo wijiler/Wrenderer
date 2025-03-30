@@ -7,8 +7,6 @@
 #include <deps/GLFW/glfw3.h>
 #include <vulkan/vulkan.h>
 
-#define FramesInFlightCount 3
-
 typedef struct
 {
     VkSurfaceKHR surface;
