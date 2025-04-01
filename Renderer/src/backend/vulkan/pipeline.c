@@ -3,7 +3,7 @@
 #include <backends/vulkan/pipeline.h>
 #include <stdio.h>
 
-WREpipeline createPipeline(char *Name, WREvertexFormat vertFormat, WREShader *shaders, int shaderCount, WREpipelineCullMode cullMode, WREpipelineWindingOrder windingOrder)
+WREpipeline createPipeline(char *Name, WREvertexFormat vertFormat, WREShader *shaders, int shaderCount, WREpipelineCullMode cullMode, WREpipelineWindingOrder windingOrder, VkFormat colorAttFormats[8])
 {
     WREpipeline pipeline = {0};
     pipeline.Name = Name;
@@ -13,7 +13,7 @@ WREpipeline createPipeline(char *Name, WREvertexFormat vertFormat, WREShader *sh
     pLineLayout.setLayoutCount = 0;
     pLineLayout.pushConstantRangeCount = 0;
 
-    VkResult result = vkCreatePipelineLayout(WREDevice, &pLineLayout, NULL, &pipeline.gpuObjects.layout);
+    VkResult result = vkCreatePipelineLayout(WREDevice, &pLineLayout, NULL, &pipeline.layout);
     if (result != VK_SUCCESS)
     {
         printf("Wreren: Error: Could not create pipeline layout %s\n", Name);
@@ -23,30 +23,56 @@ WREpipeline createPipeline(char *Name, WREvertexFormat vertFormat, WREShader *sh
     pLineCI.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 
     pLineCI.stageCount = 2;
+    VkPipelineShaderStageCreateInfo pShadCI[2] = {0};
     if (shaderCount == 1)
     {
-        pLineCI.pStages = (VkPipelineShaderStageCreateInfo[2]){shaders[0].shaderObjects.stageInfo[0], shaders[0].shaderObjects.stageInfo[1]};
+        pShadCI[0] = shaders[0].shaderObjects.stageInfo[0];
+        pShadCI[1] = shaders[0].shaderObjects.stageInfo[1];
     }
     else if (shaderCount > 1)
     {
-        pLineCI.pStages = (VkPipelineShaderStageCreateInfo[2]){shaders[0].shaderObjects.stageInfo[0], shaders[1].shaderObjects.stageInfo[0]};
+        pShadCI[0] = shaders[0].shaderObjects.stageInfo[0];
+        pShadCI[1] = shaders[1].shaderObjects.stageInfo[0];
     }
+    pLineCI.pStages = pShadCI;
 
     const VkPipelineDynamicStateCreateInfo dynStateCI = {
         VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
         NULL,
         0,
-        5,
+        2,
         (VkDynamicState[]){
             VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT,
             VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT,
-            VK_DYNAMIC_STATE_COLOR_BLEND_EQUATION_EXT,
-            VK_DYNAMIC_STATE_COLOR_BLEND_ENABLE_EXT,
-            VK_DYNAMIC_STATE_COLOR_WRITE_MASK_EXT,
         },
     };
-
     pLineCI.pDynamicState = &dynStateCI;
+
+    VkPipelineColorBlendAttachmentState attStateCI = {
+        VK_TRUE,
+        VK_BLEND_FACTOR_SRC_ALPHA,
+        VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+        VK_BLEND_OP_ADD,
+        VK_BLEND_FACTOR_ONE,
+        VK_BLEND_FACTOR_ZERO,
+        VK_BLEND_OP_ADD,
+        VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
+    };
+
+    const VkPipelineColorBlendStateCreateInfo cBlendCI = {
+        VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+        NULL,
+        0,
+        VK_FALSE,
+        VK_LOGIC_OP_COPY,
+        1,
+        &attStateCI,
+        {VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
+         VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
+         VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
+         VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT},
+    };
+    pLineCI.pColorBlendState = &cBlendCI;
 
     const VkPipelineVertexInputStateCreateInfo vInStateCI = {
         VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
@@ -99,14 +125,26 @@ WREpipeline createPipeline(char *Name, WREvertexFormat vertFormat, WREShader *sh
     };
     pLineCI.pMultisampleState = &msaaCI;
 
+    const VkPipelineRenderingCreateInfo renCI = {
+        VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
+        NULL,
+        0,
+        1,
+        colorAttFormats,
+        0,
+        0,
+    };
+
+    pLineCI.pNext = &renCI;
+
     pLineCI.pInputAssemblyState = &inAsmStateCI;
-    pLineCI.layout = pipeline.gpuObjects.layout;
-    result = vkCreateGraphicsPipelines(WREDevice, NULL, 1, &pLineCI, NULL, &pipeline.gpuObjects.pipeline);
+    pLineCI.layout = pipeline.layout;
+    result = vkCreateGraphicsPipelines(WREDevice, NULL, 1, &pLineCI, NULL, &pipeline.pipeline);
     if (result != VK_SUCCESS)
     {
         printf("Wreren: Error: could not create pipeline %s\n", Name);
     }
-    setVkDebugName(Name, VK_OBJECT_TYPE_PIPELINE, (uint64_t)pipeline.gpuObjects.pipeline);
+    setVkDebugName(Name, VK_OBJECT_TYPE_PIPELINE, (uint64_t)pipeline.pipeline);
 
     return pipeline;
 }

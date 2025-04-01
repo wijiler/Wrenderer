@@ -7,7 +7,6 @@ WREShader createShader(char *Filename, WREshaderStage shaderStage)
 {
     WREShader shader = {0};
     shader.shaderStage = shaderStage;
-    shader.shaderType = WRE_SHADER_TYPE_FIXED_FUNCTION;
 
     FILE *file;
     uint32_t len;
@@ -45,7 +44,13 @@ WREShader createShader(char *Filename, WREshaderStage shaderStage)
     shaderCI.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
     shaderCI.codeSize = len;
     shaderCI.pCode = (uint32_t *)data;
-    vkCreateShaderModule(WREDevice, &shaderCI, NULL, &shader.shaderObjects.Shader);
+    VkResult result = vkCreateShaderModule(WREDevice, &shaderCI, NULL, &shader.shaderObjects.Shader);
+    if (result != VK_SUCCESS)
+    {
+        printf("WRERen: Error: Could not create shader %s\n", Filename);
+        exit(1);
+    }
+
     setVkDebugName(Filename, VK_OBJECT_TYPE_SHADER_MODULE, (uint64_t)shader.shaderObjects.Shader);
 
     if ((shaderStage & WRE_SHADER_STAGE_COMPUTE) != 0)
@@ -62,25 +67,27 @@ WREShader createShader(char *Filename, WREshaderStage shaderStage)
     }
     if ((shaderStage & WRE_SHADER_STAGE_VERTEX) != 0)
     {
-        VkPipelineShaderStageCreateInfo vshad = {0};
-        vshad.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        vshad.pNext = NULL;
-        vshad.stage = VK_SHADER_STAGE_VERTEX_BIT;
-
-        vshad.pName = "vertMain";
-        vshad.module = shader.shaderObjects.Shader;
-        shader.shaderObjects.stageInfo[0] = vshad;
+        shader.shaderObjects.stageInfo[0] = (VkPipelineShaderStageCreateInfo){
+            VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+            NULL,
+            0,
+            VK_SHADER_STAGE_VERTEX_BIT,
+            shader.shaderObjects.Shader,
+            "vertMain",
+            NULL,
+        };
     }
     if ((shaderStage & WRE_SHADER_STAGE_FRAGMENT) != 0)
     {
-        VkPipelineShaderStageCreateInfo fshad = {0};
-        fshad.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        fshad.pNext = NULL;
-        fshad.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-        fshad.pName = "fragMain";
-        fshad.module = shader.shaderObjects.Shader;
-        shader.shaderObjects.stageInfo[1] = fshad;
+        shader.shaderObjects.stageInfo[1] = (VkPipelineShaderStageCreateInfo){
+            VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+            NULL,
+            0,
+            VK_SHADER_STAGE_FRAGMENT_BIT,
+            shader.shaderObjects.Shader,
+            "fragMain",
+            NULL,
+        };
     }
 
     return shader;

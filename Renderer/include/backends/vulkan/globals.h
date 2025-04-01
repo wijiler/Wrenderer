@@ -7,6 +7,7 @@ extern VkInstance WREVulkinstance;
 extern VkPhysicalDevice WREPDevice;
 extern VkDevice WREDevice;
 extern VkCommandPool WREcommandPool;
+extern VkCommandBuffer WREInstantCommandBuffer;
 extern VkQueue WREgraphicsQueue, WREpresentQueue, WREcomputeQueue, WREtransferQueue;
 
 #endif

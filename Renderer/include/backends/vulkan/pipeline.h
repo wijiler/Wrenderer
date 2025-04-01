@@ -36,10 +36,11 @@ typedef struct
     WREpipelineType type;
     WREShader shaders[2];
     WREvertexFormat format;
-    WREPipelineObjects gpuObjects;
+    VkPipelineLayout layout;
+    VkPipeline pipeline;
     char *Name;
 } WREpipeline;
 
-WREpipeline createPipeline(char *Name, WREvertexFormat vertFormat, WREShader *shaders, int shaderCount, WREpipelineCullMode cullMode, WREpipelineWindingOrder windingOrder);
+WREpipeline createPipeline(char *Name, WREvertexFormat vertFormat, WREShader *shaders, int shaderCount, WREpipelineCullMode cullMode, WREpipelineWindingOrder windingOrder, VkFormat colorAttFormats[8]);
 
 #endif

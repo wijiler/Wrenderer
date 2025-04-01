@@ -10,6 +10,11 @@ VkPhysicalDevice WREPDevice = VK_NULL_HANDLE;
 VkDevice WREDevice = VK_NULL_HANDLE;
 VkCommandPool WREcommandPool = VK_NULL_HANDLE;
 VkQueue WREgraphicsQueue, WREpresentQueue, WREcomputeQueue, WREtransferQueue = VK_NULL_HANDLE;
+VkCommandBuffer WREInstantCommandBuffer = VK_NULL_HANDLE;
+PFN_vkCmdSetColorBlendEquationEXT _vkCmdSetColorBlendEquationEXT = NULL;
+PFN_vkCmdSetColorBlendEnableEXT _vkCmdSetColorBlendEnableEXT = NULL;
+PFN_vkCmdSetColorWriteMaskEXT _vkCmdSetColorWriteMaskEXT = NULL;
+
 int graphicsQueueIndex = -1;
 
 const char *instanceExtensions[INSTEXTCOUNT] = {
@@ -236,7 +241,7 @@ void createSwapchain(RendererWindowContext *windowContext, VkSwapchainKHR swapCh
     windowContext->surfaceFormat = surfaceFormats[0];
     for (unsigned int i = 0; i < formatCount; i++)
     {
-        if (surfaceFormats[i].format == VK_FORMAT_B8G8R8A8_SRGB && surfaceFormats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+        if (surfaceFormats[i].format == VK_FORMAT_R8G8B8A8_SRGB && surfaceFormats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
         {
             windowContext->surfaceFormat = surfaceFormats[i];
             break;
@@ -292,7 +297,7 @@ void createSwapchain(RendererWindowContext *windowContext, VkSwapchainKHR swapCh
     }
     vkGetSwapchainImagesKHR(WREDevice, windowContext->swapChain, &windowContext->SCImgCount, NULL);
     VkImage *images = malloc(sizeof(VkImage) * windowContext->SCImgCount);
-    windowContext->SCImgs = malloc(sizeof(Image) * windowContext->SCImgCount);
+    windowContext->SCImgs = malloc(sizeof(WREVKImage) * windowContext->SCImgCount);
     vkGetSwapchainImagesKHR(WREDevice, windowContext->swapChain, &windowContext->SCImgCount, images);
     for (uint32_t i = 0; i < windowContext->SCImgCount; i++)
     {
@@ -383,6 +388,8 @@ void createCommandBuffers(RendererCoreContext *objects, RendererWindowContext *w
             printf("WRERen ERROR: could not allocate compute command buffers\n");
             exit(1);
         }
+        commandBufferAllocInf.commandBufferCount = 1;
+        vkAllocateCommandBuffers(WREDevice, &commandBufferAllocInf, &WREInstantCommandBuffer);
     }
 }
 
@@ -391,6 +398,9 @@ void initializeVulkan(RendererCoreContext *objects, RendererWindowContext *windo
     if (WREVulkinstance == NULL)
     {
         createVulkanInstance();
+        _vkCmdSetColorBlendEquationEXT = (PFN_vkCmdSetColorBlendEquationEXT)vkGetInstanceProcAddr(WREVulkinstance, "vkCmdSetColorBlendEquationEXT");
+        _vkCmdSetColorBlendEnableEXT = (PFN_vkCmdSetColorBlendEnableEXT)vkGetInstanceProcAddr(WREVulkinstance, "vkCmdSetColorBlendEnableEXT");
+        _vkCmdSetColorWriteMaskEXT = (PFN_vkCmdSetColorWriteMaskEXT)vkGetInstanceProcAddr(WREVulkinstance, "vkCmdSetColorWriteMaskEXT");
     }
     VkResult surfaceResult;
     surfaceResult = glfwCreateWindowSurface(WREVulkinstance, window, NULL, &windowContext->surface);

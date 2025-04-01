@@ -1,5 +1,5 @@
 workspace "Wre2"
-    configurations { "Debug", "Release"}
+    configurations { "Debug", "Release", "Dist"}
     architecture "x64"
 
 include "Renderer"

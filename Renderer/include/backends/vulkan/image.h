@@ -8,7 +8,9 @@ typedef struct
     VkFormat format;
     VkImageLayout Layout;
     VkExtent2D extent;
-} Image;
+    VkAccessFlags access;
+} WREVKImage;
 
-void CreateImageView(Image *img, VkImageAspectFlagBits aspect);
+void CreateImageView(WREVKImage *img, VkImageAspectFlagBits aspect);
+void transitionImage(WREVKImage *img, VkImageLayout newLayout, VkAccessFlags access);
 #endif

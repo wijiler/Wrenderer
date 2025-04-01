@@ -1,7 +1,3 @@
-workspace "Wre2"
-    configurations { "Debug", "Release"}
-    architecture "x64"
-
 project "Test"
     language "C"
     targetname "Test"
@@ -26,6 +22,9 @@ project "Test"
     filter "configurations:Release"
         optimize "On"
         symbols "On"
+
+    filter "configurations:Dist"
+        optimize "On"
 
     filter "system:windows"
         defines { "VK_USE_PLATFORM_WIN32_KHR" }
