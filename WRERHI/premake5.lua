@@ -1,7 +1,7 @@
-project "Renderer"
+project "WRERHI"
     language "C"
-    targetname "Renderer"
-    location "Renderer"
+    targetname "WRERHI"
+    location "WRERHI"
     kind "StaticLib"
     outputdir = "%{cfg.system}-%{cfg.architecture}/%{cfg.buildcfg}"
 

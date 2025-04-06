@@ -15,6 +15,7 @@ typedef struct
 
     VkSwapchainKHR swapChain;
     uint32_t SCImgCount;
+    uint32_t CSCImgIndex;
     WREVKImage *SCImgs;
     WREVKImage *CurrentSCImg;
 

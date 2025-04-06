@@ -2,7 +2,7 @@ workspace "Wre2"
     configurations { "Debug", "Release", "Dist"}
     architecture "x64"
 
-include "Renderer"
+include "WRERHI"
 
 include "Test"
 

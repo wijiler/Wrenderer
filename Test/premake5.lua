@@ -11,9 +11,9 @@ project "Test"
     objdir("%{wks.location}/Binaries/Intermediates/" .. outputdir .. "/%{prj.name}")
     files { "include/**.h", "src/**.c" }
     libdirs { "../libs/", os.getenv("VULKAN_SDK") .. "/Lib/" }
-    includedirs { "../Renderer/include/"}
+    includedirs { "../WRERHI/include/"}
     includedirs { os.getenv("VULKAN_SDK") .. "/Include" }
-    links { "vulkan-1", "glfw3", "Renderer" }
+    links { "vulkan-1", "glfw3", "WRERHI" }
     defines { "WREUSEVULKAN" }
     filter "configurations:Debug"
         defines { "DEBUG" }

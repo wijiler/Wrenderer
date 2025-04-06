@@ -3,9 +3,9 @@
 #include <backends/vulkan/pipeline.h>
 #include <stdio.h>
 
-WREpipeline createPipeline(char *Name, WREvertexFormat vertFormat, WREShader *shaders, int shaderCount, WREpipelineCullMode cullMode, WREpipelineWindingOrder windingOrder, VkFormat colorAttFormats[8])
+WREVKPipeline createPipeline(char *Name, WREvertexFormat vertFormat, WREShader *shaders, int shaderCount, WREpipelineCullMode cullMode, WREpipelineWindingOrder windingOrder, VkFormat colorAttFormats[8], uint32_t colorAttachmentsCount)
 {
-    WREpipeline pipeline = {0};
+    WREVKPipeline pipeline = {0};
     pipeline.Name = Name;
 
     VkPipelineLayoutCreateInfo pLineLayout = {0};

@@ -2,7 +2,7 @@
 -std=c99
 -Wextra 
 -Wall 
--I../Renderer/include/ 
+-I../WRERHI/include/ 
 -IC:/VulkanSDK/1.3.290.0/Include
 -L./libs/ 
 -lvulkan-1 

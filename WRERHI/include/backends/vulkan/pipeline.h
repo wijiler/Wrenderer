@@ -1,5 +1,5 @@
-#ifndef WREPIPELINE_H__
-#define WREPIPELINE_H__
+#ifndef WREVULKPIPELINE_H__
+#define WREVULKPIPELINE_H__
 #include <backends/vulkan/shader.h>
 #include <stdbool.h>
 #include <vulkan/vulkan.h>
@@ -39,8 +39,8 @@ typedef struct
     VkPipelineLayout layout;
     VkPipeline pipeline;
     char *Name;
-} WREpipeline;
+} WREVKPipeline;
 
-WREpipeline createPipeline(char *Name, WREvertexFormat vertFormat, WREShader *shaders, int shaderCount, WREpipelineCullMode cullMode, WREpipelineWindingOrder windingOrder, VkFormat colorAttFormats[8]);
+WREVKPipeline createPipeline(char *Name, WREvertexFormat vertFormat, WREShader *shaders, int shaderCount, WREpipelineCullMode cullMode, WREpipelineWindingOrder windingOrder, VkFormat colorAttFormats[8], uint32_t colorAttachmentCount);
 
 #endif
