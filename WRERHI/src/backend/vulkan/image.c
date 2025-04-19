@@ -68,3 +68,36 @@ void transitionImage(WREVKImage *img, VkImageLayout newLayout, VkAccessFlags acc
     img->access = access;
     img->Layout = newLayout;
 }
+
+void transitionImageInCmdBuf(VkCommandBuffer cBuf, WREVKImage *img, VkImageLayout newLayout, VkAccessFlags access)
+{
+    VkImageMemoryBarrier2 imgMemBarr = {
+        VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+        NULL,
+        VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+        img->access,
+        VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+        access,
+        img->Layout,
+        newLayout,
+        VK_QUEUE_FAMILY_IGNORED,
+        VK_QUEUE_FAMILY_IGNORED,
+        img->img,
+        (VkImageSubresourceRange){VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1},
+    };
+
+    VkDependencyInfo depInf = {
+        VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+        NULL,
+        0,
+        0,
+        NULL,
+        0,
+        NULL,
+        1,
+        &imgMemBarr,
+    };
+    vkCmdPipelineBarrier2(cBuf, &depInf);
+    img->access = access;
+    img->Layout = newLayout;
+}

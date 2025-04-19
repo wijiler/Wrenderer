@@ -1,5 +1,10 @@
 #include <commandList.h>
 #include <context.h>
+#include <stdio.h>
+
+#ifdef WREUSEVULKAN
+#include <backends/vulkan/commandList.h>
+#endif
 
 #define addCmd                                \
     list->commands[list->commandCount] = cmd; \
@@ -20,13 +25,28 @@ void initializeCommandList(WRECommandList *list)
     list->commands = malloc(sizeof(WRECommand) * 256);
 }
 
-void startRenderPass(WRECommandList *list, WREImage frameBuffers[8])
+typedef struct
+{
+    WREImage *frameBuffers[8];
+    uint8_t frameBufCount;
+} renPassInfo;
+
+void startRenderPass(WRECommandList *list, WREImage *frameBuffers[8], uint8_t frameBufCount)
 {
     allocCmd;
     WRECommand cmd = {0};
     cmd.type = WRE_COMMAND_TYPE_RENDERPASS_START;
-    cmd.data = malloc(sizeof(WREImage) * 8);
-    memcpy(cmd.data, frameBuffers, sizeof(WREImage) * 8);
+    cmd.data = malloc(sizeof(renPassInfo));
+    renPassInfo *data = (renPassInfo *)cmd.data;
+    data->frameBuffers[0] = frameBuffers[0];
+    data->frameBuffers[1] = frameBuffers[1];
+    data->frameBuffers[2] = frameBuffers[2];
+    data->frameBuffers[3] = frameBuffers[3];
+    data->frameBuffers[4] = frameBuffers[4];
+    data->frameBuffers[5] = frameBuffers[5];
+    data->frameBuffers[6] = frameBuffers[6];
+    data->frameBuffers[7] = frameBuffers[7];
+    data->frameBufCount = frameBufCount;
     addCmd
 }
 void endRenderPass(WRECommandList *list)
@@ -51,7 +71,7 @@ void dispatchCompute(WRECommandList *list, uint32_t x, uint32_t y, uint32_t z)
     allocCmd;
     WRECommand cmd = {0};
     cmd.type = WRE_COMMAND_TYPE_COMPUTE_DISPATCH;
-    cmd.data = malloc(sizeof(uint32_t) * 2);
+    cmd.data = malloc(sizeof(uint32_t) * 3);
     cmd.data[0] = x;
     cmd.data[1] = y;
     cmd.data[2] = z;
@@ -67,20 +87,38 @@ void bindPipeline(WRECommandList *list, WREpipeline pipeline)
     p[0] = pipeline;
     addCmd
 }
-void pushConstants(WRECommandList *list, void *pushData)
+typedef struct
+{
+    WREshaderStage stage;
+    uint32_t size;
+    uint32_t offset;
+    void *data;
+} pcData;
+void pushConstants(WRECommandList *list, uint32_t size, uint32_t offset, WREshaderStage stage, void *pushData)
 {
     allocCmd;
     WRECommand cmd = {0};
     cmd.type = WRE_COMMAND_TYPE_PUSH_CONSTANTS;
-    cmd.data = pushData;
+    cmd.data = malloc(sizeof(pcData));
+    *(pcData *)cmd.data = (pcData){
+        stage,
+        size,
+        offset,
+        pushData,
+    };
     addCmd;
 }
 
-void submitCommandList(WREContexObject *renderer, WRECommandList list)
+void submitCommandList(WREContextObject *context, WRECommandList list)
 {
-    renderer->commandQueue = realloc(renderer->commandQueue, sizeof(WRECommandList) * (renderer->commandListCount + 1));
-    renderer->commandQueue[renderer->commandListCount] = list;
-    renderer->commandListCount += 1;
+    context->currentFrame = list;
+}
+
+void executeCommandList(WREContextObject *context)
+{
+#ifdef WREUSEVULKAN
+    vkExecuteCommandList(&context->core, &context->window.context, &context->currentFrame);
+#endif
 }
 
 #undef allocCmd

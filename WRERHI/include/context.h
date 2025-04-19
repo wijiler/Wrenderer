@@ -10,11 +10,11 @@ typedef struct
 {
     RendererCoreContext core;
     WREwindow window;
-    uint32_t commandListCount;
-    WRECommandList *commandQueue;
-} WREContexObject;
+    WRECommandList currentFrame;
+} WREContextObject;
 
-void terminateContext(WREContexObject *context);
-void initializeContext(WREContexObject *context);
-void submitCommandList(WREContexObject *context, WRECommandList list);
+void terminateContext(WREContextObject *context);
+void initializeContext(WREContextObject *context);
+void submitCommandList(WREContextObject *context, WRECommandList list);
+void executeCommandList(WREContextObject *context);
 #endif

@@ -1,0 +1,1 @@
+cloc-2.02.exe ./ --fullpath --not-match-d=WRERHI/include/deps/

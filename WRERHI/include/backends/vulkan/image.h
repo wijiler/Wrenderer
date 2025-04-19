@@ -13,4 +13,5 @@ typedef struct
 
 void CreateImageView(WREVKImage *img, VkImageAspectFlagBits aspect);
 void transitionImage(WREVKImage *img, VkImageLayout newLayout, VkAccessFlags access);
+void transitionImageInCmdBuf(VkCommandBuffer cBuf, WREVKImage *img, VkImageLayout newLayout, VkAccessFlags access);
 #endif

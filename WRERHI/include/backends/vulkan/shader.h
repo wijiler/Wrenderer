@@ -12,11 +12,6 @@ typedef struct
 
 typedef enum
 {
-    WRE_SHADER_TYPE_DYNAMIC,
-    WRE_SHADER_TYPE_FIXED_FUNCTION,
-} WREshaderType;
-typedef enum
-{
     WRE_SHADER_STAGE_VERTEX = VK_SHADER_STAGE_VERTEX_BIT,
     WRE_SHADER_STAGE_FRAGMENT = VK_SHADER_STAGE_FRAGMENT_BIT,
     WRE_SHADER_STAGE_COMPUTE = VK_SHADER_STAGE_COMPUTE_BIT,
@@ -25,7 +20,6 @@ typedef enum
 typedef struct
 {
     uint32_t pushConstantsSize;
-    WREshaderType shaderType;
     WREshaderStage shaderStage;
     WREShaderObjects shaderObjects;
 } WREShader;

@@ -1,5 +1,5 @@
 #include <backends/vulkan/debug.h>
-#include <backends/vulkan/intialization.h>
+#include <backends/vulkan/initialization.h>
 #include <stdio.h>
 
 #define INSTEXTCOUNT 4
@@ -296,6 +296,7 @@ void createSwapchain(RendererWindowContext *windowContext, VkSwapchainKHR swapCh
         windowContext->SCImgs[i].format = windowContext->surfaceFormat.format;
         windowContext->SCImgs[i].Layout = VK_IMAGE_LAYOUT_UNDEFINED;
         windowContext->SCImgs[i].extent = (VkExtent2D){windowContext->w, windowContext->h};
+        windowContext->SCImgs[i].access = 0;
         CreateImageView(&windowContext->SCImgs[i], VK_IMAGE_ASPECT_COLOR_BIT);
     }
     free(images);
@@ -318,8 +319,6 @@ void createCommandBuffers(RendererCoreContext *objects, RendererWindowContext *w
         };
         vkCreateSemaphore(WREDevice, &createInfo, NULL, &objects->graphicsTimeline);
         setVkDebugName("WREGraphicsTimeline", VK_OBJECT_TYPE_SEMAPHORE, (uint64_t)objects->graphicsTimeline);
-        vkCreateSemaphore(WREDevice, &createInfo, NULL, &objects->computeTimeline);
-        setVkDebugName("WREComputeTimeline", VK_OBJECT_TYPE_SEMAPHORE, (uint64_t)objects->computeTimeline);
     }
     // binary sema's
     {
@@ -360,25 +359,17 @@ void createCommandBuffers(RendererCoreContext *objects, RendererWindowContext *w
         commandBufferAllocInf.commandPool = (VkCommandPool)WREcommandPool;
         commandBufferAllocInf.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
         commandBufferAllocInf.commandBufferCount = FramesInFlightCount;
-        VkResult gCbuf, cCbuf;
+        VkResult gCbuf;
         gCbuf = vkAllocateCommandBuffers(WREDevice, &commandBufferAllocInf, objects->graphicsCommandBuffers);
         setVkDebugName("WREGCBuf1", VK_OBJECT_TYPE_COMMAND_BUFFER, (uint64_t)objects->graphicsCommandBuffers[0]);
         setVkDebugName("WREGCBuf2", VK_OBJECT_TYPE_COMMAND_BUFFER, (uint64_t)objects->graphicsCommandBuffers[1]);
         setVkDebugName("WREGCBuf3", VK_OBJECT_TYPE_COMMAND_BUFFER, (uint64_t)objects->graphicsCommandBuffers[2]);
-        cCbuf = vkAllocateCommandBuffers(WREDevice, &commandBufferAllocInf, objects->computeCommandBuffers);
-        setVkDebugName("WRECCBuf1", VK_OBJECT_TYPE_COMMAND_BUFFER, (uint64_t)objects->computeCommandBuffers[0]);
-        setVkDebugName("WRECCBuf2", VK_OBJECT_TYPE_COMMAND_BUFFER, (uint64_t)objects->computeCommandBuffers[1]);
-        setVkDebugName("WRECCBuf3", VK_OBJECT_TYPE_COMMAND_BUFFER, (uint64_t)objects->computeCommandBuffers[2]);
         if (gCbuf != VK_SUCCESS)
         {
             printf("WRERen ERROR: could not allocate graphics command buffers\n");
             exit(1);
         }
-        if (cCbuf != VK_SUCCESS)
-        {
-            printf("WRERen ERROR: could not allocate compute command buffers\n");
-            exit(1);
-        }
+
         commandBufferAllocInf.commandBufferCount = 1;
         vkAllocateCommandBuffers(WREDevice, &commandBufferAllocInf, &WREInstantCommandBuffer);
     }
@@ -406,12 +397,11 @@ void initializeVulkan(RendererCoreContext *objects, RendererWindowContext *windo
         setVkDebugName("WrendererWindowSurface", VK_OBJECT_TYPE_SURFACE_KHR, (uint64_t)windowContext->surface);
         setVkDebugName("WrendererPhysicalDevice", VK_OBJECT_TYPE_PHYSICAL_DEVICE, (uint64_t)WREPDevice);
         setVkDebugName("WrendererDevice", VK_OBJECT_TYPE_DEVICE, (uint64_t)WREDevice);
-        setVkDebugName("WrendererGQueue", VK_OBJECT_TYPE_QUEUE, (uint64_t)WREgraphicsQueue);
-        setVkDebugName("WrendererPQueue", VK_OBJECT_TYPE_QUEUE, (uint64_t)WREpresentQueue);
-        setVkDebugName("WrendererCQueue", VK_OBJECT_TYPE_QUEUE, (uint64_t)WREcomputeQueue);
-        setVkDebugName("WrendererTQueue", VK_OBJECT_TYPE_QUEUE, (uint64_t)WREtransferQueue);
+        setVkDebugName("WrendererGPQueue", VK_OBJECT_TYPE_QUEUE, (uint64_t)WREgraphicsQueue);
     }
     createSwapchain(windowContext, NULL);
+    windowContext->CurrentSCImg = malloc(sizeof(WREVKImage));
+    *windowContext->CurrentSCImg = windowContext->SCImgs[0];
     setVkDebugName("WrenderSwapchain", VK_OBJECT_TYPE_SWAPCHAIN_KHR, (uint64_t)windowContext->swapChain);
     for (uint32_t i = 0; i < windowContext->SCImgCount; i++)
     {

@@ -26,8 +26,8 @@ typedef struct
 typedef struct
 {
     VkCommandPool commandPool;
-    VkSemaphore graphicsTimeline, computeTimeline, imgAvailable[FramesInFlightCount], *renderFinished;
-    VkCommandBuffer computeCommandBuffers[FramesInFlightCount], graphicsCommandBuffers[FramesInFlightCount];
+    VkSemaphore graphicsTimeline, imgAvailable[FramesInFlightCount], *renderFinished;
+    VkCommandBuffer graphicsCommandBuffers[FramesInFlightCount];
 } RendererCoreContext;
 
 void initializeVulkan(RendererCoreContext *objects, RendererWindowContext *windowContext, GLFWwindow *window);

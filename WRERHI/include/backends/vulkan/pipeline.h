@@ -12,8 +12,8 @@ typedef struct
 
 typedef enum
 {
-    COMPUTE = 0,
-    RENDER,
+    COMPUTE = VK_PIPELINE_BIND_POINT_COMPUTE,
+    RENDER = VK_PIPELINE_BIND_POINT_GRAPHICS,
     // HWRT
 } WREpipelineType;
 
