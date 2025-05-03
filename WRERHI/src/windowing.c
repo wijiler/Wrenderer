@@ -67,12 +67,12 @@ void updateWindowSize(WREwindow *window, int w, int h)
     window->context.h = h;
 #endif
 }
-Wremonitor getMonitorInfo()
+WREmonitor getMonitorInfo()
 {
     WREGLFWINIT
     GLFWmonitor *monitor = glfwGetPrimaryMonitor();
     const GLFWvidmode *mode = glfwGetVideoMode(monitor);
-    return (Wremonitor){
+    return (WREmonitor){
         monitor,
         mode->width,
         mode->height,

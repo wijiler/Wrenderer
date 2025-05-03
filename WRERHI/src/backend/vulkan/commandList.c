@@ -25,7 +25,7 @@ static const VkImageSubresourceRange imgSRR = {
 
 typedef struct
 {
-    WREImage *frameBuffers[8];
+    WREimage *frameBuffers[8];
     uint8_t frameBufCount;
 } renPassInfo;
 
@@ -142,7 +142,7 @@ cAttInfo genColorAttachmentInfo(renPassInfo info)
     return inf;
 }
 
-void vkExecuteCommandList(RendererCoreContext *context, RendererWindowContext *winContext, WRECommandList *list)
+void vkExecuteCommandList(RendererCoreContext *context, RendererWindowContext *winContext, WREcommandList *list)
 {
     cBufIndex = frameIndex % FramesInFlightCount;
     VkCommandBuffer currentCommandBuffer = context->graphicsCommandBuffers[cBufIndex];
@@ -156,11 +156,11 @@ void vkExecuteCommandList(RendererCoreContext *context, RendererWindowContext *w
                 &context->graphicsTimeline,
                 &submitValue,
             };
-        vkWaitSemaphores(WREDevice, &semaWaitInfo, UINT64_MAX);
+        vkWaitSemaphores(WREdevice, &semaWaitInfo, UINT64_MAX);
         submitValue++;
     }
     {
-        VkResult res = vkAcquireNextImageKHR(WREDevice, winContext->swapChain, UINT64_MAX, context->imgAvailable[cBufIndex], VK_NULL_HANDLE, &winContext->CSCImgIndex);
+        VkResult res = vkAcquireNextImageKHR(WREdevice, winContext->swapChain, UINT64_MAX, context->imgAvailable[cBufIndex], VK_NULL_HANDLE, &winContext->CSCImgIndex);
         if (res == VK_ERROR_OUT_OF_DATE_KHR)
         {
             // smooth resize
@@ -232,7 +232,10 @@ void vkExecuteCommandList(RendererCoreContext *context, RendererWindowContext *w
             break;
             case WRE_COMMAND_TYPE_COMPUTE_DISPATCH:
             {
-                uint32_t *data = (uint32_t *)cc.data;
+                uint32_t data[3] = {0};
+                data[0] = cc.data[0];
+                data[1] = cc.data[1];
+                data[2] = cc.data[2];
                 vkCmdDispatch(currentCommandBuffer, data[0], data[1], data[2]);
             }
             break;

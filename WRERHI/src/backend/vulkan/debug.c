@@ -8,7 +8,7 @@ void setVkDebugName(char *name, VkObjectType objectType, uint64_t handle)
 #ifdef DEBUG
     if (_vkSetDebugUtilsObjectNameEXT == NULL)
     {
-        _vkSetDebugUtilsObjectNameEXT = (PFN_vkSetDebugUtilsObjectNameEXT)vkGetInstanceProcAddr(WREVulkinstance, "vkSetDebugUtilsObjectNameEXT");
+        _vkSetDebugUtilsObjectNameEXT = (PFN_vkSetDebugUtilsObjectNameEXT)vkGetInstanceProcAddr(WREvulkInstance, "vkSetDebugUtilsObjectNameEXT");
     }
     VkDebugUtilsObjectNameInfoEXT nameInf = {
         VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
@@ -17,6 +17,6 @@ void setVkDebugName(char *name, VkObjectType objectType, uint64_t handle)
         handle,
         name,
     };
-    _vkSetDebugUtilsObjectNameEXT(WREDevice, &nameInf);
+    _vkSetDebugUtilsObjectNameEXT(WREdevice, &nameInf);
 #endif
 }

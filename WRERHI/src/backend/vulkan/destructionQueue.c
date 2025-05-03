@@ -5,7 +5,7 @@ DestructionQueue WREVKDesQueue = {100, 0, NULL};
 
 void destroyVkObjects()
 {
-    vkDeviceWaitIdle(WREDevice);
+    vkDeviceWaitIdle(WREdevice);
     for (uint32_t i = WREVKDesQueue.objectCount; i >= 0; i--)
     {
         VkObj currentObj = WREVKDesQueue.objects[i];

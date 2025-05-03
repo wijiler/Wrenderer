@@ -2,20 +2,20 @@
 #include <pipeline.h>
 #include <windowing.h>
 
-WREContextObject context = {0};
+WREcontextObject context = {0};
 int main()
 {
-    Wremonitor monitor = getMonitorInfo();
+    WREmonitor monitor = getMonitorInfo();
     WREwindow window = openWindow("Wre2 Rendering Test Bench", monitor.w / 7, monitor.h / 7, 1920, 1080);
     context.window = window;
     initializeContext(&context);
-    WREShader shader = createShader("A:\\projects\\WRE2\\Test\\shader\\test.spv", WRE_SHADER_STAGE_VERTEX | WRE_SHADER_STAGE_FRAGMENT);
+    WREshader shader = createShader("A:\\projects\\WRE2\\Test\\shader\\test.spv", WRE_SHADER_STAGE_VERTEX | WRE_SHADER_STAGE_FRAGMENT);
     WREpipeline pipeline = createPipeline("trianglePipeline", (WREvertexFormat){0, NULL, 0, NULL}, &shader, 1, WRE_BACK_CULLING, WRE_WINDING_CW, (VkFormat[8]){VK_FORMAT_R8G8B8A8_SRGB}, 1);
 
-    WRECommandList list = {0};
+    WREcommandList list = {0};
     initializeCommandList(&list);
 
-    WREImage *frameBuffers[8] = {0};
+    WREimage *frameBuffers[8] = {0};
     frameBuffers[0] = context.window.context.CurrentSCImg;
 
     bindPipeline(&list, pipeline);

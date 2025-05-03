@@ -21,7 +21,7 @@ void CreateImageView(WREVKImage *img, VkImageAspectFlagBits aspect)
     imgViewCI.subresourceRange.baseArrayLayer = 0;
     imgViewCI.subresourceRange.layerCount = 1;
 
-    if (vkCreateImageView(WREDevice, &imgViewCI, NULL, &img->imgview) != VK_SUCCESS)
+    if (vkCreateImageView(WREdevice, &imgViewCI, NULL, &img->imgview) != VK_SUCCESS)
     {
         printf("Could not create image view for image %p\n", img->img);
         exit(1);
@@ -62,9 +62,23 @@ void transitionImage(WREVKImage *img, VkImageLayout newLayout, VkAccessFlags acc
         1,
         &imgMemBarr,
     };
-    vkBeginCommandBuffer(WREInstantCommandBuffer, &inf);
-    vkCmdPipelineBarrier2(WREInstantCommandBuffer, &depInf);
-    vkEndCommandBuffer(WREInstantCommandBuffer);
+    vkResetCommandBuffer(WREinstantCommandBuffer, 0);
+    vkBeginCommandBuffer(WREinstantCommandBuffer, &inf);
+    vkCmdPipelineBarrier2(WREinstantCommandBuffer, &depInf);
+    vkEndCommandBuffer(WREinstantCommandBuffer);
+    VkSubmitInfo submitInfo = {0};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.pNext = NULL;
+
+    submitInfo.waitSemaphoreCount = 0;
+    submitInfo.pWaitSemaphores = NULL;
+    submitInfo.signalSemaphoreCount = 0;
+    submitInfo.pSignalSemaphores = 0;
+
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &WREinstantCommandBuffer;
+
+    vkQueueSubmit(WREgraphicsQueue, 1, &submitInfo, NULL);
     img->access = access;
     img->Layout = newLayout;
 }

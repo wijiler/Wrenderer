@@ -3,9 +3,9 @@
 #include <backends/vulkan/shader.h>
 #include <stdio.h>
 
-WREShader createShader(char *Filename, WREshaderStage shaderStage)
+WREshader createShader(char *Filename, WREshaderStage shaderStage)
 {
-    WREShader shader = {0};
+    WREshader shader = {0};
     shader.shaderStage = shaderStage;
 
     FILE *file;
@@ -44,7 +44,7 @@ WREShader createShader(char *Filename, WREshaderStage shaderStage)
     shaderCI.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
     shaderCI.codeSize = len;
     shaderCI.pCode = (uint32_t *)data;
-    VkResult result = vkCreateShaderModule(WREDevice, &shaderCI, NULL, &shader.shaderObjects.Shader);
+    VkResult result = vkCreateShaderModule(WREdevice, &shaderCI, NULL, &shader.shaderObjects.Shader);
     if (result != VK_SUCCESS)
     {
         printf("WRERen: Error: Could not create shader %s\n", Filename);

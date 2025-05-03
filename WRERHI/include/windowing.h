@@ -17,10 +17,10 @@ typedef struct
     GLFWmonitor *monitor;
     int w, h, refreshRate;
     float aspectRatio;
-} Wremonitor;
+} WREmonitor;
 
 WREwindow openWindow(char *Title, int x, int y, int w, int h);
-Wremonitor getMonitorInfo();
+WREmonitor getMonitorInfo();
 void updateWindowTitle(WREwindow *window, char *name);
 void updateWindowPosition(WREwindow *window, int x, int y);
 void updateWindowSize(WREwindow *window, int w, int h);

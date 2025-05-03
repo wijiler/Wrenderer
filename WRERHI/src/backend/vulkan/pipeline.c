@@ -3,7 +3,7 @@
 #include <backends/vulkan/pipeline.h>
 #include <stdio.h>
 
-WREVKPipeline createPipeline(char *Name, WREvertexFormat vertFormat, WREShader *shaders, int shaderCount, WREpipelineCullMode cullMode, WREpipelineWindingOrder windingOrder, VkFormat colorAttFormats[8], uint32_t colorAttachmentsCount)
+WREVKPipeline createPipeline(char *Name, WREvertexFormat vertFormat, WREshader *shaders, int shaderCount, WREpipelineCullMode cullMode, WREpipelineWindingOrder windingOrder, VkFormat colorAttFormats[8], uint32_t colorAttachmentsCount)
 {
     WREVKPipeline pipeline = {0};
     pipeline.Name = Name;
@@ -13,7 +13,7 @@ WREVKPipeline createPipeline(char *Name, WREvertexFormat vertFormat, WREShader *
     pLineLayout.setLayoutCount = 0;
     pLineLayout.pushConstantRangeCount = 0;
 
-    VkResult result = vkCreatePipelineLayout(WREDevice, &pLineLayout, NULL, &pipeline.layout);
+    VkResult result = vkCreatePipelineLayout(WREdevice, &pLineLayout, NULL, &pipeline.layout);
     if (result != VK_SUCCESS)
     {
         printf("Wreren: Error: Could not create pipeline layout %s\n", Name);
@@ -139,7 +139,7 @@ WREVKPipeline createPipeline(char *Name, WREvertexFormat vertFormat, WREShader *
 
     pLineCI.pInputAssemblyState = &inAsmStateCI;
     pLineCI.layout = pipeline.layout;
-    result = vkCreateGraphicsPipelines(WREDevice, NULL, 1, &pLineCI, NULL, &pipeline.pipeline);
+    result = vkCreateGraphicsPipelines(WREdevice, NULL, 1, &pLineCI, NULL, &pipeline.pipeline);
     if (result != VK_SUCCESS)
     {
         printf("Wreren: Error: could not create pipeline %s\n", Name);

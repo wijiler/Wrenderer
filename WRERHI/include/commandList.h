@@ -33,14 +33,14 @@ typedef struct
     uint32_t commandCapacity;
     uint32_t commandCount;
     WRECommand *commands;
-} WRECommandList;
+} WREcommandList;
 
-void initializeCommandList(WRECommandList *list);
-void startRenderPass(WRECommandList *list, WREImage *frameBuffers[8], uint8_t frameBufCount);
-void endRenderPass(WRECommandList *list);
-void drawCall(WRECommandList *list, uint32_t vertexCount, uint32_t instanceCount);
-void dispatchCompute(WRECommandList *list, uint32_t x, uint32_t y, uint32_t z);
-void bindPipeline(WRECommandList *list, WREpipeline pipeline);
-void pushConstants(WRECommandList *list, uint32_t size, uint32_t offset, WREshaderStage stage, void *pushData);
+void initializeCommandList(WREcommandList *list);
+void startRenderPass(WREcommandList *list, WREimage *frameBuffers[8], uint8_t frameBufCount);
+void endRenderPass(WREcommandList *list);
+void drawCall(WREcommandList *list, uint32_t vertexCount, uint32_t instanceCount);
+void dispatchCompute(WREcommandList *list, uint32_t x, uint32_t y, uint32_t z);
+void bindPipeline(WREcommandList *list, WREpipeline pipeline);
+void pushConstants(WREcommandList *list, uint32_t size, uint32_t offset, WREshaderStage stage, void *pushData);
 
 #endif

@@ -2,7 +2,7 @@
 // #ifdef WREUSEVULKAN
 // #include <backends/vulkan/destructionQueue.h>
 // #endif
-void terminateContext(WREContextObject *context)
+void terminateContext(WREcontextObject *context)
 {
     // #ifdef WREUSEVULKAN
     //     destroyVkObjects();
@@ -12,7 +12,7 @@ void terminateContext(WREContextObject *context)
 }
 
 #ifdef WREUSEVULKAN
-void initializeContext(WREContextObject *context)
+void initializeContext(WREcontextObject *context)
 {
     initializeVulkan(&context->core, &context->window.context, context->window.window);
 }

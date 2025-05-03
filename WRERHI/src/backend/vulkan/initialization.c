@@ -5,15 +5,17 @@
 #define INSTEXTCOUNT 4
 #define DEVEXTCOUNT 3
 
-VkInstance WREVulkinstance = VK_NULL_HANDLE;
-VkPhysicalDevice WREPDevice = VK_NULL_HANDLE;
-VkDevice WREDevice = VK_NULL_HANDLE;
+VkInstance WREvulkInstance = VK_NULL_HANDLE;
+VkPhysicalDevice WREpDevice = VK_NULL_HANDLE;
+VkDevice WREdevice = VK_NULL_HANDLE;
 VkCommandPool WREcommandPool = VK_NULL_HANDLE;
 VkQueue WREgraphicsQueue, WREpresentQueue, WREcomputeQueue, WREtransferQueue = VK_NULL_HANDLE;
-VkCommandBuffer WREInstantCommandBuffer = VK_NULL_HANDLE;
-PFN_vkCmdSetColorBlendEquationEXT _vkCmdSetColorBlendEquationEXT = NULL;
-PFN_vkCmdSetColorBlendEnableEXT _vkCmdSetColorBlendEnableEXT = NULL;
-PFN_vkCmdSetColorWriteMaskEXT _vkCmdSetColorWriteMaskEXT = NULL;
+VkFence WREinstantFence = VK_NULL_HANDLE;
+VkCommandBuffer WREinstantCommandBuffer = VK_NULL_HANDLE;
+VkDeviceMemory WREStagingMemory = VK_NULL_HANDLE;
+void *WREstagingMappedMemory = NULL;
+VkBuffer WREstagingBuffer = VK_NULL_HANDLE;
+int32_t deviceLocalHeapIndex = -1, hostSharedHeapIndex = -1;
 
 int graphicsQueueIndex = -1;
 
@@ -94,7 +96,7 @@ void createVulkanInstance()
     debug_CInf.pUserData = NULL;
     createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT *)&debug_CInf;
 #endif
-    VkResult result = vkCreateInstance(&createInfo, NULL, &WREVulkinstance);
+    VkResult result = vkCreateInstance(&createInfo, NULL, &WREvulkInstance);
     if (result != VK_SUCCESS)
     {
         printf("WREREN: Could not initialize vulkan\n");
@@ -104,14 +106,14 @@ void createVulkanInstance()
 void createDevice(VkSurfaceKHR surface)
 {
     uint32_t devCount = 0;
-    vkEnumeratePhysicalDevices(WREVulkinstance, &devCount, NULL);
+    vkEnumeratePhysicalDevices(WREvulkInstance, &devCount, NULL);
     if (devCount == 0)
     {
         printf("WRERen ERROR: cant find any vulkan supporting GPU's\n");
         exit(1);
     }
     VkPhysicalDevice *physicalDevices = malloc(sizeof(VkPhysicalDevice) * devCount);
-    vkEnumeratePhysicalDevices(WREVulkinstance, &devCount, physicalDevices);
+    vkEnumeratePhysicalDevices(WREvulkInstance, &devCount, physicalDevices);
     for (uint32_t i = 0; i < devCount; i++)
     {
         VkPhysicalDevice device = physicalDevices[i];
@@ -135,11 +137,11 @@ void createDevice(VkSurfaceKHR surface)
             devProp.limits.timestampPeriod != 0 && devFeat12.bufferDeviceAddress == VK_TRUE &&
             devFeat13.synchronization2 == VK_TRUE && devFeat13.dynamicRendering == VK_TRUE)
         {
-            WREPDevice = device;
+            WREpDevice = device;
             break;
         }
     }
-    if (WREPDevice == VK_NULL_HANDLE)
+    if (WREpDevice == VK_NULL_HANDLE)
     {
         printf("WRERen Error: Could not pick a suitable device\n");
         exit(1);
@@ -148,14 +150,14 @@ void createDevice(VkSurfaceKHR surface)
     VkQueueFamilyProperties qfamProps[8];
 
     unsigned int queue_family_count = 0;
-    vkGetPhysicalDeviceQueueFamilyProperties(WREPDevice, &queue_family_count, NULL);
+    vkGetPhysicalDeviceQueueFamilyProperties(WREpDevice, &queue_family_count, NULL);
     queue_family_count = min(queue_family_count, 8);
-    vkGetPhysicalDeviceQueueFamilyProperties(WREPDevice, &queue_family_count, qfamProps);
+    vkGetPhysicalDeviceQueueFamilyProperties(WREpDevice, &queue_family_count, qfamProps);
 
     for (uint32_t j = 0; j < queue_family_count; j++)
     {
         VkBool32 supports_present = VK_FALSE;
-        vkGetPhysicalDeviceSurfaceSupportKHR(WREPDevice, j, surface, &supports_present);
+        vkGetPhysicalDeviceSurfaceSupportKHR(WREpDevice, j, surface, &supports_present);
         if (qfamProps[j].queueFlags & VK_QUEUE_GRAPHICS_BIT && qfamProps[j].queueFlags & VK_QUEUE_COMPUTE_BIT && qfamProps[j].queueFlags & VK_QUEUE_TRANSFER_BIT && supports_present == VK_TRUE && qfamProps[j].timestampValidBits != 0)
         {
             graphicsQueueIndex = j;
@@ -196,13 +198,13 @@ void createDevice(VkSurfaceKHR surface)
     devCreateInf.ppEnabledExtensionNames = deviceExtensions;
 
     VkResult devResult;
-    devResult = vkCreateDevice(WREPDevice, &devCreateInf, NULL, &WREDevice);
+    devResult = vkCreateDevice(WREpDevice, &devCreateInf, NULL, &WREdevice);
     if (devResult != VK_SUCCESS)
     {
         printf("WRERen Error: Could not create device because of %i", devResult);
         exit(1);
     }
-    vkGetDeviceQueue(WREDevice, graphicsQueueIndex, 0, &WREgraphicsQueue);
+    vkGetDeviceQueue(WREdevice, graphicsQueueIndex, 0, &WREgraphicsQueue);
     WREpresentQueue = WREgraphicsQueue;
     WREcomputeQueue = WREgraphicsQueue;
     WREtransferQueue = WREgraphicsQueue;
@@ -215,19 +217,19 @@ void createSwapchain(RendererWindowContext *windowContext, VkSwapchainKHR swapCh
     VkSurfaceFormatKHR *surfaceFormats = NULL;
     VkPresentModeKHR *surfacePresentModes = NULL;
 
-    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(WREPDevice, windowContext->surface, &capabilities);
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(WREpDevice, windowContext->surface, &capabilities);
 
     uint32_t formatCount = 0;
     uint32_t pModeCount = 0;
 
-    vkGetPhysicalDeviceSurfaceFormatsKHR(WREPDevice, windowContext->surface, &formatCount, NULL);
-    vkGetPhysicalDeviceSurfacePresentModesKHR(WREPDevice, windowContext->surface, &pModeCount, NULL);
+    vkGetPhysicalDeviceSurfaceFormatsKHR(WREpDevice, windowContext->surface, &formatCount, NULL);
+    vkGetPhysicalDeviceSurfacePresentModesKHR(WREpDevice, windowContext->surface, &pModeCount, NULL);
 
     surfaceFormats = malloc(sizeof(VkSurfaceFormatKHR) * formatCount);
     surfacePresentModes = malloc(sizeof(VkPresentModeKHR) * formatCount);
 
-    vkGetPhysicalDeviceSurfaceFormatsKHR(WREPDevice, windowContext->surface, &formatCount, surfaceFormats);
-    vkGetPhysicalDeviceSurfacePresentModesKHR(WREPDevice, windowContext->surface, &pModeCount, surfacePresentModes);
+    vkGetPhysicalDeviceSurfaceFormatsKHR(WREpDevice, windowContext->surface, &formatCount, surfaceFormats);
+    vkGetPhysicalDeviceSurfacePresentModesKHR(WREpDevice, windowContext->surface, &pModeCount, surfacePresentModes);
 
     windowContext->surfaceFormat = surfaceFormats[0];
     for (unsigned int i = 0; i < formatCount; i++)
@@ -277,19 +279,19 @@ void createSwapchain(RendererWindowContext *windowContext, VkSwapchainKHR swapCh
 
     swapchainCI.oldSwapchain = swapChain;
 
-    if (vkCreateSwapchainKHR(WREDevice, &swapchainCI, NULL, &windowContext->swapChain) != VK_SUCCESS)
+    if (vkCreateSwapchainKHR(WREdevice, &swapchainCI, NULL, &windowContext->swapChain) != VK_SUCCESS)
     {
         printf("WRERen ERROR: Swapchain could not be created");
         exit(1);
     }
     if (swapChain != NULL)
     {
-        vkDestroySwapchainKHR(WREDevice, swapChain, NULL);
+        vkDestroySwapchainKHR(WREdevice, swapChain, NULL);
     }
-    vkGetSwapchainImagesKHR(WREDevice, windowContext->swapChain, &windowContext->SCImgCount, NULL);
+    vkGetSwapchainImagesKHR(WREdevice, windowContext->swapChain, &windowContext->SCImgCount, NULL);
     VkImage *images = malloc(sizeof(VkImage) * windowContext->SCImgCount);
     windowContext->SCImgs = malloc(sizeof(WREVKImage) * windowContext->SCImgCount);
-    vkGetSwapchainImagesKHR(WREDevice, windowContext->swapChain, &windowContext->SCImgCount, images);
+    vkGetSwapchainImagesKHR(WREdevice, windowContext->swapChain, &windowContext->SCImgCount, images);
     for (uint32_t i = 0; i < windowContext->SCImgCount; i++)
     {
         windowContext->SCImgs[i].img = images[i];
@@ -317,7 +319,7 @@ void createCommandBuffers(RendererCoreContext *objects, RendererWindowContext *w
             &typeInf,
             0,
         };
-        vkCreateSemaphore(WREDevice, &createInfo, NULL, &objects->graphicsTimeline);
+        vkCreateSemaphore(WREdevice, &createInfo, NULL, &objects->graphicsTimeline);
         setVkDebugName("WREGraphicsTimeline", VK_OBJECT_TYPE_SEMAPHORE, (uint64_t)objects->graphicsTimeline);
     }
     // binary sema's
@@ -328,13 +330,13 @@ void createCommandBuffers(RendererCoreContext *objects, RendererWindowContext *w
         semaphoreCI.flags = 0;
         for (uint32_t i = 0; i < FramesInFlightCount; i++)
         {
-            vkCreateSemaphore(WREDevice, &semaphoreCI, NULL, &objects->imgAvailable[i]);
+            vkCreateSemaphore(WREdevice, &semaphoreCI, NULL, &objects->imgAvailable[i]);
             setVkDebugName("WREImgAvailableSema", VK_OBJECT_TYPE_SEMAPHORE, (uint64_t)objects->imgAvailable[i]);
         }
         objects->renderFinished = malloc(sizeof(VkSemaphore) * windowContext->SCImgCount);
         for (uint32_t i = 0; i < windowContext->SCImgCount; i++)
         {
-            vkCreateSemaphore(WREDevice, &semaphoreCI, NULL, &objects->renderFinished[i]);
+            vkCreateSemaphore(WREdevice, &semaphoreCI, NULL, &objects->renderFinished[i]);
             setVkDebugName("WRERenFinishedSema", VK_OBJECT_TYPE_SEMAPHORE, (uint64_t)objects->renderFinished[i]);
         }
     }
@@ -345,7 +347,7 @@ void createCommandBuffers(RendererCoreContext *objects, RendererWindowContext *w
             cPoolCI.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
             cPoolCI.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
             cPoolCI.queueFamilyIndex = graphicsQueueIndex;
-            if (vkCreateCommandPool(WREDevice, &cPoolCI, NULL, &WREcommandPool) != VK_SUCCESS)
+            if (vkCreateCommandPool(WREdevice, &cPoolCI, NULL, &WREcommandPool) != VK_SUCCESS)
             {
                 printf("WRERen ERROR: Could not create commandPool\n");
                 exit(1);
@@ -360,7 +362,7 @@ void createCommandBuffers(RendererCoreContext *objects, RendererWindowContext *w
         commandBufferAllocInf.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
         commandBufferAllocInf.commandBufferCount = FramesInFlightCount;
         VkResult gCbuf;
-        gCbuf = vkAllocateCommandBuffers(WREDevice, &commandBufferAllocInf, objects->graphicsCommandBuffers);
+        gCbuf = vkAllocateCommandBuffers(WREdevice, &commandBufferAllocInf, objects->graphicsCommandBuffers);
         setVkDebugName("WREGCBuf1", VK_OBJECT_TYPE_COMMAND_BUFFER, (uint64_t)objects->graphicsCommandBuffers[0]);
         setVkDebugName("WREGCBuf2", VK_OBJECT_TYPE_COMMAND_BUFFER, (uint64_t)objects->graphicsCommandBuffers[1]);
         setVkDebugName("WREGCBuf3", VK_OBJECT_TYPE_COMMAND_BUFFER, (uint64_t)objects->graphicsCommandBuffers[2]);
@@ -371,32 +373,33 @@ void createCommandBuffers(RendererCoreContext *objects, RendererWindowContext *w
         }
 
         commandBufferAllocInf.commandBufferCount = 1;
-        vkAllocateCommandBuffers(WREDevice, &commandBufferAllocInf, &WREInstantCommandBuffer);
+        vkAllocateCommandBuffers(WREdevice, &commandBufferAllocInf, &WREinstantCommandBuffer);
+
+        VkFenceCreateInfo fenceCreateInfo = {VK_STRUCTURE_TYPE_FENCE_CREATE_INFO, NULL, VK_FENCE_CREATE_SIGNALED_BIT};
+        vkCreateFence(WREdevice, &fenceCreateInfo, NULL, &WREinstantFence);
+        setVkDebugName("InstantFence", VK_OBJECT_TYPE_FENCE, (uint64_t)WREinstantFence);
     }
 }
 
 void initializeVulkan(RendererCoreContext *objects, RendererWindowContext *windowContext, GLFWwindow *window)
 {
-    if (WREVulkinstance == NULL)
+    if (WREvulkInstance == NULL)
     {
         createVulkanInstance();
-        _vkCmdSetColorBlendEquationEXT = (PFN_vkCmdSetColorBlendEquationEXT)vkGetInstanceProcAddr(WREVulkinstance, "vkCmdSetColorBlendEquationEXT");
-        _vkCmdSetColorBlendEnableEXT = (PFN_vkCmdSetColorBlendEnableEXT)vkGetInstanceProcAddr(WREVulkinstance, "vkCmdSetColorBlendEnableEXT");
-        _vkCmdSetColorWriteMaskEXT = (PFN_vkCmdSetColorWriteMaskEXT)vkGetInstanceProcAddr(WREVulkinstance, "vkCmdSetColorWriteMaskEXT");
     }
     VkResult surfaceResult;
-    surfaceResult = glfwCreateWindowSurface(WREVulkinstance, window, NULL, &windowContext->surface);
+    surfaceResult = glfwCreateWindowSurface(WREvulkInstance, window, NULL, &windowContext->surface);
     if (surfaceResult != VK_SUCCESS)
     {
         printf("WRERen: could not create surface\n");
     }
-    if (WREPDevice == NULL)
+    if (WREpDevice == NULL)
     {
         createDevice(windowContext->surface);
-        setVkDebugName("WrendererVulkanInstance", VK_OBJECT_TYPE_INSTANCE, (uint64_t)WREVulkinstance);
+        setVkDebugName("WrendererVulkanInstance", VK_OBJECT_TYPE_INSTANCE, (uint64_t)WREvulkInstance);
         setVkDebugName("WrendererWindowSurface", VK_OBJECT_TYPE_SURFACE_KHR, (uint64_t)windowContext->surface);
-        setVkDebugName("WrendererPhysicalDevice", VK_OBJECT_TYPE_PHYSICAL_DEVICE, (uint64_t)WREPDevice);
-        setVkDebugName("WrendererDevice", VK_OBJECT_TYPE_DEVICE, (uint64_t)WREDevice);
+        setVkDebugName("WrendererPhysicalDevice", VK_OBJECT_TYPE_PHYSICAL_DEVICE, (uint64_t)WREpDevice);
+        setVkDebugName("WrendererDevice", VK_OBJECT_TYPE_DEVICE, (uint64_t)WREdevice);
         setVkDebugName("WrendererGPQueue", VK_OBJECT_TYPE_QUEUE, (uint64_t)WREgraphicsQueue);
     }
     createSwapchain(windowContext, NULL);
@@ -409,6 +412,50 @@ void initializeVulkan(RendererCoreContext *objects, RendererWindowContext *windo
         setVkDebugName("WrenderSCImgView", VK_OBJECT_TYPE_IMAGE_VIEW, (uint64_t)windowContext->SCImgs[i].imgview);
     }
     createCommandBuffers(objects, windowContext);
+    if (WREstagingBuffer == VK_NULL_HANDLE)
+    {
+        VkPhysicalDeviceMemoryProperties physicalMemProps = {0};
+
+        vkGetPhysicalDeviceMemoryProperties(WREpDevice, &physicalMemProps);
+        for (uint32_t i = 0; i <= physicalMemProps.memoryTypeCount; i++)
+        {
+            if ((physicalMemProps.memoryTypes[i].propertyFlags & (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) != 0)
+                hostSharedHeapIndex = i;
+            else if ((physicalMemProps.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) != 0)
+                deviceLocalHeapIndex = i;
+            if (hostSharedHeapIndex != -1 && deviceLocalHeapIndex != -1)
+                break;
+        }
+
+        VkMemoryAllocateInfo vkMemAlloc = {
+            VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+            NULL,
+            1000000,
+            hostSharedHeapIndex,
+        };
+        vkAllocateMemory(WREdevice, &vkMemAlloc, NULL, &WREStagingMemory);
+
+        VkBufferCreateInfo vkBufCInf = {
+            VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+            NULL,
+            0,
+            1000000,
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+            VK_SHARING_MODE_EXCLUSIVE,
+            0,
+            NULL,
+        };
+        VkResult result;
+        if ((result = vkCreateBuffer(WREdevice, &vkBufCInf, NULL, &WREstagingBuffer)) != VK_SUCCESS)
+        {
+            printf("WRERen Error: Coult not create buffer\n");
+        }
+
+        vkBindBufferMemory(WREdevice, WREstagingBuffer, WREStagingMemory, 0);
+        vkMapMemory(WREdevice, WREStagingMemory, 0, 1000000, 0, &WREstagingMappedMemory);
+        setVkDebugName("WREStagingBuffer", VK_OBJECT_TYPE_BUFFER, (uint64_t)WREstagingBuffer);
+        setVkDebugName("WREStagingBufferMemory", VK_OBJECT_TYPE_DEVICE_MEMORY, (uint64_t)WREStagingMemory);
+    }
 }
 
 #undef INSTEXTCOUNT

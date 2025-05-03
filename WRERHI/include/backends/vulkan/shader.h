@@ -22,7 +22,7 @@ typedef struct
     uint32_t pushConstantsSize;
     WREshaderStage shaderStage;
     WREShaderObjects shaderObjects;
-} WREShader;
+} WREshader;
 
 typedef enum
 {
@@ -53,7 +53,7 @@ typedef struct
     VkVertexInputAttributeDescription *attributes;
 } WREvertexFormat;
 
-WREShader createShader(char *Filename, WREshaderStage stage);
+WREshader createShader(char *Filename, WREshaderStage stage);
 void addShaderBinding(WREvertexFormat *format, WREshaderBinding binding);
 void addShaderAttrib(WREvertexFormat *format, WREshaderAttribute attrib);
 

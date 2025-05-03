@@ -34,13 +34,13 @@ typedef enum
 typedef struct
 {
     WREpipelineType type;
-    WREShader shaders[2];
+    WREshader shaders[2];
     WREvertexFormat format;
     VkPipelineLayout layout;
     VkPipeline pipeline;
     char *Name;
 } WREVKPipeline;
 
-WREVKPipeline createPipeline(char *Name, WREvertexFormat vertFormat, WREShader *shaders, int shaderCount, WREpipelineCullMode cullMode, WREpipelineWindingOrder windingOrder, VkFormat colorAttFormats[8], uint32_t colorAttachmentCount);
+WREVKPipeline createPipeline(char *Name, WREvertexFormat vertFormat, WREshader *shaders, int shaderCount, WREpipelineCullMode cullMode, WREpipelineWindingOrder windingOrder, VkFormat colorAttFormats[8], uint32_t colorAttachmentCount);
 
 #endif

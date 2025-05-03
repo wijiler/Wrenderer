@@ -3,6 +3,6 @@
 #include <backends/vulkan/initialization.h>
 #include <commandList.h>
 
-void vkExecuteCommandList(RendererCoreContext *context, RendererWindowContext *winContext, WRECommandList *list);
+void vkExecuteCommandList(RendererCoreContext *context, RendererWindowContext *winContext, WREcommandList *list);
 
 #endif // WREVULKCMDLIST_H__

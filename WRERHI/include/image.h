@@ -4,7 +4,7 @@
 #ifdef WREUSEVULKAN
 
 #include <backends/vulkan/image.h>
-typedef WREVKImage WREImage;
+typedef WREVKImage WREimage;
 
 #endif
 
