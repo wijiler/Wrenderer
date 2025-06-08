@@ -40,7 +40,7 @@ typedef struct
     VkPipeline pipeline;
     char *Name;
 } WREVKPipeline;
-
+// ! Up to 2 shaders
 WREVKPipeline createPipeline(char *Name, WREvertexFormat vertFormat, WREshader *shaders, int shaderCount, WREpipelineCullMode cullMode, WREpipelineWindingOrder windingOrder, VkFormat colorAttFormats[8], uint32_t colorAttachmentCount);
 
 #endif

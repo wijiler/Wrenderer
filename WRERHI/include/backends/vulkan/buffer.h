@@ -12,8 +12,8 @@ typedef enum
 
 typedef enum
 {
-    CPU_GPU = 0,
-    GPU_LOCAL,
+    CPU_GPU = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+    GPU_LOCAL = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 } WREBufferMemoryFlags;
 
 typedef struct
@@ -28,6 +28,8 @@ typedef struct
 } WREVkBuffer;
 
 WREVkBuffer createBuffer(uint64_t size, WREBufferMemoryFlags locality, WREBufferUsageFlags usage);
+void pushCPUBuffer(WREVkBuffer buffer, void *data, size_t size);
+void pushDatatoBuffer(WREVkBuffer buffer, void *data, size_t size);
 void destroyBuffer(WREVkBuffer *buffer);
 
 #endif

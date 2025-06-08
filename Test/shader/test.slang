@@ -3,6 +3,17 @@ struct VertOut
     float4 pos : SV_Position;
     float3 color : OUTCOLOR;
 }
+struct Vertex
+{
+    float3 pos;
+}
+
+struct VertPC
+{
+    Vertex *vertBuf;
+}
+[vk_push_constant]
+const VertPC pushconsts;
 
 [shader("vertex")]
 VertOut vertMain(uint32_t vertId: SV_VertexID)
@@ -19,7 +30,7 @@ VertOut vertMain(uint32_t vertId: SV_VertexID)
         float3(0.0f, 0.0f, 1.0f)  // blue
     );
 
-    output.pos = float4(positions[vertId % 3], 1.0f);
+    output.pos = float4(pushconsts.vertBuf[vertId].pos, 1.0f);
     output.color = colors[vertId % 3];
     return output;
 }

@@ -17,11 +17,14 @@ typedef enum
     WRE_SHADER_STAGE_COMPUTE = VK_SHADER_STAGE_COMPUTE_BIT,
 } WREshaderStage;
 
+typedef char *WREVKpushConstants;
+
 typedef struct
 {
     uint32_t pushConstantsSize;
     WREshaderStage shaderStage;
     WREShaderObjects shaderObjects;
+    WREVKpushConstants pushconstants;
 } WREshader;
 
 typedef enum
@@ -56,5 +59,7 @@ typedef struct
 WREshader createShader(char *Filename, WREshaderStage stage);
 void addShaderBinding(WREvertexFormat *format, WREshaderBinding binding);
 void addShaderAttrib(WREvertexFormat *format, WREshaderAttribute attrib);
+// ! pushconstant size must be less than or equal to 128 bytes
+void setPushConstants(WREshader *shader, void *pushConstants, size_t pcSize);
 
 #endif

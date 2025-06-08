@@ -41,6 +41,6 @@ void endRenderPass(WREcommandList *list);
 void drawCall(WREcommandList *list, uint32_t vertexCount, uint32_t instanceCount);
 void dispatchCompute(WREcommandList *list, uint32_t x, uint32_t y, uint32_t z);
 void bindPipeline(WREcommandList *list, WREpipeline pipeline);
-void pushConstants(WREcommandList *list, uint32_t size, uint32_t offset, WREshaderStage stage, void *pushData);
+void bindPushConstants(WREcommandList *list, uint32_t size, uint32_t offset, WREshaderStage stage, void *pushData);
 
 #endif

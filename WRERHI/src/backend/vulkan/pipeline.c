@@ -8,10 +8,28 @@ WREVKPipeline createPipeline(char *Name, WREvertexFormat vertFormat, WREshader *
     WREVKPipeline pipeline = {0};
     pipeline.Name = Name;
 
-    VkPipelineLayoutCreateInfo pLineLayout = {0};
-    pLineLayout.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pLineLayout.setLayoutCount = 0;
-    pLineLayout.pushConstantRangeCount = 0;
+    VkPushConstantRange ranges[2] = {{0}, {0}};
+    uint32_t pcRangeCount = 0;
+
+    for (int i = 0; i < (shaderCount > 2 ? 2 : shaderCount); i++)
+    {
+        WREshader shader = shaders[i];
+        if (shader.pushConstantsSize > 0)
+        {
+            ranges[pcRangeCount] = (VkPushConstantRange){
+                shader.shaderStage,
+                0,
+                128,
+            };
+            pcRangeCount += 1;
+        }
+    }
+    VkPipelineLayoutCreateInfo pLineLayout = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .setLayoutCount = 0,
+        .pushConstantRangeCount = pcRangeCount,
+        .pPushConstantRanges = ranges,
+    };
 
     VkResult result = vkCreatePipelineLayout(WREdevice, &pLineLayout, NULL, &pipeline.layout);
     if (result != VK_SUCCESS)
@@ -129,7 +147,7 @@ WREVKPipeline createPipeline(char *Name, WREvertexFormat vertFormat, WREshader *
         VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
         NULL,
         0,
-        1,
+        colorAttachmentsCount,
         colorAttFormats,
         0,
         0,

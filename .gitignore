@@ -5,3 +5,4 @@ Test/Test
 **.vcxproj
 **.vcxproj.filters
 Binaries/
+Makefile

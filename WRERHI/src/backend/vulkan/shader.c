@@ -120,3 +120,16 @@ void addShaderAttrib(WREvertexFormat *format, WREshaderAttribute attrib)
         format->attribCount += 1;
     }
 }
+
+void setPushConstants(WREshader *shader, void *pushConstants, size_t pcSize)
+{
+    if (pcSize > 128)
+    {
+        printf("WRERen Error: pushconstants size greater than 128 bytes, exiting\n");
+        exit(-1);
+        return;
+    }
+    shader->pushConstantsSize = pcSize;
+    shader->pushconstants = malloc(128);
+    memcpy(shader->pushconstants, pushConstants, pcSize);
+}

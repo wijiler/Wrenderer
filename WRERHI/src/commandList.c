@@ -93,7 +93,7 @@ typedef struct
     uint32_t offset;
     void *data;
 } pcData;
-void pushConstants(WREcommandList *list, uint32_t size, uint32_t offset, WREshaderStage stage, void *pushData)
+void bindPushConstants(WREcommandList *list, uint32_t size, uint32_t offset, WREshaderStage stage, void *pushData)
 {
     allocCmd;
     WRECommand cmd = {0};

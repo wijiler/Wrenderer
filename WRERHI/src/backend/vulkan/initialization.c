@@ -420,11 +420,15 @@ void initializeVulkan(RendererCoreContext *objects, RendererWindowContext *windo
         for (uint32_t i = 0; i <= physicalMemProps.memoryTypeCount; i++)
         {
             if ((physicalMemProps.memoryTypes[i].propertyFlags & (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) != 0)
+            {
                 hostSharedHeapIndex = i;
-            else if ((physicalMemProps.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) != 0)
+                i += 1;
+            }
+            if ((physicalMemProps.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) != 0)
+            {
                 deviceLocalHeapIndex = i;
-            if (hostSharedHeapIndex != -1 && deviceLocalHeapIndex != -1)
-                break;
+                i += 1;
+            }
         }
 
         VkMemoryAllocateInfo vkMemAlloc = {
@@ -434,6 +438,7 @@ void initializeVulkan(RendererCoreContext *objects, RendererWindowContext *windo
             hostSharedHeapIndex,
         };
         vkAllocateMemory(WREdevice, &vkMemAlloc, NULL, &WREStagingMemory);
+        setVkDebugName("WREStagingBufferMemory", VK_OBJECT_TYPE_DEVICE_MEMORY, (uint64_t)WREStagingMemory);
 
         VkBufferCreateInfo vkBufCInf = {
             VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
@@ -448,13 +453,12 @@ void initializeVulkan(RendererCoreContext *objects, RendererWindowContext *windo
         VkResult result;
         if ((result = vkCreateBuffer(WREdevice, &vkBufCInf, NULL, &WREstagingBuffer)) != VK_SUCCESS)
         {
-            printf("WRERen Error: Coult not create buffer\n");
+            printf("WRERen Error: Could not create buffer\n");
         }
+        setVkDebugName("WREStagingBuffer", VK_OBJECT_TYPE_BUFFER, (uint64_t)WREstagingBuffer);
 
         vkBindBufferMemory(WREdevice, WREstagingBuffer, WREStagingMemory, 0);
         vkMapMemory(WREdevice, WREStagingMemory, 0, 1000000, 0, &WREstagingMappedMemory);
-        setVkDebugName("WREStagingBuffer", VK_OBJECT_TYPE_BUFFER, (uint64_t)WREstagingBuffer);
-        setVkDebugName("WREStagingBufferMemory", VK_OBJECT_TYPE_DEVICE_MEMORY, (uint64_t)WREStagingMemory);
     }
 }
 
