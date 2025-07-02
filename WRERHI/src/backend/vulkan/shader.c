@@ -53,43 +53,6 @@ WREshader createShader(char *Filename, WREshaderStage shaderStage)
 
     setVkDebugName(Filename, VK_OBJECT_TYPE_SHADER_MODULE, (uint64_t)shader.shaderObjects.Shader);
 
-    if ((shaderStage & WRE_SHADER_STAGE_COMPUTE) != 0)
-    {
-        VkPipelineShaderStageCreateInfo cshad = {0};
-        cshad.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        cshad.pNext = NULL;
-        cshad.stage = VK_SHADER_STAGE_COMPUTE_BIT;
-
-        cshad.pName = "compMain";
-        cshad.module = shader.shaderObjects.Shader;
-        shader.shaderObjects.stageInfo[0] = cshad;
-        return shader;
-    }
-    if ((shaderStage & WRE_SHADER_STAGE_VERTEX) != 0)
-    {
-        shader.shaderObjects.stageInfo[0] = (VkPipelineShaderStageCreateInfo){
-            VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-            NULL,
-            0,
-            VK_SHADER_STAGE_VERTEX_BIT,
-            shader.shaderObjects.Shader,
-            "vertMain",
-            NULL,
-        };
-    }
-    if ((shaderStage & WRE_SHADER_STAGE_FRAGMENT) != 0)
-    {
-        shader.shaderObjects.stageInfo[1] = (VkPipelineShaderStageCreateInfo){
-            VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-            NULL,
-            0,
-            VK_SHADER_STAGE_FRAGMENT_BIT,
-            shader.shaderObjects.Shader,
-            "fragMain",
-            NULL,
-        };
-    }
-
     return shader;
 }
 
@@ -132,4 +95,11 @@ void setPushConstants(WREshader *shader, void *pushConstants, size_t pcSize)
     shader->pushConstantsSize = pcSize;
     shader->pushconstants = malloc(128);
     memcpy(shader->pushconstants, pushConstants, pcSize);
+}
+
+void addShaderDescriptor(WREshader *shader, WREVKDescriptorSet set)
+{
+    shader->sets = realloc(shader->sets, sizeof(VkDescriptorSetLayout) * (shader->descriptorSetCount + 1));
+    shader->sets[shader->descriptorSetCount] = set.layout;
+    shader->descriptorSetCount += 1;
 }

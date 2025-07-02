@@ -33,14 +33,25 @@ typedef enum
 
 typedef struct
 {
-    WREpipelineType type;
     WREshader shaders[2];
+    WREpipelineType type;
     WREvertexFormat format;
     VkPipelineLayout layout;
     VkPipeline pipeline;
     char *Name;
 } WREVKPipeline;
-// ! Up to 2 shaders
-WREVKPipeline createPipeline(char *Name, WREvertexFormat vertFormat, WREshader *shaders, int shaderCount, WREpipelineCullMode cullMode, WREpipelineWindingOrder windingOrder, VkFormat colorAttFormats[8], uint32_t colorAttachmentCount);
+
+typedef struct
+{
+    VkFormat colorAttFormats[8];
+    WREvertexFormat vertFormat;
+    WREshader *shaders;
+    WREpipelineCullMode cullMode;
+    WREpipelineWindingOrder windingOrder;
+    uint32_t colorAttachmentsCount;
+    // ! Up to 2 shaders
+    uint8_t shaderCount;
+} WREVkPipelineCI;
+WREVKPipeline createPipeline(char *Name, const WREVkPipelineCI *create_info);
 
 #endif

@@ -224,6 +224,7 @@ void vkExecuteCommandList(RendererCoreContext *context, RendererWindowContext *w
             break;
             case WRE_COMMAND_TYPE_DRAW:
             {
+                vkCmdBindDescriptorSets(currentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, boundPipeline.layout, 0, 1, &WREimagedescriptorSet, 0, NULL);
                 uint32_t data[2] = {0};
                 data[0] = cc.data[0];
                 data[1] = cc.data[1];

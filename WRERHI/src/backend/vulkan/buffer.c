@@ -1,5 +1,6 @@
 #include <backends/vulkan/buffer.h>
 #include <backends/vulkan/globals.h>
+#include <stdio.h>
 
 // TODO: TLSF, or slab?, Either way implement an allocation callback
 WREVkBuffer createBuffer(uint64_t size, WREBufferMemoryFlags locality, WREBufferUsageFlags usage)
@@ -36,6 +37,10 @@ WREVkBuffer createBuffer(uint64_t size, WREBufferMemoryFlags locality, WREBuffer
     vkAllocateMemory(WREdevice, &vkMemAlloc, NULL, &buf.memory);
 
     VkResult result = vkBindBufferMemory(WREdevice, buf.buffer, buf.memory, 0);
+    if (result != VK_SUCCESS)
+    {
+        printf("WRERen: Error: Could not bind buffer memory\n");
+    }
 
     VkBufferDeviceAddressInfo deviceAdress = {
         VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,

@@ -4,5 +4,7 @@
 #include <commandList.h>
 #include <image.h>
 #include <pipeline.h>
+#include <texturing.h>
 #include <windowing.h>
+
 #endif

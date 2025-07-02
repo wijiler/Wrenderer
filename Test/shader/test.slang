@@ -15,14 +15,13 @@ struct VertPC
 [vk_push_constant]
 const VertPC pushconsts;
 
+[vk_binding(0, 1)]
+Sampler2D textures[];
+
 [shader("vertex")]
 VertOut vertMain(uint32_t vertId: SV_VertexID)
 {
     VertOut output = {};
-    const float3 positions[3] = float3[3](
-        float3(1.f, 1.f, 0.0f),
-        float3(-1.f, 1.f, 0.0f),
-        float3(0.f, -1.f, 0.0f));
 
     const float3 colors[3] = float3[3](
         float3(1.0f, 0.0f, 0.0f), // red

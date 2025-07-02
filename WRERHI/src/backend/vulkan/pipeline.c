@@ -3,17 +3,68 @@
 #include <backends/vulkan/pipeline.h>
 #include <stdio.h>
 
-WREVKPipeline createPipeline(char *Name, WREvertexFormat vertFormat, WREshader *shaders, int shaderCount, WREpipelineCullMode cullMode, WREpipelineWindingOrder windingOrder, VkFormat colorAttFormats[8], uint32_t colorAttachmentsCount)
+// is this ideal? no is it fine? ya
+VkPipelineShaderStageCreateInfo *genCreateInfo(WREshader *shader)
+{
+    VkPipelineShaderStageCreateInfo *cInf = malloc(sizeof(VkPipelineShaderStageCreateInfo) * 2);
+    if ((shader->shaderStage & WRE_SHADER_STAGE_COMPUTE) != 0)
+    {
+        VkPipelineShaderStageCreateInfo cshad = {0};
+        cshad.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        cshad.pNext = NULL;
+        cshad.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+
+        cshad.pName = "compMain";
+        cshad.module = shader->shaderObjects.Shader;
+        cInf[0] = cshad;
+        return cInf;
+    }
+    if ((shader->shaderStage & WRE_SHADER_STAGE_VERTEX) != 0)
+    {
+        cInf[0] = (VkPipelineShaderStageCreateInfo){
+            VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+            NULL,
+            0,
+            VK_SHADER_STAGE_VERTEX_BIT,
+            shader->shaderObjects.Shader,
+            "vertMain",
+            NULL,
+        };
+    }
+    if ((shader->shaderStage & WRE_SHADER_STAGE_FRAGMENT) != 0)
+    {
+        cInf[1] = (VkPipelineShaderStageCreateInfo){
+            VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+            NULL,
+            0,
+            VK_SHADER_STAGE_FRAGMENT_BIT,
+            shader->shaderObjects.Shader,
+            "fragMain",
+            NULL,
+        };
+    }
+    return cInf;
+}
+
+WREVKPipeline createPipeline(char *Name, const WREVkPipelineCI *create_info)
 {
     WREVKPipeline pipeline = {0};
     pipeline.Name = Name;
 
     VkPushConstantRange ranges[2] = {{0}, {0}};
     uint32_t pcRangeCount = 0;
+    uint32_t combined_descriptor_count = create_info->shaders[0].descriptorSetCount + (create_info->shaderCount > 1 ? 0 : create_info->shaders[1].descriptorSetCount);
+    VkDescriptorSetLayout *setLayouts = malloc(sizeof(VkDescriptorSetLayout) * (combined_descriptor_count + 1));
 
-    for (int i = 0; i < (shaderCount > 2 ? 2 : shaderCount); i++)
+    for (uint32_t i = 0; i < create_info->shaderCount; i++)
     {
-        WREshader shader = shaders[i];
+        WREshader shader = create_info->shaders[i];
+
+        if (i == 0)
+            memcpy(setLayouts, shader.sets, create_info->shaders[0].descriptorSetCount * sizeof(VkDescriptorSetLayout));
+        else if (i == 1)
+            memcpy(setLayouts + create_info->shaders[0].descriptorSetCount, shader.sets, create_info->shaders[1].descriptorSetCount * sizeof(VkDescriptorSetLayout));
+
         if (shader.pushConstantsSize > 0)
         {
             ranges[pcRangeCount] = (VkPushConstantRange){
@@ -24,9 +75,11 @@ WREVKPipeline createPipeline(char *Name, WREvertexFormat vertFormat, WREshader *
             pcRangeCount += 1;
         }
     }
+    setLayouts[combined_descriptor_count] = WREbindlessDescriptorLayout;
     VkPipelineLayoutCreateInfo pLineLayout = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-        .setLayoutCount = 0,
+        .setLayoutCount = combined_descriptor_count + 1,
+        .pSetLayouts = setLayouts,
         .pushConstantRangeCount = pcRangeCount,
         .pPushConstantRanges = ranges,
     };
@@ -42,15 +95,21 @@ WREVKPipeline createPipeline(char *Name, WREvertexFormat vertFormat, WREshader *
 
     pLineCI.stageCount = 2;
     VkPipelineShaderStageCreateInfo pShadCI[2] = {0};
-    if (shaderCount == 1)
+    if (create_info->shaderCount == 1)
     {
-        pShadCI[0] = shaders[0].shaderObjects.stageInfo[0];
-        pShadCI[1] = shaders[0].shaderObjects.stageInfo[1];
+        VkPipelineShaderStageCreateInfo *shad_sci = genCreateInfo(&create_info->shaders[0]);
+        pShadCI[0] = shad_sci[0];
+        pShadCI[1] = shad_sci[1];
+        free(shad_sci);
     }
-    else if (shaderCount > 1)
+    else if (create_info->shaderCount > 1)
     {
-        pShadCI[0] = shaders[0].shaderObjects.stageInfo[0];
-        pShadCI[1] = shaders[1].shaderObjects.stageInfo[0];
+        VkPipelineShaderStageCreateInfo *shad_sci1 = genCreateInfo(&create_info->shaders[0]);
+        VkPipelineShaderStageCreateInfo *shad_sci2 = genCreateInfo(&create_info->shaders[1]);
+        pShadCI[0] = shad_sci1[0];
+        pShadCI[1] = shad_sci2[0];
+        free(shad_sci1);
+        free(shad_sci2);
     }
     pLineCI.pStages = pShadCI;
 
@@ -96,10 +155,10 @@ WREVKPipeline createPipeline(char *Name, WREvertexFormat vertFormat, WREshader *
         VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
         NULL,
         0,
-        vertFormat.bindingCount,
-        vertFormat.bindings,
-        vertFormat.attribCount,
-        vertFormat.attributes,
+        create_info->vertFormat.bindingCount,
+        create_info->vertFormat.bindings,
+        create_info->vertFormat.attribCount,
+        create_info->vertFormat.attributes,
     };
 
     pLineCI.pVertexInputState = &vInStateCI;
@@ -111,8 +170,8 @@ WREVKPipeline createPipeline(char *Name, WREvertexFormat vertFormat, WREshader *
         VK_FALSE,
         VK_FALSE,
         VK_POLYGON_MODE_FILL,
-        cullMode,
-        (VkFrontFace)windingOrder,
+        create_info->cullMode,
+        (VkFrontFace)create_info->windingOrder,
         VK_FALSE,
         0,
         0.f,
@@ -147,8 +206,8 @@ WREVKPipeline createPipeline(char *Name, WREvertexFormat vertFormat, WREshader *
         VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
         NULL,
         0,
-        colorAttachmentsCount,
-        colorAttFormats,
+        create_info->colorAttachmentsCount,
+        create_info->colorAttFormats,
         0,
         0,
     };

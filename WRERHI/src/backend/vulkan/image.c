@@ -2,7 +2,70 @@
 #include <backends/vulkan/image.h>
 #include <stdio.h>
 
-void CreateImageView(WREVKImage *img, VkImageAspectFlagBits aspect)
+WREVKImage createImage(VkFormat format, VkImageLayout layout, VkExtent2D extent, VkImageUsageFlags usage)
+{
+    WREVKImage image = {
+        NULL,
+        NULL,
+        NULL,
+        format,
+        layout,
+        extent,
+        0,
+    };
+    VkImageCreateInfo img_ci = {
+        VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+        NULL,
+        0,
+        VK_IMAGE_TYPE_2D,
+        format,
+        {extent.width, extent.height, 1},
+        1,
+        1,
+        VK_SAMPLE_COUNT_1_BIT,
+        VK_IMAGE_TILING_LINEAR,
+        usage,
+        VK_SHARING_MODE_EXCLUSIVE,
+        0,
+        NULL,
+        layout,
+    };
+    VkResult result = vkCreateImage(WREdevice, &img_ci, NULL, &image.img);
+    if (result != VK_SUCCESS)
+    {
+        printf("WRERen: Error: Could not create image\n");
+        exit(1);
+    }
+    VkMemoryRequirements memReq = {0};
+    vkGetImageMemoryRequirements(WREdevice, image.img, &memReq);
+
+    VkPhysicalDeviceMemoryProperties memProps = {0};
+
+    vkGetPhysicalDeviceMemoryProperties(WREpDevice, &memProps);
+    VkMemoryAllocateInfo memAllocInf = {0};
+    memAllocInf.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    memAllocInf.pNext = NULL;
+    memAllocInf.allocationSize = memReq.size + memReq.alignment;
+    memAllocInf.memoryTypeIndex = deviceLocalHeapIndex;
+
+    result = vkAllocateMemory(WREdevice, &memAllocInf, NULL, &image.memory);
+    if (result != VK_SUCCESS)
+    {
+        printf("WRERen: Error: Could not allocate the proper memory for image\n");
+        exit(1);
+    }
+    result = vkBindImageMemory(WREdevice, image.img, image.memory, 0);
+
+    if (result != VK_SUCCESS)
+    {
+        printf("WRERen: Error: Could not bind memory to image\n");
+        exit(1);
+    }
+
+    return image;
+}
+
+void createImageView(WREVKImage *img, VkImageAspectFlagBits aspect)
 {
     VkImageViewCreateInfo imgViewCI = {0};
     imgViewCI.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;

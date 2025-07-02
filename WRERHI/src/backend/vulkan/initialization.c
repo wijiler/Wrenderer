@@ -1,4 +1,5 @@
 #include <backends/vulkan/debug.h>
+#include <backends/vulkan/descriptors.h>
 #include <backends/vulkan/initialization.h>
 #include <stdio.h>
 
@@ -16,6 +17,10 @@ VkDeviceMemory WREStagingMemory = VK_NULL_HANDLE;
 void *WREstagingMappedMemory = NULL;
 VkBuffer WREstagingBuffer = VK_NULL_HANDLE;
 int32_t deviceLocalHeapIndex = -1, hostSharedHeapIndex = -1;
+VkDescriptorPool WREbindlessDescriptorPool = VK_NULL_HANDLE;
+VkDescriptorSetLayout WREbindlessDescriptorLayout = VK_NULL_HANDLE;
+VkDescriptorSet WREimagedescriptorSet = VK_NULL_HANDLE;
+VkSampler WREdefaultLinearSampler = VK_NULL_HANDLE, WREdefaultNearestSampler = VK_NULL_HANDLE;
 
 int graphicsQueueIndex = -1;
 
@@ -135,7 +140,8 @@ void createDevice(VkSurfaceKHR surface)
 
         if (devProp.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && devFeat12.timelineSemaphore == VK_TRUE &&
             devProp.limits.timestampPeriod != 0 && devFeat12.bufferDeviceAddress == VK_TRUE &&
-            devFeat13.synchronization2 == VK_TRUE && devFeat13.dynamicRendering == VK_TRUE)
+            devFeat13.synchronization2 == VK_TRUE && devFeat13.dynamicRendering == VK_TRUE &&
+            devFeat12.runtimeDescriptorArray == VK_TRUE && devFeat12.descriptorBindingPartiallyBound == VK_TRUE)
         {
             WREpDevice = device;
             break;
@@ -176,6 +182,9 @@ void createDevice(VkSurfaceKHR surface)
     devFeat2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
     devFeat2.pNext = &devFeat12;
 
+    devFeat12.runtimeDescriptorArray = VK_TRUE;
+    devFeat12.descriptorBindingPartiallyBound = VK_TRUE;
+    devFeat12.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
     devFeat12.bufferDeviceAddress = VK_TRUE;
     devFeat12.timelineSemaphore = VK_TRUE;
     devFeat13.dynamicRendering = VK_TRUE;
@@ -299,7 +308,7 @@ void createSwapchain(RendererWindowContext *windowContext, VkSwapchainKHR swapCh
         windowContext->SCImgs[i].Layout = VK_IMAGE_LAYOUT_UNDEFINED;
         windowContext->SCImgs[i].extent = (VkExtent2D){windowContext->w, windowContext->h};
         windowContext->SCImgs[i].access = 0;
-        CreateImageView(&windowContext->SCImgs[i], VK_IMAGE_ASPECT_COLOR_BIT);
+        createImageView(&windowContext->SCImgs[i], VK_IMAGE_ASPECT_COLOR_BIT);
     }
     free(images);
 }
@@ -381,6 +390,40 @@ void createCommandBuffers(RendererCoreContext *objects, RendererWindowContext *w
     }
 }
 
+const VkCommandBufferBeginInfo cbBgInf = {
+    VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+    NULL,
+    0,
+    NULL,
+};
+
+void immediateSubmitBegin()
+{
+    vkWaitForFences(WREdevice, 1, &WREinstantFence, VK_TRUE, UINT64_MAX);
+    vkResetFences(WREdevice, 1, &WREinstantFence);
+    vkResetCommandBuffer(WREinstantCommandBuffer, 0);
+    vkBeginCommandBuffer(WREinstantCommandBuffer, &cbBgInf);
+}
+
+void immediateSubmitEnd()
+{
+    vkEndCommandBuffer(WREinstantCommandBuffer);
+
+    VkSubmitInfo submitInfo = {0};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.pNext = NULL;
+
+    submitInfo.waitSemaphoreCount = 0;
+    submitInfo.pWaitSemaphores = NULL;
+    submitInfo.signalSemaphoreCount = 0;
+    submitInfo.pSignalSemaphores = 0;
+
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &WREinstantCommandBuffer;
+
+    vkQueueSubmit(WREgraphicsQueue, 1, &submitInfo, WREinstantFence);
+}
+
 void initializeVulkan(RendererCoreContext *objects, RendererWindowContext *windowContext, GLFWwindow *window)
 {
     if (WREvulkInstance == NULL)
@@ -459,6 +502,72 @@ void initializeVulkan(RendererCoreContext *objects, RendererWindowContext *windo
 
         vkBindBufferMemory(WREdevice, WREstagingBuffer, WREStagingMemory, 0);
         vkMapMemory(WREdevice, WREStagingMemory, 0, 1000000, 0, &WREstagingMappedMemory);
+    }
+    {
+        VkDescriptorPoolSize pool_size = {
+            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            UINT16_MAX,
+        };
+        VkDescriptorPoolCreateInfo desc_pool_ci = {
+            VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+            NULL,
+            VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT,
+            UINT16_MAX,
+            1,
+            &pool_size,
+        };
+        VkResult result = vkCreateDescriptorPool(WREdevice, &desc_pool_ci, NULL, &WREbindlessDescriptorPool);
+        if (result != VK_SUCCESS)
+        {
+            printf("WRERen: Error: Could not create bindless descriptor pool\n");
+            exit(1);
+        }
+        setVkDebugName("WREBindlessDescriptorPool", VK_OBJECT_TYPE_DESCRIPTOR_POOL, (uint64_t)WREbindlessDescriptorPool);
+        WREVkDescriptorDescription desc_description = {
+            VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT_EXT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT_EXT,
+            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            UINT16_MAX,
+        };
+        WREVKDescriptorSet desc_set = allocate_descriptor_set(&WREbindlessDescriptorPool, desc_description);
+        WREimagedescriptorSet = desc_set.set;
+        WREbindlessDescriptorLayout = desc_set.layout;
+        setVkDebugName("WREimageDescriptorSet", VK_OBJECT_TYPE_DESCRIPTOR_SET, (uint64_t)desc_set.set);
+        setVkDebugName("WREbindlessDescriptorSetLayout", VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT, (uint64_t)desc_set.layout);
+    }
+    {
+        VkSamplerCreateInfo lin_sample_ci = {
+            VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+            NULL,
+            0,
+            VK_FILTER_LINEAR,
+            VK_FILTER_LINEAR,
+            VK_SAMPLER_MIPMAP_MODE_LINEAR,
+            VK_SAMPLER_ADDRESS_MODE_REPEAT,
+            VK_SAMPLER_ADDRESS_MODE_REPEAT,
+            VK_SAMPLER_ADDRESS_MODE_REPEAT,
+            0.0f,
+            VK_FALSE,
+            0.0f,
+            VK_FALSE,
+            VK_COMPARE_OP_ALWAYS,
+            0.0f,
+            0.0f,
+            0,
+            0,
+        };
+        VkResult result = vkCreateSampler(WREdevice, &lin_sample_ci, NULL, &WREdefaultLinearSampler);
+        if (result != VK_SUCCESS)
+        {
+            printf("WRERen: Error: Could not create linear sampler\n");
+        }
+        lin_sample_ci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+        lin_sample_ci.minFilter = VK_FILTER_NEAREST;
+        lin_sample_ci.magFilter = VK_FILTER_NEAREST;
+        result = vkCreateSampler(WREdevice, &lin_sample_ci, NULL, &WREdefaultNearestSampler);
+        if (result != VK_SUCCESS)
+        {
+            printf("WRERen: Error: Could not create nearest sampler\n");
+        }
     }
 }
 

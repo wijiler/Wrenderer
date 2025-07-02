@@ -14,5 +14,9 @@ extern VkDeviceMemory WREStagingMemory;
 extern void *WREstagingMappedMemory;
 extern VkBuffer WREstagingBuffer;
 extern int32_t deviceLocalHeapIndex, hostSharedHeapIndex;
+extern VkDescriptorPool WREbindlessDescriptorPool;
+extern VkDescriptorSetLayout WREbindlessDescriptorLayout;
+extern VkDescriptorSet WREimagedescriptorSet;
+extern VkSampler WREdefaultLinearSampler, WREdefaultNearestSampler;
 
 #endif

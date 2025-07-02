@@ -1,13 +1,13 @@
 #ifndef WRESHADER_H__
 #define WRESHADER_H__
+#include <backends/vulkan/descriptors.h>
 #include <vulkan/vulkan.h>
+
 typedef struct
 {
-    uint32_t len;
     char *data;
-
     VkShaderModule Shader;
-    VkPipelineShaderStageCreateInfo stageInfo[2];
+    uint32_t len;
 } WREShaderObjects;
 
 typedef enum
@@ -21,10 +21,12 @@ typedef char *WREVKpushConstants;
 
 typedef struct
 {
-    uint32_t pushConstantsSize;
-    WREshaderStage shaderStage;
     WREShaderObjects shaderObjects;
     WREVKpushConstants pushconstants;
+    VkDescriptorSetLayout *sets;
+    uint32_t pushConstantsSize;
+    uint32_t descriptorSetCount;
+    WREshaderStage shaderStage;
 } WREshader;
 
 typedef enum
@@ -35,25 +37,25 @@ typedef enum
 
 typedef struct
 {
+    WREbindingType inputRate;
     uint32_t binding;
     uint32_t elementSize;
-    WREbindingType inputRate;
 } WREshaderBinding;
 
 typedef struct
 {
+    VkFormat format;
     uint32_t binding;
     uint32_t slot;
-    VkFormat format;
     uint32_t offset;
 } WREshaderAttribute;
 
 typedef struct
 {
-    uint32_t bindingCount;
     VkVertexInputBindingDescription *bindings;
-    uint32_t attribCount;
     VkVertexInputAttributeDescription *attributes;
+    uint32_t bindingCount;
+    uint32_t attribCount;
 } WREvertexFormat;
 
 WREshader createShader(char *Filename, WREshaderStage stage);
@@ -61,5 +63,5 @@ void addShaderBinding(WREvertexFormat *format, WREshaderBinding binding);
 void addShaderAttrib(WREvertexFormat *format, WREshaderAttribute attrib);
 // ! pushconstant size must be less than or equal to 128 bytes
 void setPushConstants(WREshader *shader, void *pushConstants, size_t pcSize);
-
+void addShaderDescriptor(WREshader *shader, WREVKDescriptorSet set);
 #endif

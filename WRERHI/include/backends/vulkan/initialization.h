@@ -31,4 +31,6 @@ typedef struct
 } RendererCoreContext;
 
 void initializeVulkan(RendererCoreContext *objects, RendererWindowContext *windowContext, GLFWwindow *window);
+void immediateSubmitBegin();
+void immediateSubmitEnd();
 #endif
