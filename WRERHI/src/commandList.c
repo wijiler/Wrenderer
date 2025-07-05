@@ -116,7 +116,7 @@ void submitCommandList(WREcontextObject *context, WREcommandList list)
 void executeCommandList(WREcontextObject *context)
 {
 #ifdef WREUSEVULKAN
-    vkExecuteCommandList(&context->core, &context->window.context, &context->currentFrame);
+    WREvkExecuteCommandList(&context->core, &context->window.context, &context->currentFrame);
 #endif
 }
 

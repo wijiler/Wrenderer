@@ -13,5 +13,4 @@
 #include <backends/vulkan/pipeline.h>
 #include <backends/vulkan/shader.h>
 
-
 #endif // WREVULK_H_

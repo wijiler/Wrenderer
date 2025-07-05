@@ -142,7 +142,7 @@ cAttInfo genColorAttachmentInfo(renPassInfo info)
     return inf;
 }
 
-void vkExecuteCommandList(RendererCoreContext *context, RendererWindowContext *winContext, WREcommandList *list)
+void WREvkExecuteCommandList(RendererCoreContext *context, RendererWindowContext *winContext, WREcommandList *list)
 {
     cBufIndex = frameIndex % FramesInFlightCount;
     VkCommandBuffer currentCommandBuffer = context->graphicsCommandBuffers[cBufIndex];

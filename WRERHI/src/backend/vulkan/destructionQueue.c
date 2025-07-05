@@ -8,15 +8,15 @@ void destroyVkObjects()
     vkDeviceWaitIdle(WREdevice);
     for (uint32_t i = WREVKDesQueue.objectCount; i >= 0; i--)
     {
-        VkObj currentObj = WREVKDesQueue.objects[i];
+        WREVkObj currentObj = WREVKDesQueue.objects[i];
         currentObj.destructionCallback(currentObj);
     }
 }
-void addDestructableObject(VkObj object)
+void addDestructableObject(WREVkObj object)
 {
     if (WREVKDesQueue.objectCount == 0 || WREVKDesQueue.capacity == 0)
     {
-        WREVKDesQueue.objects = realloc(WREVKDesQueue.objects, sizeof(VkObj) * (WREVKDesQueue.objectCount + 100));
+        WREVKDesQueue.objects = realloc(WREVKDesQueue.objects, sizeof(WREVkObj) * (WREVKDesQueue.objectCount + 100));
         WREVKDesQueue.capacity = 100;
     }
     WREVKDesQueue.objects[WREVKDesQueue.objectCount] = object;

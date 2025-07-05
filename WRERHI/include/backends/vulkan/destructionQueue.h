@@ -2,11 +2,11 @@
 #define WREDESQUEUE_H__
 #include <vulkan/vulkan.h>
 
-typedef struct VkObj VkObj;
+typedef struct WREVkObj WREVkObj;
 
-typedef void (*destructionFunction)(VkObj object);
+typedef void (*destructionFunction)(WREVkObj object);
 
-struct VkObj
+struct WREVkObj
 {
     void *handle;
     destructionFunction destructionCallback;
@@ -16,11 +16,11 @@ typedef struct
 {
     uint32_t capacity;
     uint32_t objectCount;
-    VkObj *objects;
+    WREVkObj *objects;
 } DestructionQueue;
 
 extern DestructionQueue WREVKDesQueue;
 
 void destroyVkObjects();
-void addDestructableObject(VkObj object);
+void addDestructableObject(WREVkObj object);
 #endif
