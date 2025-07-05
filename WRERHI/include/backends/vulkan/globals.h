@@ -2,6 +2,7 @@
 #define WREVULKGLOBALS_H__
 #include <vulkan/vulkan.h>
 #define FramesInFlightCount 3
+#define StagingBufferSize 1000000
 
 extern VkInstance WREvulkInstance;
 extern VkPhysicalDevice WREpDevice;

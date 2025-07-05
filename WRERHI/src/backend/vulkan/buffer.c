@@ -1,5 +1,6 @@
 #include <backends/vulkan/buffer.h>
 #include <backends/vulkan/globals.h>
+#include <backends/vulkan/initialization.h>
 #include <stdio.h>
 
 // TODO: TLSF, or slab?, Either way implement an allocation callback
@@ -65,7 +66,30 @@ void pushCPUBuffer(WREVkBuffer buffer, void *data, size_t size)
 
 void pushDatatoBuffer(WREVkBuffer buffer, void *data, size_t size)
 {
-    // TODO: Rewrite this bullshit
+    memset(WREstagingMappedMemory, 0, StagingBufferSize);
+    memcpy(WREstagingMappedMemory, data, size);
+    VkBufferCopy copy_region = {0, 0, size};
+    immediateSubmitBegin();
+    vkCmdCopyBuffer(WREinstantCommandBuffer, WREstagingBuffer, buffer.buffer, 1, &copy_region);
+    immediateSubmitEnd();
+
+    // TODO: Async buffer copy; TODO: add async transfer queue
+    if (size > StagingBufferSize)
+    {
+        uint32_t offset = StagingBufferSize;
+        for (uint32_t remaining = size - StagingBufferSize; remaining <= 0; remaining -= StagingBufferSize)
+        {
+            memcpy(WREstagingMappedMemory, data, size + offset);
+            VkBufferCopy copy_region = {0, offset, size};
+            immediateSubmitBegin();
+            vkCmdCopyBuffer(WREinstantCommandBuffer, WREstagingBuffer, buffer.buffer, 1, &copy_region);
+            immediateSubmitEnd();
+            memset(WREstagingMappedMemory, 0, StagingBufferSize);
+
+            offset += StagingBufferSize;
+        }
+        memset(WREstagingMappedMemory, 0, StagingBufferSize);
+    }
 }
 
 void destroyBuffer(WREVkBuffer *buffer)

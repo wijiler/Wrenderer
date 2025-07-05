@@ -31,9 +31,9 @@ int main()
     context.window = window;
     initializeContext(&context);
 
-    WREBuffer vBuf = createBuffer(sizeof(vertex) * 3, CPU_GPU, GENERAL);
-    // pushDatatoBuffer(vBuf, (vertex *)verts, sizeof(verts));
-    pushCPUBuffer(vBuf, (vertex *)verts, sizeof(vertex) * 3);
+    WREBuffer vBuf = createBuffer(sizeof(vertex) * 3, GPU_LOCAL, GENERAL | TRANSFER_DST);
+    pushDatatoBuffer(vBuf, (vertex *)verts, sizeof(verts));
+    // pushCPUBuffer(vBuf, (vertex *)verts, sizeof(vertex) * 3);
     pc.vBuf = vBuf.address;
     WREshader shader = createShader("A:\\projects\\WRE2\\Test\\shader\\test.spv", WRE_SHADER_STAGE_VERTEX | WRE_SHADER_STAGE_FRAGMENT);
     setPushConstants(&shader, &pc, sizeof(VkDeviceAddress));

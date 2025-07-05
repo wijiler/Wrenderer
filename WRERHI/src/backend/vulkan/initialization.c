@@ -477,7 +477,7 @@ void initializeVulkan(RendererCoreContext *objects, RendererWindowContext *windo
         VkMemoryAllocateInfo vkMemAlloc = {
             VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
             NULL,
-            1000000,
+            StagingBufferSize,
             hostSharedHeapIndex,
         };
         vkAllocateMemory(WREdevice, &vkMemAlloc, NULL, &WREStagingMemory);
@@ -487,8 +487,8 @@ void initializeVulkan(RendererCoreContext *objects, RendererWindowContext *windo
             VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
             NULL,
             0,
-            1000000,
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+            StagingBufferSize,
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
             VK_SHARING_MODE_EXCLUSIVE,
             0,
             NULL,
@@ -501,7 +501,7 @@ void initializeVulkan(RendererCoreContext *objects, RendererWindowContext *windo
         setVkDebugName("WREStagingBuffer", VK_OBJECT_TYPE_BUFFER, (uint64_t)WREstagingBuffer);
 
         vkBindBufferMemory(WREdevice, WREstagingBuffer, WREStagingMemory, 0);
-        vkMapMemory(WREdevice, WREStagingMemory, 0, 1000000, 0, &WREstagingMappedMemory);
+        vkMapMemory(WREdevice, WREStagingMemory, 0, StagingBufferSize, 0, &WREstagingMappedMemory);
     }
     {
         VkDescriptorPoolSize pool_size = {
