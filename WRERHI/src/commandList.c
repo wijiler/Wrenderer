@@ -112,6 +112,30 @@ void submitCommandList(WREcontextObject *context, WREcommandList list)
 {
     context->currentFrame = list;
 }
+typedef struct
+{
+    VkBuffer buf;
+    uint64_t offset;
+} bufferBindingData;
+void bindVertexBuffer(WREcommandList *list, WREBuffer buf, uint64_t offset)
+{
+    allocCmd;
+    WRECommand cmd = {0};
+    cmd.type = WRE_COMMAND_TYPE_PUSH_CONSTANTS;
+    cmd.data = malloc(sizeof(bufferBindingData));
+    *(bufferBindingData *)cmd.data = (bufferBindingData){buf.buffer, offset};
+    addCmd;
+}
+
+void bindIndexBuffer(WREcommandList *list, WREBuffer buf, uint64_t offset)
+{
+    allocCmd;
+    WRECommand cmd = {0};
+    cmd.type = WRE_COMMAND_TYPE_PUSH_CONSTANTS;
+    cmd.data = malloc(sizeof(bufferBindingData));
+    *(bufferBindingData *)cmd.data = (bufferBindingData){buf.buffer, offset};
+    addCmd;
+}
 
 void executeCommandList(WREcontextObject *context)
 {

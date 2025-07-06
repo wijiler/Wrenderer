@@ -42,6 +42,12 @@ typedef struct
     void *data;
 } pcData;
 
+typedef struct
+{
+    VkBuffer buf;
+    uint64_t offset;
+} bufferBindingData;
+
 #define CATTINFO(i)                                   \
     {                                                 \
         VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,  \
@@ -251,6 +257,18 @@ void WREvkExecuteCommandList(RendererCoreContext *context, RendererWindowContext
                 WREpipeline *data = (WREpipeline *)cc.data;
                 vkCmdBindPipeline(currentCommandBuffer, (VkPipelineBindPoint)data->type, data->pipeline);
                 boundPipeline = *data;
+            }
+            break;
+            case WRE_COMMAND_TYPE_BIND_VERTEX:
+            {
+                bufferBindingData *data = (bufferBindingData *)cc.data;
+                vkCmdBindVertexBuffers(currentCommandBuffer, 0, 1, &data->buf, &data->offset);
+            }
+            break;
+            case WRE_COMMAND_TYPE_BIND_INDEX:
+            {
+                bufferBindingData *data = (bufferBindingData *)cc.data;
+                vkCmdBindIndexBuffer(currentCommandBuffer, data->buf, data->offset, VK_INDEX_TYPE_UINT32);
             }
             break;
             default:
