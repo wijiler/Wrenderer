@@ -31,7 +31,7 @@ typedef struct
 
 WREVkBuffer createBuffer(uint64_t size, WREBufferMemoryFlags locality, WREBufferUsageFlags usage);
 void pushCPUBuffer(WREVkBuffer buffer, void *data, size_t size);
-void pushDatatoBuffer(WREVkBuffer buffer, void *data, size_t size);
+void pushDatatoBuffer(WREVkBuffer buffer, void *data, size_t size, size_t srcoffset, size_t dstoffset);
 void destroyBuffer(WREVkBuffer *buffer);
 
 #endif

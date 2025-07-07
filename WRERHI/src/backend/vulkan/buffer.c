@@ -64,11 +64,11 @@ void pushCPUBuffer(WREVkBuffer buffer, void *data, size_t size)
     memcpy(buffer.mappedMemory, data, size);
 }
 
-void pushDatatoBuffer(WREVkBuffer buffer, void *data, size_t size)
+void pushDatatoBuffer(WREVkBuffer buffer, void *data, size_t size, size_t srcoffset, size_t dstoffset)
 {
     memset(WREstagingMappedMemory, 0, StagingBufferSize);
     memcpy(WREstagingMappedMemory, data, size);
-    VkBufferCopy copy_region = {0, 0, size};
+    VkBufferCopy copy_region = {srcoffset, dstoffset, size};
     immediateSubmitBegin();
     vkCmdCopyBuffer(WREinstantCommandBuffer, WREstagingBuffer, buffer.buffer, 1, &copy_region);
     immediateSubmitEnd();
@@ -76,7 +76,7 @@ void pushDatatoBuffer(WREVkBuffer buffer, void *data, size_t size)
     // TODO: Async buffer copy; TODO: add async transfer queue
     if (size > StagingBufferSize)
     {
-        uint32_t offset = StagingBufferSize;
+        uint32_t offset = dstoffset + StagingBufferSize;
         for (uint32_t remaining = size - StagingBufferSize; remaining <= 0; remaining -= StagingBufferSize)
         {
             memcpy(WREstagingMappedMemory, data, size + offset);

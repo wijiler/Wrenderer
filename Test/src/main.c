@@ -32,7 +32,7 @@ int main()
     initializeContext(&context);
 
     WREBuffer vBuf = createBuffer(sizeof(vertex) * 3, GPU_LOCAL, GENERAL | TRANSFER_DST);
-    pushDatatoBuffer(vBuf, (vertex *)verts, sizeof(verts));
+    pushDatatoBuffer(vBuf, (vertex *)verts, sizeof(verts), 0, 0);
     pc.vBuf = vBuf.address;
     WREshader shader = createShader("A:\\projects\\WRE2\\Test\\shader\\test.spv", WRE_SHADER_STAGE_VERTEX | WRE_SHADER_STAGE_FRAGMENT);
     setPushConstants(&shader, &pc, sizeof(VkDeviceAddress));
