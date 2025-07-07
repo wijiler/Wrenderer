@@ -25,37 +25,17 @@ static const VkImageSubresourceRange imgSRR = {
 
 typedef struct
 {
-    WREAttachment frameBuffers[8];
-    uint8_t frameBufCount;
-} renPassInfo;
-
-typedef struct
-{
     VkRenderingAttachmentInfo attInfo[8];
 } cAttInfo;
 
-typedef struct
-{
-    WREshaderStage stage;
-    uint32_t size;
-    uint32_t offset;
-    void *data;
-} pcData;
-
-typedef struct
-{
-    VkBuffer buf;
-    uint64_t offset;
-} bufferBindingData;
-
-VkRenderingAttachmentInfo generateatt_inf(WREAttachment att, renPassInfo info, uint32_t i)
+VkRenderingAttachmentInfo generateatt_inf(WREAttachment att, WRECommandData info, uint32_t i)
 {
     if (att.usage == WRE_COLOR_ATTACHMENT)
     {
         return (VkRenderingAttachmentInfo){
             VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
             NULL,
-            info.frameBuffers[i].img->imgview,
+            info.renderpass.frameBuffers[i].img->imgview,
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             0,
             NULL,
@@ -70,7 +50,7 @@ VkRenderingAttachmentInfo generateatt_inf(WREAttachment att, renPassInfo info, u
         return (VkRenderingAttachmentInfo){
             VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
             NULL,
-            info.frameBuffers[i].img->imgview,
+            info.renderpass.frameBuffers[i].img->imgview,
             VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
             0,
             NULL,
@@ -80,17 +60,18 @@ VkRenderingAttachmentInfo generateatt_inf(WREAttachment att, renPassInfo info, u
             {{{0, 0, 0, 0}}},
         };
     }
+    // im too lazy to deal with stencil buffers rn
     else
     {
         return (VkRenderingAttachmentInfo){0};
     }
 }
-cAttInfo genColorAttachmentInfo(renPassInfo info)
+cAttInfo genColorAttachmentInfo(WRECommandData info)
 {
     cAttInfo inf = {0};
-    for (uint32_t i = 0; i < info.frameBufCount; i++)
+    for (uint32_t i = 0; i < info.renderpass.frameBufCount; i++)
     {
-        inf.attInfo[i] = generateatt_inf(info.frameBuffers[i], info, i);
+        inf.attInfo[i] = generateatt_inf(info.renderpass.frameBuffers[i], info, i);
     }
     return inf;
 }
@@ -152,8 +133,6 @@ void WREvkExecuteCommandList(RendererCoreContext *context, RendererWindowContext
             {
             case WRE_COMMAND_TYPE_RENDERPASS_START:
             {
-                renPassInfo *data = (renPassInfo *)cc.data;
-
                 VkRenderingInfo renInf = {
                     VK_STRUCTURE_TYPE_RENDERING_INFO,
                     NULL,
@@ -161,8 +140,8 @@ void WREvkExecuteCommandList(RendererCoreContext *context, RendererWindowContext
                     {{0, 0}, {winContext->w, winContext->h}},
                     1,
                     0,
-                    data->frameBufCount,
-                    genColorAttachmentInfo(*data).attInfo,
+                    cc.data.renderpass.frameBufCount,
+                    genColorAttachmentInfo(cc.data).attInfo,
                     NULL,
                     NULL,
                 };
@@ -178,44 +157,34 @@ void WREvkExecuteCommandList(RendererCoreContext *context, RendererWindowContext
             case WRE_COMMAND_TYPE_DRAW:
             {
                 vkCmdBindDescriptorSets(currentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, boundPipeline.layout, 0, 1, &WREimagedescriptorSet, 0, NULL);
-                uint32_t data[2] = {0};
-                data[0] = cc.data[0];
-                data[1] = cc.data[1];
-                vkCmdDraw(currentCommandBuffer, data[0], data[1], 0, 0);
+                vkCmdDraw(currentCommandBuffer, cc.data.draw_call[0], cc.data.draw_call[1], 0, 0);
             }
             break;
             case WRE_COMMAND_TYPE_COMPUTE_DISPATCH:
             {
-                uint32_t data[3] = {0};
-                data[0] = cc.data[0];
-                data[1] = cc.data[1];
-                data[2] = cc.data[2];
-                vkCmdDispatch(currentCommandBuffer, data[0], data[1], data[2]);
+                ;
+                vkCmdDispatch(currentCommandBuffer, cc.data.compute_dispatch[0], cc.data.compute_dispatch[1], cc.data.compute_dispatch[2]);
             }
             break;
             case WRE_COMMAND_TYPE_PUSH_CONSTANTS:
             {
-                pcData *data = (pcData *)cc.data;
-                vkCmdPushConstants(currentCommandBuffer, boundPipeline.layout, data->stage, data->offset, data->size, data->data);
+                vkCmdPushConstants(currentCommandBuffer, boundPipeline.layout, cc.data.push_constant.stage, cc.data.push_constant.offset, cc.data.push_constant.size, cc.data.push_constant.data);
             }
             break;
             case WRE_COMMAND_TYPE_SET_PIPELINE:
             {
-                WREpipeline *data = (WREpipeline *)cc.data;
-                vkCmdBindPipeline(currentCommandBuffer, (VkPipelineBindPoint)data->type, data->pipeline);
-                boundPipeline = *data;
+                vkCmdBindPipeline(currentCommandBuffer, (VkPipelineBindPoint)cc.data.pipeline->type, cc.data.pipeline->pipeline);
+                boundPipeline = *cc.data.pipeline;
             }
             break;
             case WRE_COMMAND_TYPE_BIND_VERTEX:
             {
-                bufferBindingData *data = (bufferBindingData *)cc.data;
-                vkCmdBindVertexBuffers(currentCommandBuffer, 0, 1, &data->buf, &data->offset);
+                vkCmdBindVertexBuffers(currentCommandBuffer, 0, 1, &cc.data.buffer_binding.buf, &cc.data.buffer_binding.offset);
             }
             break;
             case WRE_COMMAND_TYPE_BIND_INDEX:
             {
-                bufferBindingData *data = (bufferBindingData *)cc.data;
-                vkCmdBindIndexBuffer(currentCommandBuffer, data->buf, data->offset, VK_INDEX_TYPE_UINT32);
+                vkCmdBindIndexBuffer(currentCommandBuffer, cc.data.buffer_binding.buf, cc.data.buffer_binding.offset, VK_INDEX_TYPE_UINT32);
             }
             break;
             default:

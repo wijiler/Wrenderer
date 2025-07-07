@@ -53,7 +53,7 @@ int main()
     WREAttachment frameBuffers[8] = {0};
     frameBuffers[0] = (WREAttachment){context.window.context.CurrentSCImg, WRE_COLOR_ATTACHMENT};
     upload_texture("A:/projects/WRE2/Test/assets/colored_bars.png");
-    bindPipeline(&list, pipeline);
+    bindPipeline(&list, &pipeline);
 
     startRenderPass(&list, frameBuffers, 1);
     bindPushConstants(&list, 128, 0, WRE_SHADER_STAGE_VERTEX | WRE_SHADER_STAGE_FRAGMENT, shader.pushconstants);
