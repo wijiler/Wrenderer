@@ -26,11 +26,11 @@ void initializeCommandList(WREcommandList *list)
 
 typedef struct
 {
-    WREimage *frameBuffers[8];
+    WREAttachment frameBuffers[8];
     uint8_t frameBufCount;
 } renPassInfo;
 
-void startRenderPass(WREcommandList *list, WREimage *frameBuffers[8], uint8_t frameBufCount)
+void startRenderPass(WREcommandList *list, WREAttachment frameBuffers[8], uint8_t frameBufCount)
 {
     allocCmd;
     WRECommand cmd = {0};

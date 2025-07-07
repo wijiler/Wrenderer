@@ -25,7 +25,7 @@ static const VkImageSubresourceRange imgSRR = {
 
 typedef struct
 {
-    WREimage *frameBuffers[8];
+    WREAttachment frameBuffers[8];
     uint8_t frameBufCount;
 } renPassInfo;
 
@@ -48,102 +48,49 @@ typedef struct
     uint64_t offset;
 } bufferBindingData;
 
-#define CATTINFO(i)                                   \
-    {                                                 \
-        VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,  \
-            NULL,                                     \
-            info.frameBuffers[i]->imgview,            \
-            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, \
-            0,                                        \
-            NULL,                                     \
-            0,                                        \
-            VK_ATTACHMENT_LOAD_OP_LOAD,               \
-            VK_ATTACHMENT_STORE_OP_STORE,             \
-            {{{0, 0, 0, 0}}},                         \
+VkRenderingAttachmentInfo generateatt_inf(WREAttachment att, renPassInfo info, uint32_t i)
+{
+    if (att.usage == WRE_COLOR_ATTACHMENT)
+    {
+        return (VkRenderingAttachmentInfo){
+            VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+            NULL,
+            info.frameBuffers[i].img->imgview,
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            0,
+            NULL,
+            0,
+            VK_ATTACHMENT_LOAD_OP_LOAD,
+            VK_ATTACHMENT_STORE_OP_STORE,
+            {{{0, 0, 0, 0}}},
+        };
     }
-
+    else if (att.usage == WRE_DEPTH_IMAGE)
+    {
+        return (VkRenderingAttachmentInfo){
+            VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+            NULL,
+            info.frameBuffers[i].img->imgview,
+            VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+            0,
+            NULL,
+            0,
+            VK_ATTACHMENT_LOAD_OP_CLEAR,
+            VK_ATTACHMENT_STORE_OP_STORE,
+            {{{0, 0, 0, 0}}},
+        };
+    }
+    else
+    {
+        return (VkRenderingAttachmentInfo){0};
+    }
+}
 cAttInfo genColorAttachmentInfo(renPassInfo info)
 {
     cAttInfo inf = {0};
-    switch (info.frameBufCount)
+    for (uint32_t i = 0; i < info.frameBufCount; i++)
     {
-    case 1:
-        inf = (cAttInfo){
-            {
-                CATTINFO(0),
-            }};
-        break;
-    case 2:
-        inf = (cAttInfo){
-            {
-                CATTINFO(0),
-                CATTINFO(1),
-            }};
-        break;
-
-    case 3:
-        inf = (cAttInfo){
-            {
-                CATTINFO(0),
-                CATTINFO(1),
-                CATTINFO(2),
-            }};
-        break;
-    case 4:
-        inf = (cAttInfo){
-            {
-                CATTINFO(0),
-                CATTINFO(1),
-                CATTINFO(2),
-                CATTINFO(3),
-            }};
-        break;
-    case 5:
-        inf = (cAttInfo){
-            {
-                CATTINFO(0),
-                CATTINFO(1),
-                CATTINFO(2),
-                CATTINFO(3),
-                CATTINFO(4),
-            }};
-        break;
-    case 6:
-        inf = (cAttInfo){
-            {
-                CATTINFO(0),
-                CATTINFO(1),
-                CATTINFO(2),
-                CATTINFO(3),
-                CATTINFO(4),
-                CATTINFO(5),
-            }};
-        break;
-    case 7:
-        inf = (cAttInfo){
-            {
-                CATTINFO(0),
-                CATTINFO(1),
-                CATTINFO(2),
-                CATTINFO(3),
-                CATTINFO(4),
-                CATTINFO(5),
-                CATTINFO(6),
-            }};
-        break;
-    case 8:
-        inf = (cAttInfo){
-            {
-                CATTINFO(0),
-                CATTINFO(1),
-                CATTINFO(2),
-                CATTINFO(3),
-                CATTINFO(4),
-                CATTINFO(5),
-                CATTINFO(6),
-                CATTINFO(7),
-            }};
-        break;
+        inf.attInfo[i] = generateatt_inf(info.frameBuffers[i], info, i);
     }
     return inf;
 }

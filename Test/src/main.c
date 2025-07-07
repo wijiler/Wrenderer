@@ -50,8 +50,8 @@ int main()
     WREcommandList list = {0};
     initializeCommandList(&list);
 
-    WREimage *frameBuffers[8] = {0};
-    frameBuffers[0] = context.window.context.CurrentSCImg;
+    WREAttachment frameBuffers[8] = {0};
+    frameBuffers[0] = (WREAttachment){context.window.context.CurrentSCImg, WRE_COLOR_ATTACHMENT};
     upload_texture("A:/projects/WRE2/Test/assets/colored_bars.png");
     bindPipeline(&list, pipeline);
 

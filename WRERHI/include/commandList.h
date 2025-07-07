@@ -37,8 +37,21 @@ typedef struct
     WRECommand *commands;
 } WREcommandList;
 
+typedef enum
+{
+    WRE_COLOR_ATTACHMENT,
+    WRE_DEPTH_IMAGE,
+    WRE_STENCIL_BUFFER,
+} WREAttachmentUsage;
+
+typedef struct
+{
+    WREimage *img;
+    WREAttachmentUsage usage;
+} WREAttachment;
+
 void initializeCommandList(WREcommandList *list);
-void startRenderPass(WREcommandList *list, WREimage *frameBuffers[8], uint8_t frameBufCount);
+void startRenderPass(WREcommandList *list, WREAttachment frameBuffers[8], uint8_t frameBufCount);
 void endRenderPass(WREcommandList *list);
 void drawCall(WREcommandList *list, uint32_t vertexCount, uint32_t instanceCount);
 void dispatchCompute(WREcommandList *list, uint32_t x, uint32_t y, uint32_t z);
