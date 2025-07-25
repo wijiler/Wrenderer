@@ -53,7 +53,7 @@ WREVKPipeline createPipeline(char *Name, const WREVkPipelineCI *create_info)
 
     VkPushConstantRange ranges[2] = {{0}, {0}};
     uint32_t pcRangeCount = 0;
-    uint32_t combined_descriptor_count = create_info->shaders[0].descriptorSetCount + (create_info->shaderCount > 1 ? 0 : create_info->shaders[1].descriptorSetCount);
+    uint32_t combined_descriptor_count = create_info->shaders[0].descriptorSetCount + (create_info->shaderCount > 1 ? create_info->shaders[1].descriptorSetCount : 0);
     VkDescriptorSetLayout *setLayouts = malloc(sizeof(VkDescriptorSetLayout) * (combined_descriptor_count + 1));
 
     for (uint32_t i = 0; i < create_info->shaderCount; i++)
